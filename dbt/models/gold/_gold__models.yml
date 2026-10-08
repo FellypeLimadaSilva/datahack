@@ -1,0 +1,133 @@
+version: 2
+
+models:
+  - name: dim_data
+    description: Calendário com feriados nacionais (fixos + móveis via Páscoa) e chaves de LY.
+    columns:
+      - { name: data, data_type: date, constraints: [{ type: not_null }, { type: primary_key }], data_tests: [unique] }
+      - { name: ano, data_type: int }
+      - { name: trimestre, data_type: int }
+      - { name: mes, data_type: int }
+      - { name: nome_mes, data_type: text }
+      - { name: ano_mes, data_type: text }
+      - { name: primeiro_dia_mes, data_type: date }
+      - { name: dia, data_type: int }
+      - { name: dia_semana_iso, data_type: int, description: "1=segunda ... 7=domingo (ISO 8601)" }
+      - { name: nome_dia_semana, data_type: text }
+      - { name: semana_iso, data_type: int }
+      - { name: ano_iso, data_type: int }
+      - { name: is_fim_de_semana, data_type: boolean }
+      - { name: is_feriado, data_type: boolean }
+      - { name: nome_feriado, data_type: text }
+      - { name: tipo_feriado, data_type: text }
+      - { name: is_dia_util, data_type: boolean }
+      - { name: data_ano_anterior, data_type: date, description: "Mesma data no ano anterior (LY calendário)." }
+      - { name: data_mesmo_dia_semana_ano_anterior, data_type: date, description: "Data - 364 dias (LY varejo, mesmo dia da semana)." }
+
+  - name: dim_loja
+    description: Dimensão de lojas.
+    columns:
+      - { name: loja_id, data_type: bigint, constraints: [{ type: not_null }, { type: primary_key }], data_tests: [unique] }
+      - { name: nome_loja, data_type: text }
+      - { name: cidade, data_type: text }
+      - { name: uf, data_type: text }
+      - { name: regiao, data_type: text }
+      - { name: data_inauguracao, data_type: date }
+      - { name: data_fechamento, data_type: date }
+      - { name: area_m2, data_type: "numeric(12,2)" }
+      - { name: is_ativa, data_type: boolean }
+
+  - name: dim_produto
+    description: Dimensão de produtos.
+    columns:
+      - { name: produto_id, data_type: bigint, constraints: [{ type: not_null }, { type: primary_key }], data_tests: [unique] }
+      - { name: sku, data_type: text }
+      - { name: nome_produto, data_type: text }
+      - { name: departamento, data_type: text }
+      - { name: categoria, data_type: text }
+      - { name: preco_lista, data_type: "numeric(18,2)" }
+      - { name: is_ativo, data_type: boolean }
+      - { name: is_promocional, data_type: boolean }
+
+  - name: fact_vendas
+    description: "Fato de vendas. Grão: 1 linha = 1 item de cupom."
+    data_tests:
+      - dh_unique_combination:
+          arguments:
+            combination_of_columns: [venda_id, item_seq]
+    columns:
+      - { name: venda_id, data_type: bigint, constraints: [{ type: not_null }] }
+      - { name: item_seq, data_type: int, constraints: [{ type: not_null }] }
+      - name: data_venda
+        data_type: date
+        constraints: [{ type: not_null }]
+        data_tests:
+          - relationships:
+              arguments: { to: ref('dim_data'), field: data }
+      - { name: data_hora_venda, data_type: timestamp }
+      - name: loja_id
+        data_type: bigint
+        constraints: [{ type: not_null }]
+        data_tests:
+          - relationships:
+              arguments: { to: ref('dim_loja'), field: loja_id }
+      - name: produto_id
+        data_type: bigint
+        constraints: [{ type: not_null }]
+        data_tests:
+          - relationships:
+              arguments: { to: ref('dim_produto'), field: produto_id }
+      - { name: canal, data_type: text }
+      - { name: status, data_type: text }
+      - { name: is_cancelada, data_type: boolean }
+      - { name: cliente_hash, data_type: text, description: "Cliente pseudonimizado (LGPD)." }
+      - { name: quantidade, data_type: "numeric(18,3)" }
+      - { name: valor_unitario, data_type: "numeric(18,4)" }
+      - { name: valor_bruto, data_type: "numeric(18,2)" }
+      - { name: valor_desconto, data_type: "numeric(18,2)" }
+      - name: valor_liquido
+        data_type: "numeric(18,2)"
+        data_tests:
+          - dh_min_value:
+              arguments: { min_value: 0 }
+              config: { severity: warn }
+      - { name: _dh_ingested_at, data_type: timestamptz }
+      - { name: _dbt_loaded_at, data_type: timestamptz }
+
+  - name: fact_estoque_foto
+    description: >
+      Fotos de estoque. Medida semiaditiva: some entre lojas/produtos, mas no tempo use
+      apenas a última foto do período (is_ultima_foto_mes).
+    data_tests:
+      - dh_unique_combination:
+          arguments:
+            combination_of_columns: [data_foto, loja_id, produto_id]
+
+  - name: mart_vendas_diarias
+    description: Receita, cupons, itens e ticket médio por dia, loja e canal (somente concluídas).
+    data_tests:
+      - dh_unique_combination:
+          arguments:
+            combination_of_columns: [data_venda, loja_id, canal]
+
+  - name: mart_vendas_mensal_loja
+    description: Mensal por loja com meta, ano anterior (LY) e venda comparável (L4L).
+    data_tests:
+      - dh_unique_combination:
+          arguments:
+            combination_of_columns: [mes, loja_id]
+    columns:
+      - name: is_comparavel_l4l
+        description: Loja aberta durante todo o mês equivalente do ano anterior e ainda aberta no mês.
+
+  - name: controle_atualizacao
+    description: Última carga e última transformação por fonte — base do "Última atualização" no BI.
+    columns:
+      - { name: fonte, data_type: text, data_tests: [unique, not_null] }
+      - { name: ultimo_status, data_type: text }
+      - { name: ultima_carga_sucesso_local, data_type: timestamp }
+      - { name: ultima_carga_sucesso_utc, data_type: timestamptz }
+      - { name: linhas_ultima_execucao, data_type: bigint }
+      - { name: linhas_rejeitadas_ultima_execucao, data_type: bigint }
+      - { name: ultima_transformacao_local, data_type: timestamp }
+      - { name: fuso_horario, data_type: text }

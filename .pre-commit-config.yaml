@@ -1,0 +1,43 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-toml
+      - id: check-json
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: mixed-line-ending
+        args: [--fix=lf]
+        exclude: '\.(ps1|cmd|bat)$'
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+      - id: detect-private-key
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.10
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+
+  - repo: local
+    hooks:
+      - id: forbid-data-files
+        name: bloquear arquivos de dados (LGPD)
+        entry: arquivos de dados não podem ser versionados (LGPD) — use data/landing (ignorado)
+        language: fail
+        files: '\.(parquet|xlsx|xls|pbix|pbit|dump|backup)$'
+      - id: forbid-env
+        name: bloquear .env
+        entry: o .env contém segredos e não pode ser versionado
+        language: fail
+        files: '(^|/)\.env$'

@@ -1,0 +1,16 @@
+name: Bug / divergência de número
+description: Erro de pipeline ou número divergente no BI
+title: "fix: <resumo>"
+labels: ["bug"]
+body:
+  - type: textarea
+    id: oque
+    attributes: { label: O que aconteceu, description: "Inclua run_id (ops.ingestion_runs) ou dag_run do Airflow." }
+    validations: { required: true }
+  - type: textarea
+    id: esperado
+    attributes: { label: O que era esperado (com a fonte de verdade usada na conciliação) }
+    validations: { required: true }
+  - type: textarea
+    id: evidencia
+    attributes: { label: Evidências (consultas, logs, prints sem dados pessoais) }

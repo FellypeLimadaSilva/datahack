@@ -1,0 +1,246 @@
+name: ${COMPOSE_PROJECT_NAME:-datahack}
+
+x-airflow-env: &airflow-env
+  AIRFLOW__CORE__EXECUTOR: LocalExecutor
+  AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+  AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:${AIRFLOW_DB_PASSWORD:?rode scripts/init_env.py}@airflow-db:5432/airflow
+  AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:?}
+  AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW_JWT_SECRET:?}
+  AIRFLOW__API__SECRET_KEY: ${AIRFLOW_API_SECRET_KEY:?}
+  AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-apiserver:8080/execution/
+  AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+  AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+  AIRFLOW__CORE__DEFAULT_TIMEZONE: ${DH_TIMEZONE:-America/Cuiaba}
+  AIRFLOW__CORE__PARALLELISM: "16"
+  AIRFLOW__CORE__MAX_ACTIVE_TASKS_PER_DAG: "8"
+  AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
+  AIRFLOW__API__EXPOSE_CONFIG: "false"
+  AIRFLOW__WEBSERVER__WARN_DEPLOYMENT_EXPOSURE: "false"
+  DH_TIMEZONE: ${DH_TIMEZONE:-America/Cuiaba}
+  DH_PIPELINE_SCHEDULE: ${DH_PIPELINE_SCHEDULE:-}
+  DH_INGEST_CONCURRENCY: ${DH_INGEST_CONCURRENCY:-4}
+  WAREHOUSE_HOST: warehouse
+  WAREHOUSE_PORT: "5432"
+  WAREHOUSE_DB: ${WAREHOUSE_DB:-datahack}
+  WAREHOUSE_INGEST_PASSWORD: ${WAREHOUSE_INGEST_PASSWORD:?}
+  WAREHOUSE_DBT_PASSWORD: ${WAREHOUSE_DBT_PASSWORD:?}
+  DBT_PII_SALT: ${DBT_PII_SALT:?}
+  DBT_TARGET: prod
+
+x-airflow-common: &airflow-common
+  build:
+    context: .
+    dockerfile: infra/airflow/Dockerfile
+  image: datahack/runtime:${DATAHACK_IMAGE_TAG:-local}
+  user: "${AIRFLOW_UID:-50000}:0"
+  environment:
+    <<: *airflow-env
+  volumes:
+    - ./airflow/dags:/opt/airflow/dags
+    - ./airflow/plugins:/opt/airflow/plugins
+    - airflow-logs:/opt/airflow/logs
+    - ./src:/opt/datahack/src:ro
+    - ./config:/opt/datahack/config:ro
+    - ./dbt:/opt/datahack/dbt
+    - ./data:/opt/datahack/data
+  networks: [backend, warehouse]
+  restart: unless-stopped
+  depends_on: &airflow-depends
+    airflow-db:
+      condition: service_healthy
+    warehouse:
+      condition: service_healthy
+
+services:
+  warehouse:
+    image: postgres:16-bookworm
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
+    environment:
+      POSTGRES_DB: ${WAREHOUSE_DB:-datahack}
+      POSTGRES_USER: ${WAREHOUSE_ADMIN_USER:-dh_admin}
+      POSTGRES_PASSWORD: ${WAREHOUSE_ADMIN_PASSWORD:?rode scripts/init_env.py}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C.UTF-8 --data-checksums"
+      POSTGRES_HOST_AUTH_METHOD: scram-sha-256
+      WAREHOUSE_INGEST_PASSWORD: ${WAREHOUSE_INGEST_PASSWORD:?}
+      WAREHOUSE_DBT_PASSWORD: ${WAREHOUSE_DBT_PASSWORD:?}
+      WAREHOUSE_BI_PASSWORD: ${WAREHOUSE_BI_PASSWORD:?}
+      TZ: UTC
+    volumes:
+      - warehouse-data:/var/lib/postgresql/data
+      - ./infra/postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./infra/postgres/bootstrap.sql:/opt/datahack/postgres/bootstrap.sql:ro
+      - ./infra/postgres/initdb:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "127.0.0.1:${WAREHOUSE_PORT:-5433}:5432"
+    shm_size: 1g
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks: [warehouse]
+    restart: unless-stopped
+
+  airflow-db:
+    image: postgres:16-bookworm
+    environment:
+      POSTGRES_DB: airflow
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: ${AIRFLOW_DB_PASSWORD:?}
+      POSTGRES_HOST_AUTH_METHOD: scram-sha-256
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    volumes:
+      - airflow-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow -d airflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [backend]
+    restart: unless-stopped
+
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        set -euo pipefail
+        airflow db migrate
+        airflow users create --role Admin \
+          --username "$${AIRFLOW_ADMIN_USER}" --password "$${AIRFLOW_ADMIN_PASSWORD}" \
+          --firstname Admin --lastname DataHack --email admin@datahack.local \
+          || echo "usuário admin já existe"
+        python -m datahack_ingest init
+        echo "airflow-init concluído"
+    environment:
+      <<: *airflow-env
+      AIRFLOW_ADMIN_USER: ${AIRFLOW_ADMIN_USER:-admin}
+      AIRFLOW_ADMIN_PASSWORD: ${AIRFLOW_ADMIN_PASSWORD:?}
+    user: "0:0"
+    restart: "no"
+
+  airflow-apiserver:
+    <<: *airflow-common
+    command: api-server
+    ports:
+      - "127.0.0.1:${AIRFLOW_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/api/v2/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      <<: *airflow-depends
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      <<: *airflow-depends
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-dag-processor:
+    <<: *airflow-common
+    command: dag-processor
+    healthcheck:
+      test: ["CMD-SHELL", 'airflow jobs check --job-type DagProcessorJob --hostname "$${HOSTNAME}"']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      <<: *airflow-depends
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-triggerer:
+    <<: *airflow-common
+    command: triggerer
+    healthcheck:
+      test: ["CMD-SHELL", 'airflow jobs check --job-type TriggererJob --hostname "$${HOSTNAME}"']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      <<: *airflow-depends
+      airflow-init:
+        condition: service_completed_successfully
+
+  cli:
+    <<: *airflow-common
+    profiles: [cli]
+    entrypoint: ["/usr/bin/dumb-init", "--"]
+    command: ["python", "-m", "datahack_ingest", "--help"]
+    working_dir: /opt/datahack
+    restart: "no"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./src:/opt/datahack/src:ro
+      - ./config:/opt/datahack/config:ro
+      - ./dbt:/opt/datahack/dbt
+      - ./data:/opt/datahack/data
+      - ./scripts:/opt/datahack/scripts:ro
+    depends_on:
+      warehouse:
+        condition: service_healthy
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    profiles: [tools]
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@datahack.dev}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:?}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "True"
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    ports:
+      - "127.0.0.1:${PGADMIN_PORT:-5050}:80"
+    networks: [warehouse]
+    depends_on:
+      warehouse:
+        condition: service_healthy
+    restart: unless-stopped
+
+  metabase:
+    image: metabase/metabase:latest
+    profiles: [bi]
+    environment:
+      MB_DB_FILE: /metabase-data/metabase.db
+      JAVA_TIMEZONE: ${DH_TIMEZONE:-America/Cuiaba}
+      MB_ANON_TRACKING_ENABLED: "false"
+    volumes:
+      - metabase-data:/metabase-data
+    ports:
+      - "127.0.0.1:${METABASE_PORT:-3000}:3000"
+    networks: [warehouse]
+    depends_on:
+      warehouse:
+        condition: service_healthy
+    restart: unless-stopped
+
+networks:
+  backend:
+    name: ${COMPOSE_PROJECT_NAME:-datahack}_backend
+  warehouse:
+    name: ${COMPOSE_PROJECT_NAME:-datahack}_warehouse
+
+volumes:
+  warehouse-data:
+  airflow-db-data:
+  airflow-logs:
+  pgadmin-data:
+  metabase-data:

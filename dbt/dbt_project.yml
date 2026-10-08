@@ -1,0 +1,44 @@
+name: datahack
+version: "1.0.0"
+config-version: 2
+profile: datahack
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+clean-targets: ["target", "dbt_packages", "logs"]
+
+vars:
+  timezone: "America/Cuiaba"
+  calendar_start: "2020-01-01"
+  calendar_end: "2030-12-31"
+  incremental_lookback: "2 hours"
+  l4l_min_months: 12
+
+models:
+  datahack:
+    +persist_docs: { relation: true, columns: true }
+    silver:
+      +schema: silver
+      +materialized: view
+      +tags: ["silver"]
+    gold:
+      +schema: gold
+      +materialized: table
+      +tags: ["gold"]
+      +grants:
+        select: ["{{ env_var('DBT_BI_ROLE', 'dh_bi_reader') }}"]
+      +post-hook:
+        - "{% if config.get('materialized') in ('table', 'incremental') %}analyze {{ this }}{% endif %}"
+
+seeds:
+  datahack:
+    +schema: silver
+    +tags: ["seed"]
+
+data_tests:
+  datahack:
+    +store_failures: false

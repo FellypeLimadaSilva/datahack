@@ -1,0 +1,26 @@
+[sqlfluff]
+dialect = postgres
+templater = jinja
+max_line_length = 120
+exclude_rules = LT05, ST06, AM04, RF04, ST05, ST07, RF02, AM03, LT14
+
+[sqlfluff:templater:jinja]
+apply_dbt_builtins = true
+load_macros_from_path = dbt/macros
+
+[sqlfluff:indentation]
+tab_space_size = 4
+
+[sqlfluff:rules:capitalisation.keywords]
+capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.functions]
+extended_capitalisation_policy = lower
+
+[sqlfluff:layout:type:alias_expression]
+spacing_before = align
+align_within = select_clause
+align_scope = bracketed
+
+[sqlfluff:templater:jinja:macros]
+env_var = {% macro env_var(name, default='') %}{{ default }}{% endmacro %}

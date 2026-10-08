@@ -1,0 +1,36 @@
+name: Nova fonte de dados
+description: Solicitar a ingestão de uma nova fonte na plataforma
+title: "feat(source): <nome da fonte>"
+labels: ["fonte", "ingestao"]
+body:
+  - type: input
+    id: dono
+    attributes: { label: Dono do dado (área/pessoa), placeholder: comercial@empresa }
+    validations: { required: true }
+  - type: dropdown
+    id: tipo
+    attributes:
+      label: Tipo
+      options: [Arquivo (CSV/JSON/Parquet/XLSX), API REST, Banco relacional, Outro]
+    validations: { required: true }
+  - type: dropdown
+    id: estrategia
+    attributes:
+      label: Estratégia de carga
+      options: [full (substitui tudo), append (histórico imutável), merge (upsert por chave)]
+    validations: { required: true }
+  - type: input
+    id: chave
+    attributes: { label: Chave primária, placeholder: "id / (pedido_id, item)" }
+  - type: input
+    id: volume
+    attributes: { label: Volume e frequência, placeholder: "~2M linhas/dia, a cada 30 min" }
+  - type: textarea
+    id: pii
+    attributes:
+      label: Dados pessoais (LGPD)
+      description: Colunas com CPF, e-mail, telefone, endereço etc. e base legal de tratamento.
+    validations: { required: true }
+  - type: textarea
+    id: regras
+    attributes: { label: Regras de negócio e validações esperadas }

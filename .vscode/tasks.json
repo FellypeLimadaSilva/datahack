@@ -1,0 +1,110 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "DH: 0. gerar .env (segredos)",
+      "type": "shell",
+      "command": "python scripts/init_env.py",
+      "problemMatcher": []
+    },
+    {
+      "label": "DH: 1. subir plataforma",
+      "type": "shell",
+      "command": "docker compose up -d --build",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "DH: 2. gerar dados de exemplo",
+      "type": "shell",
+      "command": "docker compose run --rm cli python scripts/generate_sample_data.py --out data/landing/sample",
+      "problemMatcher": []
+    },
+    {
+      "label": "DH: 3. ingerir todas as fontes",
+      "type": "shell",
+      "command": "docker compose run --rm cli python -m datahack_ingest run --all",
+      "problemMatcher": []
+    },
+    {
+      "label": "DH: 3b. ingerir uma fonte",
+      "type": "shell",
+      "command": "docker compose run --rm cli python -m datahack_ingest run ${input:source}",
+      "problemMatcher": []
+    },
+    {
+      "label": "DH: 3c. perfilar fonte (dry-run, não grava)",
+      "type": "shell",
+      "command": "docker compose run --rm cli python -m datahack_ingest run ${input:source} --dry-run",
+      "problemMatcher": []
+    },
+    {
+      "label": "DH: 4. dbt build",
+      "type": "shell",
+      "command": "docker compose run --rm cli dbt build --project-dir dbt",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "DH: 4b. dbt build (seletor)",
+      "type": "shell",
+      "command": "docker compose run --rm cli dbt build --project-dir dbt --select ${input:dbtSelect}",
+      "problemMatcher": []
+    },
+    {
+      "label": "DH: dbt docs generate",
+      "type": "shell",
+      "command": "docker compose run --rm cli bash -c \"DBT_TARGET_PATH=/opt/datahack/dbt/target dbt docs generate --project-dir dbt\"",
+      "problemMatcher": []
+    },
+    {
+      "label": "DH: validar catálogo de fontes",
+      "type": "shell",
+      "command": "docker compose run --rm cli python -m datahack_ingest validate",
+      "problemMatcher": []
+    },
+    {
+      "label": "DH: status dos serviços",
+      "type": "shell",
+      "command": "docker compose ps",
+      "problemMatcher": []
+    },
+    {
+      "label": "DH: logs do scheduler",
+      "type": "shell",
+      "command": "docker compose logs -f --tail=200 airflow-scheduler",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "DH: psql (admin)",
+      "type": "shell",
+      "command": "docker compose exec warehouse bash -c 'psql -U $POSTGRES_USER -d $POSTGRES_DB'",
+      "problemMatcher": []
+    },
+    {
+      "label": "DH: testes Python",
+      "type": "shell",
+      "command": "pytest -q",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "DH: lint (ruff + sqlfluff)",
+      "type": "shell",
+      "command": "ruff check . && ruff format --check . && sqlfluff lint dbt/models",
+      "windows": { "command": "ruff check .; ruff format --check .; sqlfluff lint dbt/models" },
+      "problemMatcher": []
+    },
+    {
+      "label": "DH: derrubar plataforma",
+      "type": "shell",
+      "command": "docker compose down",
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    { "id": "source", "type": "promptString", "description": "Nome da fonte (config/sources.yml)", "default": "vendas" },
+    { "id": "dbtSelect", "type": "promptString", "description": "Seletor dbt", "default": "fact_vendas+" }
+  ]
+}
