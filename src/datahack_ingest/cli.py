@@ -11,6 +11,7 @@ from psycopg import sql
 from pydantic import ValidationError
 
 from datahack_ingest import __version__
+from datahack_ingest.alerting import Alert, configured_channels, send_alert
 from datahack_ingest.catalog import load_catalog, required_env_vars
 from datahack_ingest.logging_setup import configure
 from datahack_ingest.runner import run_source
@@ -38,6 +39,8 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--all", action="store_true", help="todas as fontes habilitadas")
     run.add_argument("--dry-run", action="store_true", help="extrai e perfila sem gravar")
     run.add_argument("--continue-on-error", action="store_true")
+
+    sub.add_parser("alert-test", help="envia um alerta de teste para os canais configurados")
 
     mt = sub.add_parser("maintenance", help="ANALYZE na Bronze e expurgo do histórico de controle")
     mt.add_argument("--retention-days", type=int, default=90)
@@ -87,6 +90,22 @@ def main(argv: list[str] | None = None) -> int:
             StateStore(conn).ensure()
         print("schema ops pronto")
         return 0
+
+    if args.cmd == "alert-test":
+        channels = configured_channels()
+        if not channels:
+            print("[erro] nenhum canal configurado (DH_ALERT_*)", file=sys.stderr)
+            return 2
+        delivered = send_alert(
+            Alert(
+                title="Teste de alerta",
+                message="Canal de alertas da plataforma DataHack ativo.",
+                severity="error",
+                context={"origem": "dh-ingest alert-test"},
+            )
+        )
+        print(json.dumps({"configured": channels, "delivered": delivered}))
+        return 0 if set(delivered) == set(channels) else 1
 
     if args.cmd == "maintenance":
         return _maintenance(settings, args.retention_days)

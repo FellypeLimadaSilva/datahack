@@ -37,6 +37,7 @@ select
     v.canal::text                                                                as canal,
     v.status::text                                                               as status,
     (v.status = 'cancelada')::boolean                                            as is_cancelada,
+    v.is_excluida::boolean                                                       as is_excluida,
     v.cliente_hash::text                                                         as cliente_hash,
     v.quantidade::numeric(18, 3)                                                 as quantidade,
     v.valor_unitario::numeric(18, 4)                                             as valor_unitario,

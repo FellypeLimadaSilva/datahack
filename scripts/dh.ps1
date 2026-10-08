@@ -29,6 +29,9 @@ switch ($Command) {
     "dbt-test"     { Invoke-Cli dbt test --project-dir dbt }
     "pipeline"     { & $PSCommandPath ingest; & $PSCommandPath dbt-build }
     "psql"         { docker compose exec warehouse bash -c 'psql -U $POSTGRES_USER -d $POSTGRES_DB' }
+    "backup"       { docker compose run --rm -e BACKUP_ONCE=true warehouse-backup }
+    "ha-up"        { docker compose --profile ha up -d warehouse-replica }
+    "alert-test"   { Invoke-Cli python -m datahack_ingest alert-test }
     "db-bootstrap" { docker compose exec warehouse bash /docker-entrypoint-initdb.d/10-bootstrap.sh }
     "test"         { pytest -q }
     "lint"         { ruff check .; ruff format --check .; sqlfluff lint dbt/models }
@@ -43,7 +46,7 @@ Uso: .\scripts\dh.ps1 <comando> [args]
   sample                      gera dataset de exemplo
   ingest [fontes...]          ingere fontes (padrao: todas habilitadas)
   dbt-build [seletor]         dbt build (models + testes)
-  dbt-test | pipeline | psql | db-bootstrap | test | lint | nuke
+  dbt-test | pipeline | psql | db-bootstrap | backup | ha-up | alert-test | test | lint | nuke
 "@
     }
 }

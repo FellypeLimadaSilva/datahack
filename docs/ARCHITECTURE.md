@@ -63,8 +63,8 @@ No `merge`, o filtro usa `>=` (borda reprocessada com segurança); nos demais, `
 
 | Faixa | Arquitetura recomendada | O que muda |
 |---|---|---|
-| até ~100 GB / centenas de milhões de linhas | **Padrão deste repositório** | Nada. COPY em lotes, BRIN em `_dh_ingested_at`, incremental na Silver/Gold |
-| 100 GB – 1 TB | PostgreSQL com particionamento declarativo por mês nas fatos | `partition by range (data_venda)`; mais RAM e `work_mem`; réplica de leitura para o BI |
+| até ~100 GB / centenas de milhões de linhas | **Padrão deste repositório** | Nada. COPY em lotes, extração SQL paralela, BRIN em `_dh_ingested_at`, incremental na Silver/Gold |
+| 100 GB – 1 TB | PostgreSQL com particionamento declarativo por mês nas fatos | `partition by range (data_venda)`; mais RAM e `work_mem`; BI na réplica (`--profile ha`) |
 | > 1 TB ou streaming | `sink: parquet` (lake) + engine distribuída | Trocar o adapter dbt (`dbt-databricks`, `dbt-spark`, `dbt-duckdb`, Fabric); os models da Silver/Gold são SQL quase ANSI e as macros isolam o que é específico do PostgreSQL |
 
 A ingestão já é limitada por memória constante (lotes de `chunk_size`), lê de S3/ADLS/GCS via `fsspec`
@@ -92,6 +92,52 @@ troque por ETag/versão do objeto.
 - **Dia da semana:** ISO (`isodow`), independente de configuração de sessão.
 - **Última atualização no BI:** `gold.controle_atualizacao` (carga real), nunca `NOW()`/`TODAY()` no DAX.
 
-## 9. Registro de decisões (ADRs)
+## 9. ETL opcional na ingestão
+
+O padrão é ELT: a Bronze guarda o dado fiel e o dbt transforma. Quando o dado não pode
+ou não deve chegar ao banco, a fonte declara `transforms`, aplicadas em cada lote depois da
+normalização e antes da gravação:
+
+| Operação | Uso típico |
+|---|---|
+| `filter` | Descartar linhas irrelevantes (eq, ne, in, not_in, gt, gte, lt, lte, is_null, not_null, regex) |
+| `hash_columns` | Pseudonimizar PII com o mesmo algoritmo e salt do dbt (`dh_hash_pii`) |
+| `mask_columns` | Mascarar mantendo os últimos N caracteres (cartão, telefone) |
+| `drop_columns` / `select_columns` / `rename` | Minimização de dados (LGPD) e padronização |
+| `deduplicate`, `trim`, `upper`, `lower`, `add_constant` | Limpeza leve |
+| `python` | Regra própria: `modulo:funcao(df) -> df` |
+
+Linhas descartadas ficam contadas em `ops.ingestion_runs.rows_filtered`.
+
+## 10. Exclusões na origem
+
+`delete_detection` em fontes `merge`:
+
+| Escopo | Como sabe o que foi apagado | Quando usar |
+|---|---|---|
+| `snapshot` | Cada arquivo/execução é a foto completa da entidade; chave ausente = excluída | Exportações completas, APIs sem incremental |
+| `keys_query` | Consulta leve que lista todas as chaves atuais da origem | Tabelas SQL grandes com carga incremental |
+
+`mode: soft` marca `_dh_deleted_at` e atualiza `_dh_ingested_at` (propaga para os incrementais;
+a Silver filtra e a fato marca `is_excluida`). `mode: hard` apaga da Bronze. Em ambos, a trava
+`max_delete_ratio` aborta a transação inteira se a proporção de exclusões passar do limite,
+e um snapshot vazio nunca apaga nada.
+
+## 11. Histórico SCD tipo 2
+
+`dbt/snapshots` versiona lojas e produtos (`strategy: check`, `hard_deletes: invalidate`).
+A Gold expõe `dim_loja_historico` e `dim_produto_historico` com `valido_de`, `valido_ate`
+e `is_atual`. Para "como era em uma data": `valido_de <= data < coalesce(valido_ate, 'infinity')`.
+
+## 12. Alta disponibilidade, backup e alertas
+
+| Recurso | Implementação |
+|---|---|
+| Backup | Serviço `warehouse-backup`: `pg_dump` diário com `dh_backup` (somente leitura), verificação com `pg_restore --list`, SHA-256 e retenção |
+| Réplica | `--profile ha`: streaming replication com slot físico; `max_slot_wal_keep_size` protege o disco do primário |
+| Alertas | Falha de ingestão, volume anômalo e falha de task no Airflow em Slack, Teams, webhook ou e-mail |
+| Volume | `volume_check`: compara com a mediana das últimas execuções; `fail` bloqueia a carga full antes do commit |
+
+## 13. Registro de decisões (ADRs)
 
 Veja [docs/adr/](adr/). Toda decisão estrutural nova entra como ADR numerado.

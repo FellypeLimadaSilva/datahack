@@ -4,10 +4,10 @@ CLI := $(COMPOSE) run --rm cli
 
 .DEFAULT_GOAL := help
 .PHONY: help env up down restart ps logs build sample ingest dbt-build dbt-test dbt-docs pipeline \
-        psql db-bootstrap test lint fmt clean nuke
+        psql db-bootstrap backup ha-up alert-test test lint fmt clean nuke
 
 help:
-	@echo "env build up down restart ps logs sample ingest dbt-build dbt-test dbt-docs pipeline psql db-bootstrap test lint fmt clean nuke"
+	@echo "env build up down restart ps logs sample ingest dbt-build dbt-test dbt-docs pipeline psql db-bootstrap backup ha-up alert-test test lint fmt clean nuke"
 
 env:
 	python3 scripts/init_env.py
@@ -49,6 +49,15 @@ pipeline: ingest dbt-build
 
 psql:
 	$(COMPOSE) exec warehouse bash -c 'psql -U $$POSTGRES_USER -d $$POSTGRES_DB'
+
+backup:
+	$(COMPOSE) run --rm -e BACKUP_ONCE=true warehouse-backup
+
+ha-up:
+	$(COMPOSE) --profile ha up -d warehouse-replica
+
+alert-test:
+	$(CLI) python -m datahack_ingest alert-test
 
 db-bootstrap:
 	$(COMPOSE) exec warehouse bash /docker-entrypoint-initdb.d/10-bootstrap.sh

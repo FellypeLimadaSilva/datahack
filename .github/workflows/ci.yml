@@ -76,9 +76,11 @@ jobs:
           psql -h localhost -U dh_admin -d datahack -c "CREATE EXTENSION IF NOT EXISTS pg_stat_statements" || true
           psql -v ON_ERROR_STOP=1 -h localhost -U dh_admin -d datahack \
             -v dbname=datahack -v ingest_pw=ci_ingest_pw -v dbt_pw=ci_dbt_pw -v bi_pw=ci_bi_pw \
+            -v backup_pw=ci_backup_pw -v repl_pw=ci_repl_pw \
             -f infra/postgres/bootstrap.sql
           psql -q -v ON_ERROR_STOP=1 -h localhost -U dh_admin -d datahack \
             -v dbname=datahack -v ingest_pw=ci_ingest_pw -v dbt_pw=ci_dbt_pw -v bi_pw=ci_bi_pw \
+            -v backup_pw=ci_backup_pw -v repl_pw=ci_repl_pw \
             -f infra/postgres/bootstrap.sql
       - name: Dados sintéticos
         run: python scripts/generate_sample_data.py --scale 0.3
@@ -101,6 +103,13 @@ jobs:
           ! psql -h localhost -U dh_bi_reader -d datahack -c "select 1 from bronze.vendas limit 1"
           ! psql -h localhost -U dh_bi_reader -d datahack -c "select 1 from silver.stg_vendas limit 1"
           ! psql -h localhost -U dh_bi_reader -d datahack -c "create table gold.x (a int)"
+      - name: Backup com role somente leitura e verificação de restauração
+        env: { PGHOST: localhost, PGUSER: dh_backup, PGPASSWORD: ci_backup_pw, PGDATABASE: datahack }
+        run: |
+          BACKUP_ONCE=true BACKUP_DIR=/tmp/backups bash infra/postgres/backup.sh
+          PGUSER=dh_admin PGPASSWORD=ci_admin_pw createdb -h localhost restore_check
+          PGUSER=dh_admin PGPASSWORD=ci_admin_pw pg_restore --no-owner -h localhost -d restore_check /tmp/backups/datahack_*.dump || true
+          test "$(PGUSER=dh_admin PGPASSWORD=ci_admin_pw psql -h localhost -d restore_check -tAc 'select count(*) from gold.fact_vendas')" -gt 0
       - name: Documentação dbt (artefato)
         working-directory: dbt
         run: dbt docs generate

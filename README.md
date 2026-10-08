@@ -54,6 +54,7 @@ Linux/macOS/WSL: troque `.\scripts\dh.ps1 <cmd>` por `make <cmd>`. No VS Code:
 | PostgreSQL (warehouse) | `localhost:5433` / db `datahack` | roles abaixo, senhas no `.env` |
 | pgAdmin (`--profile tools`) | http://localhost:5050 | `PGADMIN_*` |
 | Metabase (`--profile bi`) | http://localhost:3000 | criado no primeiro acesso |
+| Réplica de leitura (`--profile ha`) | `localhost:5434` | mesmas roles do warehouse |
 
 **Power BI:** Obter dados → PostgreSQL → servidor `localhost:5433`, banco `datahack`,
 usuário `dh_bi_reader`. Só o schema `gold` fica visível (regra de ouro do consumo).
@@ -77,6 +78,9 @@ usuário `dh_bi_reader`. Só o schema `gold` fica visível (regra de ouro do con
 | dbt (models + testes) | `dh.ps1 dbt-build` / `dh.ps1 dbt-build fact_vendas+` | `make dbt-build sel=fact_vendas+` |
 | Testes Python | `dh.ps1 test` | `make test` |
 | Console SQL | `dh.ps1 psql` | `make psql` |
+| Backup imediato | `dh.ps1 backup` | `make backup` |
+| Subir réplica de leitura | `dh.ps1 ha-up` | `make ha-up` |
+| Testar canais de alerta | `dh.ps1 alert-test` | `make alert-test` |
 
 ## Adicionar uma fonte em 5 minutos
 
@@ -97,6 +101,13 @@ Guia completo: [docs/ADDING_A_SOURCE.md](docs/ADDING_A_SOURCE.md).
 - **Concorrência segura:** lock consultivo por fonte; `max_active_runs=1` na DAG.
 - **Contratos de dados:** tabelas da Gold consumidas pelo BI têm nome e tipo de coluna travados (`contract.enforced`).
 - **LGPD:** dados fora do Git (`.gitignore` + hook), CPF pseudonimizado com SHA-256 + salt, BI sem acesso à Bronze/Silver.
+- **ELT e ETL:** transformações opcionais antes de gravar (filtrar, mascarar, hash, descartar colunas, função Python própria).
+- **Exclusões na origem:** detectadas por snapshot ou por consulta de chaves, com exclusão lógica ou física e trava contra exclusão em massa.
+- **Histórico SCD tipo 2:** `dbt snapshot` de lojas e produtos, com `dim_*_historico` na Gold.
+- **Qualquer formato:** CSV, JSON, JSONL, Parquet, Excel, XML, largura fixa, Avro e ORC; compactados em gzip, bz2, xz, zstd ou zip; leitura em streaming.
+- **Bancos e APIs em escala:** extração SQL paralela por faixa de chave; REST, GraphQL e OAuth2 client credentials.
+- **Observabilidade:** alertas em Slack, Teams, webhook ou e-mail; checagem de volume que bloqueia carga anômala.
+- **Resiliência:** backup diário verificado com role somente leitura; réplica de leitura em streaming (`--profile ha`).
 
 ## Documentação
 

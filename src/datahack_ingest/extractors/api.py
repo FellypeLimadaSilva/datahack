@@ -12,11 +12,12 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from datahack_ingest.catalog import ApiSource
+from datahack_ingest.catalog import ApiAuth, ApiSource
 from datahack_ingest.extractors.base import ExtractState, ExtractUnit, get_path, records_to_frame
 from datahack_ingest.normalize import to_text
 
 log = logging.getLogger(__name__)
+_TOKEN_SKEW_SECONDS = 60
 
 
 def _secret(name: str | None) -> str:
@@ -28,10 +29,60 @@ def _secret(name: str | None) -> str:
     return value
 
 
+class GraphQLError(RuntimeError):
+    pass
+
+
+class OAuth2ClientCredentials(requests.auth.AuthBase):
+    def __init__(self, cfg: ApiAuth, timeout: float, verify: bool) -> None:
+        self.cfg = cfg
+        self.timeout = timeout
+        self.verify = verify
+        self._token: str | None = None
+        self._expires_at = 0.0
+
+    def invalidate(self) -> None:
+        self._token = None
+        self._expires_at = 0.0
+
+    def token(self) -> str:
+        if self._token and time.monotonic() < self._expires_at - _TOKEN_SKEW_SECONDS:
+            return self._token
+        data = {"grant_type": "client_credentials"}
+        if self.cfg.scope:
+            data["scope"] = self.cfg.scope
+        if self.cfg.audience:
+            data["audience"] = self.cfg.audience
+        client_id, client_secret = (
+            _secret(self.cfg.client_id_env),
+            _secret(self.cfg.client_secret_env),
+        )
+        auth = None
+        if self.cfg.client_auth == "basic":
+            auth = (client_id, client_secret)
+        else:
+            data.update({"client_id": client_id, "client_secret": client_secret})
+        resp = requests.post(
+            self.cfg.token_url, data=data, auth=auth, timeout=self.timeout, verify=self.verify
+        )
+        resp.raise_for_status()
+        payload = resp.json()
+        if "access_token" not in payload:
+            raise OSError("resposta do token_url sem access_token")
+        self._token = payload["access_token"]
+        self._expires_at = time.monotonic() + float(payload.get("expires_in", 3600))
+        return self._token
+
+    def __call__(self, r: requests.PreparedRequest) -> requests.PreparedRequest:
+        r.headers["Authorization"] = f"Bearer {self.token()}"
+        return r
+
+
 class ApiExtractor:
     def __init__(self, source: ApiSource) -> None:
         self.source = source
         self.opts = source.api
+        self._oauth: OAuth2ClientCredentials | None = None
 
     def _session(self) -> requests.Session:
         retry = Retry(
@@ -45,7 +96,7 @@ class ApiExtractor:
         s = requests.Session()
         s.mount("https://", HTTPAdapter(max_retries=retry))
         s.mount("http://", HTTPAdapter(max_retries=retry))
-        s.headers.update({"Accept": "application/json", "User-Agent": "datahack-ingest/0.1"})
+        s.headers.update({"Accept": "application/json", "User-Agent": "datahack-ingest/0.2"})
         s.headers.update(self.opts.headers)
         auth = self.opts.auth
         if auth.type == "bearer":
@@ -54,17 +105,21 @@ class ApiExtractor:
             s.headers[auth.header] = _secret(auth.token_env)
         elif auth.type == "basic":
             s.auth = (_secret(auth.username_env), _secret(auth.password_env))
+        elif auth.type == "oauth2_client_credentials":
+            self._oauth = OAuth2ClientCredentials(
+                auth, self.opts.timeout_seconds, self.opts.verify_tls
+            )
+            s.auth = self._oauth
         return s
 
     def units(self, state: ExtractState) -> Iterator[ExtractUnit]:
-        host = urlparse(self.opts.url).netloc
-        yield ExtractUnit(
-            key=f"api:{host}{urlparse(self.opts.url).path}", frames=self._frames(state)
-        )
+        parsed = urlparse(self.opts.url)
+        yield ExtractUnit(key=f"api:{parsed.netloc}{parsed.path}", frames=self._frames(state))
 
     def _frames(self, state: ExtractState) -> Iterator[pd.DataFrame]:
+        pages = self._graphql_pages(state) if self.opts.graphql else self._rest_pages(state)
         buffer: list[Any] = []
-        for page in self._pages(state):
+        for page in pages:
             buffer.extend(page)
             while len(buffer) >= self.source.chunk_size:
                 chunk, buffer = buffer[: self.source.chunk_size], buffer[self.source.chunk_size :]
@@ -72,21 +127,60 @@ class ApiExtractor:
         if buffer:
             yield records_to_frame(buffer, self.opts.flatten_max_level)
 
-    def _request(self, session: requests.Session, url: str, params: dict) -> requests.Response:
+    def _request(
+        self,
+        session: requests.Session,
+        method: str,
+        url: str,
+        params: dict | None = None,
+        body: Any = None,
+    ) -> requests.Response:
         if self.opts.rate_limit_per_second:
             time.sleep(1.0 / self.opts.rate_limit_per_second)
-        resp = session.request(
-            self.opts.method,
-            url,
-            params=params,
-            json=self.opts.body,
-            timeout=self.opts.timeout_seconds,
-            verify=self.opts.verify_tls,
-        )
+        kwargs = {
+            "params": params,
+            "json": body,
+            "timeout": self.opts.timeout_seconds,
+            "verify": self.opts.verify_tls,
+        }
+        resp = session.request(method, url, **kwargs)
+        if resp.status_code == 401 and self._oauth:
+            self._oauth.invalidate()
+            resp = session.request(method, url, **kwargs)
         resp.raise_for_status()
         return resp
 
-    def _pages(self, state: ExtractState) -> Iterator[list[Any]]:
+    @staticmethod
+    def _as_records(value: Any) -> list[Any]:
+        if isinstance(value, dict):
+            return [value]
+        return value or []
+
+    def _graphql_pages(self, state: ExtractState) -> Iterator[list[Any]]:
+        gql = self.opts.graphql
+        variables: dict[str, Any] = dict(gql.variables)
+        if self.opts.incremental_param and state.watermark is not None:
+            variables[self.opts.incremental_param] = to_text(state.watermark)
+        with self._session() as session:
+            for _ in range(self.opts.pagination.max_pages):
+                payload = self._request(
+                    session,
+                    "POST",
+                    self.opts.url,
+                    body={"query": gql.query, "variables": variables},
+                ).json()
+                if payload.get("errors"):
+                    raise GraphQLError(str(payload["errors"])[:2000])
+                records = self._as_records(get_path(payload, self.opts.records_path))
+                if records:
+                    yield records
+                info = get_path(payload, gql.page_info_path) if gql.page_info_path else None
+                if not info or not info.get("hasNextPage") or not info.get("endCursor"):
+                    return
+                variables[gql.cursor_variable] = info["endCursor"]
+            log.warning("max_pages atingido no GraphQL; extração interrompida")
+
+    def _rest_pages(self, state: ExtractState) -> Iterator[list[Any]]:
         p = self.opts.pagination
         params: dict[str, Any] = dict(self.opts.params)
         if self.opts.incremental_param and state.watermark is not None:
@@ -104,12 +198,9 @@ class ApiExtractor:
                 elif p.type == "cursor" and cursor:
                     q[p.cursor_param] = cursor
 
-                resp = self._request(session, url, q)
+                resp = self._request(session, self.opts.method, url, q, self.opts.body)
                 payload = resp.json()
-                records = get_path(payload, self.opts.records_path)
-                if isinstance(records, dict):
-                    records = [records]
-                records = records or []
+                records = self._as_records(get_path(payload, self.opts.records_path))
                 log.debug("página recebida", extra={"page": n, "records": len(records)})
                 if records:
                     yield records

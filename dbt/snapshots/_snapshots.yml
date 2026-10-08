@@ -1,0 +1,22 @@
+version: 2
+
+snapshots:
+  - name: snap_lojas
+    relation: ref('stg_lojas')
+    description: Histórico SCD tipo 2 do cadastro de lojas.
+    config:
+      schema: silver
+      unique_key: loja_id
+      strategy: check
+      check_cols: [nome_loja, cidade, uf, regiao, data_inauguracao, data_fechamento, area_m2]
+      hard_deletes: invalidate
+
+  - name: snap_produtos
+    relation: ref('stg_produtos')
+    description: Histórico SCD tipo 2 do catálogo de produtos (preço, categoria, status).
+    config:
+      schema: silver
+      unique_key: produto_id
+      strategy: check
+      check_cols: [sku, nome_produto, departamento, categoria, preco_lista, is_ativo, is_promocional]
+      hard_deletes: invalidate

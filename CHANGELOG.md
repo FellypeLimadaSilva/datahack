@@ -2,6 +2,21 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versionamento: [SemVer](https://semver.org/lang/pt-BR/).
 
+## [0.2.0] — 2026-10-08
+
+### Adicionado
+- ETL opcional na ingestão: `filter`, `hash_columns`, `mask_columns`, `drop_columns`, `select_columns`,
+  `rename`, `deduplicate`, `trim`/`upper`/`lower`, `add_constant` e `python`.
+- Detecção de exclusões (`snapshot` e `keys_query`, modos `soft` e `hard`) com trava `max_delete_ratio`,
+  propagada para Silver (`dh_latest`) e Gold (`fact_vendas.is_excluida`).
+- SCD tipo 2: `snap_lojas`, `snap_produtos`, `dim_loja_historico`, `dim_produto_historico`.
+- Formatos XML, largura fixa, Avro e ORC; compactação gzip, bz2, xz, zstd e zip; Excel e JSON em streaming.
+- Extração SQL paralela por faixa de chave; OAuth2 client credentials com renovação; GraphQL com cursor.
+- Alertas (Slack, Teams, webhook, e-mail), `dh-ingest alert-test`, callbacks no Airflow.
+- `volume_check` com eventos em `ops.data_quality_events`.
+- Backup automático verificado (`warehouse-backup`) e réplica de leitura (`--profile ha`).
+- Roles `dh_backup` e `dh_replicator`; migração automática de `_dh_deleted_at` nas tabelas Bronze.
+
 ## [0.1.0] — 2026-10-08
 
 ### Adicionado

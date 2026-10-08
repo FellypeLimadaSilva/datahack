@@ -26,6 +26,17 @@ x-airflow-env: &airflow-env
   WAREHOUSE_DBT_PASSWORD: ${WAREHOUSE_DBT_PASSWORD:?}
   DBT_PII_SALT: ${DBT_PII_SALT:?}
   DBT_TARGET: prod
+  DH_ALERT_MIN_SEVERITY: ${DH_ALERT_MIN_SEVERITY:-warning}
+  DH_ALERT_SLACK_WEBHOOK_URL: ${DH_ALERT_SLACK_WEBHOOK_URL:-}
+  DH_ALERT_TEAMS_WEBHOOK_URL: ${DH_ALERT_TEAMS_WEBHOOK_URL:-}
+  DH_ALERT_WEBHOOK_URL: ${DH_ALERT_WEBHOOK_URL:-}
+  DH_ALERT_EMAIL_TO: ${DH_ALERT_EMAIL_TO:-}
+  DH_SMTP_HOST: ${DH_SMTP_HOST:-}
+  DH_SMTP_PORT: ${DH_SMTP_PORT:-587}
+  DH_SMTP_USER: ${DH_SMTP_USER:-}
+  DH_SMTP_PASSWORD: ${DH_SMTP_PASSWORD:-}
+  DH_SMTP_FROM: ${DH_SMTP_FROM:-}
+  DH_SMTP_STARTTLS: ${DH_SMTP_STARTTLS:-true}
 
 x-airflow-common: &airflow-common
   build:
@@ -64,6 +75,8 @@ services:
       WAREHOUSE_INGEST_PASSWORD: ${WAREHOUSE_INGEST_PASSWORD:?}
       WAREHOUSE_DBT_PASSWORD: ${WAREHOUSE_DBT_PASSWORD:?}
       WAREHOUSE_BI_PASSWORD: ${WAREHOUSE_BI_PASSWORD:?}
+      WAREHOUSE_BACKUP_PASSWORD: ${WAREHOUSE_BACKUP_PASSWORD:?}
+      WAREHOUSE_REPLICATION_PASSWORD: ${WAREHOUSE_REPLICATION_PASSWORD:?}
       TZ: UTC
     volumes:
       - warehouse-data:/var/lib/postgresql/data
@@ -80,6 +93,56 @@ services:
       retries: 10
       start_period: 20s
     networks: [warehouse]
+    restart: unless-stopped
+
+  warehouse-backup:
+    image: postgres:16-bookworm
+    entrypoint: ["bash", "/opt/datahack/postgres/backup.sh"]
+    environment:
+      PGHOST: warehouse
+      PGPORT: "5432"
+      PGDATABASE: ${WAREHOUSE_DB:-datahack}
+      PGUSER: dh_backup
+      PGPASSWORD: ${WAREHOUSE_BACKUP_PASSWORD:?}
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+      TZ: UTC
+    volumes:
+      - ./infra/postgres/backup.sh:/opt/datahack/postgres/backup.sh:ro
+      - ./backups:/backups
+    networks: [warehouse]
+    depends_on:
+      warehouse:
+        condition: service_healthy
+    restart: unless-stopped
+
+  warehouse-replica:
+    image: postgres:16-bookworm
+    profiles: [ha]
+    entrypoint: ["bash", "/opt/datahack/postgres/replica-entrypoint.sh"]
+    environment:
+      PGDATA: /var/lib/postgresql/data/pgdata
+      PRIMARY_HOST: warehouse
+      REPLICATION_PASSWORD: ${WAREHOUSE_REPLICATION_PASSWORD:?}
+      REPLICATION_SLOT: replica_1
+      TZ: UTC
+    volumes:
+      - warehouse-replica-data:/var/lib/postgresql/data
+      - ./infra/postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./infra/postgres/replica-entrypoint.sh:/opt/datahack/postgres/replica-entrypoint.sh:ro
+    ports:
+      - "127.0.0.1:${WAREHOUSE_REPLICA_PORT:-5434}:5432"
+    shm_size: 1g
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 5432"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+    networks: [warehouse]
+    depends_on:
+      warehouse:
+        condition: service_healthy
     restart: unless-stopped
 
   airflow-db:
@@ -240,6 +303,7 @@ networks:
 
 volumes:
   warehouse-data:
+  warehouse-replica-data:
   airflow-db-data:
   airflow-logs:
   pgadmin-data:

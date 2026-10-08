@@ -3,7 +3,7 @@
 CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
 
 SELECT format('CREATE ROLE %I LOGIN', r)
-FROM unnest(ARRAY['dh_ingestor', 'dh_transformer', 'dh_bi_reader']) AS r
+FROM unnest(ARRAY['dh_ingestor', 'dh_transformer', 'dh_bi_reader', 'dh_backup', 'dh_replicator']) AS r
 WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = r)
 \gexec
 
@@ -13,6 +13,13 @@ ALTER ROLE dh_transformer WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLI
     PASSWORD :'dbt_pw' CONNECTION LIMIT 30;
 ALTER ROLE dh_bi_reader   WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS
     PASSWORD :'bi_pw' CONNECTION LIMIT 20;
+
+ALTER ROLE dh_backup      WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS
+    PASSWORD :'backup_pw' CONNECTION LIMIT 3;
+ALTER ROLE dh_replicator  WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE REPLICATION NOBYPASSRLS
+    PASSWORD :'repl_pw' CONNECTION LIMIT 5;
+GRANT pg_read_all_data TO dh_backup;
+ALTER ROLE dh_backup      SET default_transaction_read_only = on;
 
 ALTER ROLE dh_bi_reader   SET default_transaction_read_only = on;
 ALTER ROLE dh_bi_reader   SET statement_timeout = '120s';
@@ -24,7 +31,7 @@ ALTER ROLE dh_ingestor    SET statement_timeout = '60min';
 ALTER ROLE dh_ingestor    SET search_path = bronze, ops;
 
 REVOKE ALL ON DATABASE :"dbname" FROM PUBLIC;
-GRANT CONNECT ON DATABASE :"dbname" TO dh_ingestor, dh_transformer, dh_bi_reader;
+GRANT CONNECT ON DATABASE :"dbname" TO dh_ingestor, dh_transformer, dh_bi_reader, dh_backup;
 GRANT TEMPORARY ON DATABASE :"dbname" TO dh_ingestor, dh_transformer;
 
 REVOKE ALL ON SCHEMA public FROM PUBLIC;

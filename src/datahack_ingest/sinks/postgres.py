@@ -11,8 +11,19 @@ from datahack_ingest.normalize import row_hash
 
 log = logging.getLogger(__name__)
 
-META_COLUMNS = ("_dh_batch_id", "_dh_ingested_at", "_dh_source_file", "_dh_row_hash")
+META_COLUMNS = (
+    "_dh_batch_id",
+    "_dh_ingested_at",
+    "_dh_source_file",
+    "_dh_row_hash",
+    "_dh_deleted_at",
+)
 STAGE = "_dh_stage"
+KEYS = "_dh_keys"
+
+
+class DeleteGuardError(RuntimeError):
+    pass
 
 
 def _index_name(table: str, suffix: str) -> str:
@@ -33,6 +44,7 @@ class PostgresSink:
         primary_key: list[str],
         run_id: str,
         schema: str = "bronze",
+        delete_detection=None,
     ) -> None:
         self.conn = conn
         self.source_name = source_name
@@ -45,6 +57,9 @@ class PostgresSink:
         self._columns: list[str] | None = None
         self._unit_columns: set[str] = set()
         self._stage_ready = False
+        self._keys_ready = False
+        self.delete_detection = delete_detection
+        self.rows_deleted = 0
         self.new_columns: list[str] = []
 
     def prepare(self) -> None:
@@ -54,7 +69,8 @@ class PostgresSink:
                      _dh_batch_id    uuid        NOT NULL,
                      _dh_ingested_at timestamptz NOT NULL DEFAULT now(),
                      _dh_source_file text,
-                     _dh_row_hash    text
+                     _dh_row_hash    text,
+                     _dh_deleted_at  timestamptz
                    )"""
             ).format(t=self.target)
         )
@@ -64,6 +80,13 @@ class PostgresSink:
             )
         )
         self._columns = self._existing_columns()
+        if "_dh_deleted_at" not in self._columns:
+            self.conn.execute(
+                sql.SQL(
+                    "ALTER TABLE {t} ADD COLUMN IF NOT EXISTS _dh_deleted_at timestamptz"
+                ).format(t=self.target)
+            )
+            self._columns.append("_dh_deleted_at")
 
     def _existing_columns(self) -> list[str]:
         rows = self.conn.execute(
@@ -154,6 +177,8 @@ class PostgresSink:
         if self.strategy != "merge":
             return -1, 0
         if not self._unit_columns:
+            if self.delete_detection and self._keys_ready:
+                self.rows_deleted += self._apply_deletes(KEYS)
             self._drop_stage()
             return 0, 0
 
@@ -180,7 +205,8 @@ class PostgresSink:
                    SELECT DISTINCT ON ({pk}) * FROM {s} WHERE {pk_ok} ORDER BY {pk}, _dh_seq DESC
                ) d
                ON CONFLICT ({pk}) DO UPDATE SET {sets}
-               WHERE tgt._dh_row_hash IS DISTINCT FROM EXCLUDED._dh_row_hash"""
+               WHERE tgt._dh_row_hash IS DISTINCT FROM EXCLUDED._dh_row_hash
+                  OR tgt._dh_deleted_at IS NOT NULL"""
         ).format(
             t=self.target,
             cols=sql.SQL(", ").join(ident),
@@ -192,10 +218,79 @@ class PostgresSink:
             ),
         )
         written = self.conn.execute(upsert).rowcount
+        if self.delete_detection:
+            self.rows_deleted += self._apply_deletes(KEYS if self._keys_ready else STAGE)
         self._drop_stage()
         return written, rejected
 
     def _drop_stage(self) -> None:
-        if self._stage_ready:
-            self.conn.execute(sql.SQL("DROP TABLE IF EXISTS {s}").format(s=sql.Identifier(STAGE)))
-            self._stage_ready = False
+        for name, flag in ((STAGE, "_stage_ready"), (KEYS, "_keys_ready")):
+            if getattr(self, flag):
+                self.conn.execute(
+                    sql.SQL("DROP TABLE IF EXISTS {s}").format(s=sql.Identifier(name))
+                )
+                setattr(self, flag, False)
+
+    def load_keys(self, frames) -> int:
+        cols = sql.SQL(", ").join(sql.SQL("{} text").format(sql.Identifier(c)) for c in self.pk)
+        self.conn.execute(
+            sql.SQL("CREATE TEMP TABLE {k} ({cols}) ON COMMIT DROP").format(
+                k=sql.Identifier(KEYS), cols=cols
+            )
+        )
+        self._keys_ready = True
+        copy_sql = sql.SQL("COPY {k} ({cols}) FROM STDIN").format(
+            k=sql.Identifier(KEYS), cols=sql.SQL(", ").join(map(sql.Identifier, self.pk))
+        )
+        total = 0
+        for frame in frames:
+            missing = [c for c in self.pk if c not in frame.columns]
+            if missing:
+                raise ValueError(f"{self.source_name}: keys_query sem colunas da chave {missing}")
+            with self.conn.cursor() as cur, cur.copy(copy_sql) as cp:
+                for row in frame[self.pk].to_numpy(dtype=object, na_value=None):
+                    cp.write_row(row)
+            total += len(frame)
+        return total
+
+    def _apply_deletes(self, keys_relation: str) -> int:
+        dd = self.delete_detection
+        keys = sql.Identifier(keys_relation)
+        pk_ok = sql.SQL(" AND ").join(
+            sql.SQL("{} IS NOT NULL").format(sql.Identifier(c)) for c in self.pk
+        )
+        match = sql.SQL(" AND ").join(
+            sql.SQL("k.{c} = t.{c}").format(c=sql.Identifier(c)) for c in self.pk
+        )
+        missing = sql.SQL(
+            "t._dh_deleted_at IS NULL AND NOT EXISTS (SELECT 1 FROM {k} k WHERE {m})"
+        ).format(k=keys, m=match)
+
+        n_keys = self.conn.execute(
+            sql.SQL("SELECT count(*) FROM {k} WHERE {ok}").format(k=keys, ok=pk_ok)
+        ).fetchone()[0]
+        if n_keys == 0:
+            raise DeleteGuardError(
+                f"{self.source_name}: snapshot sem chaves; exclusão em massa bloqueada"
+            )
+        active = self.conn.execute(
+            sql.SQL("SELECT count(*) FROM {t} WHERE _dh_deleted_at IS NULL").format(t=self.target)
+        ).fetchone()[0]
+        candidates = self.conn.execute(
+            sql.SQL("SELECT count(*) FROM {t} t WHERE {m}").format(t=self.target, m=missing)
+        ).fetchone()[0]
+        if active and candidates / active > dd.max_delete_ratio:
+            raise DeleteGuardError(
+                f"{self.source_name}: {candidates} de {active} registros sumiram da origem "
+                f"(> {dd.max_delete_ratio:.0%}); exclusão bloqueada por segurança"
+            )
+        if not candidates:
+            return 0
+        if dd.mode == "hard":
+            stmt = sql.SQL("DELETE FROM {t} t WHERE {m}").format(t=self.target, m=missing)
+            return self.conn.execute(stmt).rowcount
+        stmt = sql.SQL(
+            "UPDATE {t} t SET _dh_deleted_at = now(), _dh_ingested_at = now(), _dh_batch_id = %s "
+            "WHERE {m}"
+        ).format(t=self.target, m=missing)
+        return self.conn.execute(stmt, (self.run_id,)).rowcount

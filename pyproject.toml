@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "datahack-ingest"
-version = "0.1.0"
+version = "0.2.0"
 description = "Framework de ingestão ELT config-driven (Bronze) da plataforma de dados DataHack."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -20,6 +20,10 @@ dependencies = [
     "fsspec>=2024.2",
     "openpyxl>=3.1",
     "python-dotenv>=1.0",
+    "ijson>=3.2",
+    "fastavro>=1.9",
+    "defusedxml>=0.7",
+    "zstandard>=0.22",
 ]
 
 [project.optional-dependencies]
@@ -63,8 +67,10 @@ ignore = [
 "tests/**" = ["S101", "S105", "S106", "PLR2004", "S603", "S607", "PLC0415", "RUF012"]
 "src/datahack_ingest/cli.py" = ["PLR0911", "PLR0912"]
 "src/datahack_ingest/normalize.py" = ["PLR0911"]
+"src/datahack_ingest/transforms.py" = ["PLR0911", "PLR0912"]
 "src/datahack_ingest/extractors/api.py" = ["PLR0912"]
 "scripts/**" = ["S311"]
+"airflow/dags/**" = ["PLC0415"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

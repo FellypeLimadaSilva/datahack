@@ -13,6 +13,11 @@
 | Injeção de shell via parâmetros da DAG | `Param` com `pattern` e `shlex.quote` nos comandos |
 | Hash de PII revertido por dicionário | Salt secreto (`DBT_PII_SALT`); modelos com PII nunca como `view` |
 | Metadados do Airflow misturados ao warehouse | PostgreSQL dedicado (`airflow-db`) em rede separada |
+| Backup com credencial de admin | Role `dh_backup` com `pg_read_all_data` e sessão read-only |
+| Replicação aberta | Role `dh_replicator` exclusiva, regra `replication` própria no `pg_hba.conf` |
+| XML malicioso (XXE, billion laughs) | Leitura com `defusedxml` |
+| PII chegando ao banco sem necessidade | `transforms` (hash, máscara, descarte) aplicados antes da gravação |
+| Exclusão em massa por extração quebrada | Trava `max_delete_ratio` e snapshot vazio nunca apaga |
 
 ## Antes de levar para HML/PRD
 

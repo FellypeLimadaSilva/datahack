@@ -10,7 +10,7 @@
     end
 {%- endmacro %}
 
-{% macro dh_latest(relation, keys, order_by='_dh_ingested_at desc') -%}
+{% macro dh_latest(relation, keys, order_by='_dh_ingested_at desc', include_deleted=false) -%}
     select * from (
         select
             r.*,
@@ -18,6 +18,9 @@
         from {{ relation }} r
     ) ranked
     where _dh_rn = 1
+    {%- if not include_deleted %}
+      and _dh_deleted_at is null
+    {%- endif %}
 {%- endmacro %}
 
 {% macro dh_easter_sunday(year) -%}

@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Any
 
 import psycopg
+from psycopg.types.json import Jsonb
 
 OPS_DDL = """
 CREATE TABLE IF NOT EXISTS ops.ingestion_runs (
@@ -71,6 +72,39 @@ CREATE TABLE IF NOT EXISTS ops.rejected_rows (
     rejected_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS rejected_rows_source_idx ON ops.rejected_rows (source, rejected_at);
+
+ALTER TABLE ops.ingestion_runs ADD COLUMN IF NOT EXISTS rows_filtered bigint NOT NULL DEFAULT 0;
+ALTER TABLE ops.ingestion_runs ADD COLUMN IF NOT EXISTS rows_deleted bigint NOT NULL DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS ops.data_quality_events (
+    id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    source      text        NOT NULL,
+    run_id      uuid        NOT NULL,
+    check_name  text        NOT NULL,
+    severity    text        NOT NULL CHECK (severity IN ('warning','error')),
+    detail      jsonb       NOT NULL,
+    created_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS data_quality_events_source_idx
+    ON ops.data_quality_events (source, created_at DESC);
+
+DO $$
+DECLARE r record;
+BEGIN
+    FOR r IN
+        SELECT c.relname
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'bronze' AND c.relkind IN ('r', 'p')
+          AND pg_has_role(c.relowner, 'USAGE')
+          AND NOT EXISTS (
+              SELECT 1 FROM pg_attribute a
+              WHERE a.attrelid = c.oid AND a.attname = '_dh_deleted_at' AND NOT a.attisdropped
+          )
+    LOOP
+        EXECUTE format('ALTER TABLE bronze.%I ADD COLUMN _dh_deleted_at timestamptz', r.relname);
+    END LOOP;
+END $$;
 """
 
 
@@ -118,7 +152,8 @@ class StateStore:
             """UPDATE ops.ingestion_runs SET
                  status = %s, finished_at = now(), error = %s,
                  units_processed = %s, units_skipped = %s, rows_extracted = %s,
-                 rows_loaded = %s, rows_rejected = %s, watermark_from = %s, watermark_to = %s
+                 rows_loaded = %s, rows_rejected = %s, watermark_from = %s, watermark_to = %s,
+                 rows_filtered = %s, rows_deleted = %s
                WHERE run_id = %s""",
             (
                 status,
@@ -130,6 +165,8 @@ class StateStore:
                 metrics.get("rows_rejected", 0),
                 metrics.get("watermark_from"),
                 metrics.get("watermark_to"),
+                metrics.get("rows_filtered", 0),
+                metrics.get("rows_deleted", 0),
                 run_id,
             ),
         )
@@ -146,12 +183,39 @@ class StateStore:
         ).fetchall()
         return {r[0] for r in rows}
 
+    def last_file_hash(self, source: str) -> set[str]:
+        row = self.conn.execute(
+            """SELECT file_sha256 FROM ops.file_manifest WHERE source = %s
+               ORDER BY loaded_at DESC LIMIT 1""",
+            (source,),
+        ).fetchone()
+        return {row[0]} if row else set()
+
+    def recent_volumes(self, source: str, limit: int) -> list[int]:
+        rows = self.conn.execute(
+            """SELECT rows_extracted FROM ops.ingestion_runs
+               WHERE source = %s AND status = 'success' AND units_processed > 0
+               ORDER BY started_at DESC LIMIT %s""",
+            (source, limit),
+        ).fetchall()
+        return [int(r[0]) for r in rows]
+
+    def record_event(
+        self, source: str, run_id: str, check_name: str, severity: str, detail: dict
+    ) -> None:
+        self.conn.execute(
+            """INSERT INTO ops.data_quality_events (source, run_id, check_name, severity, detail)
+               VALUES (%s, %s, %s, %s, %s)""",
+            (source, run_id, check_name, severity, Jsonb(detail)),
+        )
+
     def purge(self, retention_days: int) -> dict[str, int]:
         out = {}
         for table, col in (
             ("ingestion_runs", "started_at"),
             ("rejected_rows", "rejected_at"),
             ("schema_changes", "detected_at"),
+            ("data_quality_events", "created_at"),
         ):
             cur = self.conn.execute(
                 f"DELETE FROM ops.{table} WHERE {col} < now() - make_interval(days => %s)",

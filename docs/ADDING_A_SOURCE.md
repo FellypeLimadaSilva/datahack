@@ -59,6 +59,50 @@ Paginação: `none | page | offset | cursor | link_header`. Retry exponencial pa
 ```
 Instale o driver: `pip install -e ".[oracle]"` (ou `mssql`, `mysql`). No Docker, adicione o extra ao `Dockerfile`.
 
+### Formatos e compactação
+
+| `format` | Opções específicas |
+|---|---|
+| `csv` | `sep`, `encoding`, `quotechar`, `skip_rows` |
+| `jsonl` / `json` | `records_path` (ex.: `data.items`), `flatten_max_level`; JSON lido em streaming |
+| `parquet` / `orc` / `avro` | nenhuma (tipos preservados como texto) |
+| `xlsx` | `sheet_name`, `skip_rows`; leitura em streaming |
+| `xml` | `record_tag` (elemento que representa uma linha); entidades e DTD bloqueados |
+| `fixed_width` | `widths`, `names` |
+
+`compression: infer` (padrão) reconhece `.gz`, `.bz2`, `.xz`, `.zst` e `.zip`; em zip, use
+`zip_member_pattern` (ex.: `"*.csv"`).
+
+### Transformações antes de gravar (ETL)
+```yaml
+  transforms:
+    - { op: filter, column: status, operator: in, value: [ativo, suspenso] }
+    - { op: hash_columns, columns: [cpf], digits_only: true }
+    - { op: mask_columns, columns: [cartao], keep_last: 4 }
+    - { op: drop_columns, columns: [senha, token] }
+    - { op: python, callable: "meu_pacote.regras:enriquecer" }
+```
+Os nomes de coluna são os já normalizados (veja no `--dry-run`).
+
+### Exclusões, volume, paralelismo e autenticação
+```yaml
+  delete_detection: { mode: soft, scope: snapshot, max_delete_ratio: 0.2 }
+  volume_check: { min_ratio: 0.5, max_ratio: 3, lookback_runs: 7, min_history: 3, action: fail }
+  sql:
+    partition: { column: id, num_partitions: 8 }
+  api:
+    auth:
+      type: oauth2_client_credentials
+      token_url: https://auth.exemplo.com/oauth/token
+      client_id_env: CLIENT_ID
+      client_secret_env: CLIENT_SECRET
+    graphql:
+      query: "query($after: String) { pedidos(after: $after) { nodes { id } pageInfo { hasNextPage endCursor } } }"
+      page_info_path: data.pedidos.pageInfo
+    records_path: data.pedidos.nodes
+```
+Exemplos completos e desabilitados estão em `config/sources.yml`.
+
 ## 3. Valide antes de gravar
 
 ```bash

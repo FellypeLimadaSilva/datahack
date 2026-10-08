@@ -10,6 +10,13 @@ import yaml
 from airflow.providers.standard.operators.bash import BashOperator
 from airflow.sdk import Asset, Param, dag, get_current_context, task
 
+
+def notify_failure(context) -> None:
+    from datahack_ingest.airflow_hooks import notify_failure as _notify
+
+    _notify(context)
+
+
 DH_HOME = os.environ.get("DH_HOME", "/opt/datahack")
 CATALOG = os.environ.get("DH_CATALOG", f"{DH_HOME}/config/sources.yml")
 DBT_BIN = os.environ.get("DBT_BIN", "dbt")
@@ -60,7 +67,7 @@ default_args = {
     },
 )
 def medallion_pipeline():
-    @task
+    @task(on_failure_callback=notify_failure)
     def list_sources() -> list[str]:
         requested = get_current_context()["params"].get("sources") or []
         with open(CATALOG, encoding="utf-8") as fh:
@@ -93,6 +100,7 @@ def medallion_pipeline():
         ),
         outlets=[GOLD_ASSET],
         retries=1,
+        on_failure_callback=notify_failure,
     )
 
     ingest.expand(source=list_sources()) >> dbt_build

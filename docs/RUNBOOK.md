@@ -35,6 +35,10 @@ select * from ops.schema_changes order by detected_at desc;
 | dbt `contract ... mismatch` | Tipo/coluna mudou em model da Gold | Ajuste o model **e** o `.yml`; avise o consumidor do BI |
 | `could not resize shared memory segment` | `/dev/shm` pequeno | Já tratado com `shm_size: 1g`; aumente se necessário |
 | Senha trocada no `.env` não vale | Bootstrap roda só no 1º volume | `make db-bootstrap` / `dh.ps1 db-bootstrap` |
+| `DeleteGuardError ... exclusão bloqueada` | Snapshot veio incompleto ou a origem apagou mais que `max_delete_ratio` | Confirme com o dono do dado; se for legítimo, aumente `max_delete_ratio` temporariamente |
+| `VolumeAnomalyError` | Volume fora da faixa de `volume_check` | Veja `ops.data_quality_events`; arquivo truncado na origem é o caso mais comum |
+| `TransformError ... colunas inexistentes` | Transformação usa nome não normalizado | Rode `--dry-run` e use os nomes de `columns` |
+| Alertas não chegam | Canal não configurado ou webhook inválido | `dh.ps1 alert-test`; confira `DH_ALERT_*` no `.env` |
 
 ## Reprocessamento
 
@@ -51,11 +55,32 @@ Pela UI do Airflow: *Trigger DAG w/ config* → `{"sources": ["vendas"], "dbt_se
 
 ## Backup e restauração
 
+O serviço `warehouse-backup` gera `backups/<db>_<UTC>.dump` diariamente (`BACKUP_INTERVAL_SECONDS`),
+valida cada arquivo com `pg_restore --list`, grava o `.sha256` e apaga os mais antigos que
+`BACKUP_RETENTION_DAYS`. Backup imediato: `dh.ps1 backup` / `make backup`.
+
 ```bash
-docker compose exec warehouse pg_dump -U dh_admin -d datahack -Fc -f /tmp/datahack.dump
-docker compose cp warehouse:/tmp/datahack.dump ./backup/datahack.dump   # backup/ fora do Git
-docker compose exec -T warehouse pg_restore -U dh_admin -d datahack --clean < ./backup/datahack.dump
+docker compose exec -T warehouse bash -c 'createdb -U "$POSTGRES_USER" datahack_restore'
+docker compose exec -T warehouse bash -c 'pg_restore -U "$POSTGRES_USER" --no-owner -d datahack_restore' < backups/<arquivo>.dump
 ```
+Restaure em banco novo, valide (contagens da Gold, `gold.controle_atualizacao`) e só então troque.
+
+## Réplica de leitura
+
+`dh.ps1 ha-up` / `make ha-up` cria a réplica em `localhost:5434` com `pg_basebackup` e slot
+`replica_1`. Aponte o BI para ela para isolar consultas pesadas do pipeline.
+
+```sql
+select application_name, state, sync_state, replay_lag from pg_stat_replication;
+```
+Para desativar de vez: pare a réplica e remova o slot no primário
+(`select pg_drop_replication_slot('replica_1')`), senão o WAL fica retido até `max_slot_wal_keep_size`.
+
+## Alertas
+
+Configure um ou mais canais no `.env` (`DH_ALERT_SLACK_WEBHOOK_URL`, `DH_ALERT_TEAMS_WEBHOOK_URL`,
+`DH_ALERT_WEBHOOK_URL`, `DH_SMTP_*` + `DH_ALERT_EMAIL_TO`) e rode `dh.ps1 alert-test`.
+Disparam em: falha de ingestão, volume anômalo e falha do `dbt_build`/`list_sources` no Airflow.
 
 ## Manutenção
 

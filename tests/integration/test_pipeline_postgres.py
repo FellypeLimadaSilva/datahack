@@ -126,3 +126,146 @@ def test_parquet_sink_writes_partitioned_lake(env, tmp_path_factory):
     t = pq.read_table(files[0])
     assert t.column("evento").to_pylist() == ["click", "view"]
     assert "_dh_row_hash" in t.column_names
+
+
+def _write_ids(path, ids):
+    path.write_text("id,nome\n" + "".join(f"{i},n{i}\n" for i in ids), encoding="utf-8")
+
+
+def test_soft_delete_detection_and_resurrection(env):
+    s, d, name = env
+    src = _file_source(
+        name,
+        "snap_*.csv",
+        load_strategy="merge",
+        primary_key=["id"],
+        delete_detection={"mode": "soft", "max_delete_ratio": 0.5},
+    )
+    _write_ids(d / "snap_1.csv", [1, 2, 3, 4])
+    run_source(src, s)
+    _write_ids(d / "snap_2.csv", [1, 2, 3])
+    r = run_source(src, s)
+    assert r.rows_deleted == 1
+    rows = _rows(s, f'SELECT id, _dh_deleted_at IS NOT NULL FROM bronze."{name}" ORDER BY id')
+    assert rows == [("1", False), ("2", False), ("3", False), ("4", True)]
+    _write_ids(d / "snap_3.csv", [1, 2, 3, 4])
+    run_source(src, s)
+    assert _rows(s, f'SELECT count(*) FROM bronze."{name}" WHERE _dh_deleted_at IS NOT NULL') == [
+        (0,)
+    ]
+
+
+def test_delete_guard_blocks_mass_deletion_and_rolls_back(env):
+    s, d, name = env
+    src = _file_source(
+        name,
+        "snap_*.csv",
+        load_strategy="merge",
+        primary_key=["id"],
+        delete_detection={"mode": "hard", "max_delete_ratio": 0.3},
+    )
+    _write_ids(d / "snap_1.csv", range(1, 11))
+    run_source(src, s)
+    _write_ids(d / "snap_2.csv", [1, 99])
+    with pytest.raises(Exception, match="bloqueada"):
+        run_source(src, s)
+    assert _rows(s, f'SELECT count(*) FROM bronze."{name}"') == [(10,)]
+    assert _rows(s, f"SELECT count(*) FROM bronze.\"{name}\" WHERE id = '99'") == [(0,)]
+
+
+def test_hard_delete_with_keys_query_on_incremental_sql(env, tmp_path_factory, monkeypatch):
+    from sqlalchemy import create_engine, text
+
+    s, _, name = env
+    db = tmp_path_factory.mktemp("src") / "erp.db"
+    url = f"sqlite:///{db}"
+    with create_engine(url).begin() as c:
+        c.execute(text("create table t (id integer, upd integer)"))
+        c.execute(text("insert into t values (1, 10), (2, 20), (3, 30)"))
+    monkeypatch.setenv("ERP_TEST_URL", url)
+    src = Catalog.model_validate(
+        {
+            "sources": [
+                {
+                    "name": name,
+                    "kind": "sql",
+                    "load_strategy": "merge",
+                    "primary_key": ["id"],
+                    "watermark_column": "upd",
+                    "watermark_type": "integer",
+                    "delete_detection": {
+                        "mode": "hard",
+                        "scope": "keys_query",
+                        "keys_query": "select id from t",
+                        "max_delete_ratio": 0.9,
+                    },
+                    "sql": {"url_env": "ERP_TEST_URL", "table": "t"},
+                }
+            ]
+        }
+    ).sources[0]
+    run_source(src, s)
+    with create_engine(url).begin() as c:
+        c.execute(text("delete from t where id = 2"))
+        c.execute(text("insert into t values (4, 40)"))
+    r = run_source(src, s)
+    assert r.rows_deleted == 1 and r.watermark_from == "30"
+    assert _rows(s, f'SELECT id FROM bronze."{name}" ORDER BY id') == [("1",), ("3",), ("4",)]
+
+
+def test_volume_check_fail_blocks_full_reload(env):
+    s, d, name = env
+    src = _file_source(
+        name,
+        "c.csv",
+        load_strategy="full",
+        volume_check={"lookback_runs": 5, "min_history": 3, "min_ratio": 0.5, "action": "fail"},
+    )
+    for _ in range(3):
+        _write_ids(d / "c.csv", range(1, 101))
+        run_source(src, s)
+    _write_ids(d / "c.csv", range(1, 6))
+    with pytest.raises(Exception, match="volume fora do esperado"):
+        run_source(src, s)
+    assert _rows(s, f'SELECT count(*) FROM bronze."{name}"') == [(100,)]
+    events = _rows(
+        s, "SELECT check_name, severity FROM ops.data_quality_events WHERE source = %s", name
+    )
+    assert events == [("volume", "error")]
+    with psycopg.connect(s.conninfo(), autocommit=True) as c:
+        c.execute("DELETE FROM ops.data_quality_events WHERE source = %s", (name,))
+
+
+def test_etl_transforms_before_load(env, monkeypatch):
+    s, d, name = env
+    monkeypatch.setenv("DBT_PII_SALT", "salt")
+    (d / "c.csv").write_text(
+        "id,cpf,status,cartao\n1,111.222.333-44,ativo,4111111111111111\n2,555,inativo,1\n",
+        encoding="utf-8",
+    )
+    src = _file_source(
+        name,
+        "c.csv",
+        load_strategy="full",
+        transforms=[
+            {"op": "filter", "column": "status", "operator": "eq", "value": "ativo"},
+            {"op": "hash_columns", "columns": ["cpf"], "digits_only": True},
+            {"op": "mask_columns", "columns": ["cartao"], "keep_last": 4},
+            {"op": "drop_columns", "columns": ["status"]},
+        ],
+    )
+    r = run_source(src, s)
+    assert (r.rows_extracted, r.rows_filtered, r.rows_loaded) == (2, 1, 1)
+    row = _rows(s, f'SELECT cpf, cartao FROM bronze."{name}"')[0]
+    assert len(row[0]) == 64 and "111" not in row[0]
+    assert row[1] == "************1111"
+    cols = {
+        r[0]
+        for r in _rows(
+            s, "SELECT column_name FROM information_schema.columns WHERE table_name = %s", name
+        )
+    }
+    assert "status" not in cols
+    assert _rows(s, "SELECT rows_filtered FROM ops.ingestion_runs WHERE source = %s", name) == [
+        (1,)
+    ]

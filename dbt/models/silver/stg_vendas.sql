@@ -24,7 +24,7 @@ with src as (
 ),
 
 latest as (
-    {{ dh_latest('src', ['venda_id', 'item_seq']) }}
+    {{ dh_latest('src', ['venda_id', 'item_seq'], include_deleted=true) }}
 )
 
 select
@@ -40,6 +40,7 @@ select
     lower({{ dh_clean_text('status') }})               as status,
     {{ dh_hash_pii('cliente_cpf', digits_only=true) }} as cliente_hash,
     {{ dh_clean_text('observacao') }}                  as observacao,
+    _dh_deleted_at is not null                         as is_excluida,
     _dh_ingested_at
 from latest
 where
