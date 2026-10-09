@@ -151,9 +151,20 @@ def test_json_streaming_variants(tmp_path, payload, opts, expected):
 
 
 def test_format_specific_validation():
-    with pytest.raises(Exception, match="record_tag"):
+    Catalog.model_validate(
+        {"sources": [{"name": "x", "kind": "file", "file": {"path": "a", "format": "xml"}}]}
+    )
+    with pytest.raises(Exception, match="sep"):
         Catalog.model_validate(
-            {"sources": [{"name": "x", "kind": "file", "file": {"path": "a", "format": "xml"}}]}
+            {
+                "sources": [
+                    {
+                        "name": "x",
+                        "kind": "file",
+                        "file": {"path": "a", "format": "csv", "sep": ";;"},
+                    }
+                ]
+            }
         )
     with pytest.raises(Exception, match="widths"):
         Catalog.model_validate(

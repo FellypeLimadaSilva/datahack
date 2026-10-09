@@ -3,7 +3,7 @@
 ## 1. Princípios
 
 1. **ELT medalhão:** carregar primeiro, fiel à origem; transformar dentro do warehouse, versionado (dbt).
-2. **Config over code:** fonte nova = YAML validado, não código novo.
+2. **Zero configuração por padrão, config over code quando preciso:** arquivo na inbox vira fonte sozinho; regra específica = YAML validado, não código novo.
 3. **Orquestrador-agnóstico:** toda etapa é uma CLI (`python -m datahack_ingest`, `dbt`). Airflow, CI e terminal executam exatamente o mesmo comando.
 4. **Regra de ouro do consumo:** BI lê somente `gold`, com uma role de leitura com timeout.
 5. **Auditável por padrão:** toda execução deixa rastro em `ops` (quem, quando, quanto, resultado, `run_id` do Airflow).
@@ -13,8 +13,10 @@
 
 | Componente | Responsabilidade | Onde |
 |---|---|---|
-| Catálogo | Declara fontes, estratégia, chave, watermark, PII, dono | `config/sources.yml` |
+| Inbox | Descoberta automática de arquivos e bancos SQLite | `data/landing/inbox/`, `discovery.py` |
+| Catálogo | Declara fontes, estratégia, chave, watermark, PII, dono | `config/sources.yml` (+ `examples.yml`) |
 | `datahack-ingest` | Extract + Load para Bronze/Lake, controle em `ops` | `src/datahack_ingest/` |
+| Gerador de modelos | Perfila a Bronze e escreve Silver/Gold + testes no dbt | `modelgen.py` → `dbt/models/auto/` |
 | Warehouse | PostgreSQL 16 tunado para OLAP, roles e schemas | `infra/postgres/` |
 | dbt | Silver (limpeza/tipagem/PII), Gold (dimensional), testes, contratos | `dbt/` |
 | Airflow 3 | Agenda, paraleliza (`.expand`), faz retry e aplica o gate de qualidade | `airflow/dags/` |
@@ -29,7 +31,7 @@ sequenceDiagram
     participant OPS as ops.*
     participant BR as bronze.*
     participant DBT as dbt build
-    AF->>AF: list_sources (lê o YAML em runtime)
+    AF->>AF: list_sources (catálogo + exemplos + inbox, em runtime)
     par uma task por fonte (máx. 4 simultâneas)
         AF->>IN: run <fonte>
         IN->>OPS: lock consultivo + ingestion_runs(status=running)
@@ -38,8 +40,11 @@ sequenceDiagram
         end
         IN->>OPS: status=success|failed + métricas
     end
-    AF->>DBT: build (somente se todas as fontes = success)
+    AF->>IN: generate-models (se ao menos uma fonte = success)
+    IN->>OPS: data_catalog + auto_models (tipos e chaves estáveis)
+    AF->>DBT: build
     DBT->>DBT: silver → testes → gold → testes → ANALYZE + GRANT
+    AF->>AF: ingestion_gate (execução = falha se alguma fonte falhou)
 ```
 
 ## 4. Estratégias de carga
@@ -57,7 +62,7 @@ No `merge`, o filtro usa `>=` (borda reprocessada com segurança); nos demais, `
 
 - Nenhuma carga quebra por tipo inesperado na origem (o erro mais comum em evento/hackathon).
 - Evolução de schema vira `ALTER TABLE ADD COLUMN … text`, sem migração.
-- A tipagem acontece uma vez, na Silver, com `pg_input_is_valid` (PG 16): valor inválido vira `NULL` e é **medido** pelo teste `assert_vendas_sem_perda_de_cast`, em vez de abortar o pipeline.
+- A tipagem acontece uma vez, na Silver, com `pg_input_is_valid` (PG 16): valor inválido vira `NULL` e é **medido** (`assert_vendas_sem_perda_de_cast` nos exemplos, `_dh_invalid_columns` + `dh_invalid_ratio` nas automáticas), em vez de abortar o pipeline.
 
 ## 6. Escala: o que suporta e qual o próximo passo
 
@@ -138,6 +143,34 @@ e `is_atual`. Para "como era em uma data": `valido_de <= data < coalesce(valido_
 | Alertas | Falha de ingestão, volume anômalo e falha de task no Airflow em Slack, Teams, webhook ou e-mail |
 | Volume | `volume_check`: compara com a mediana das últimas execuções; `fail` bloqueia a carga full antes do commit |
 
-## 13. Registro de decisões (ADRs)
+## 13. Inbox e Silver/Gold automáticas
+
+```mermaid
+flowchart LR
+    A[arquivo ou pasta<br/>na inbox] --> D[discover<br/>formato · encoding · separador]
+    D --> B[(bronze.tabela)]
+    B --> P[generate-models<br/>perfil em SQL sobre amostra]
+    P --> C[(ops.data_catalog<br/>ops.auto_models)]
+    P --> S[(silver.tabela<br/>tipada · dedup · hash PII)]
+    S --> G[(gold.tabela<br/>view para o BI)]
+    C --> K[(gold.dh_catalogo_dados)]
+```
+
+- Uma tabela com modelo dbt escrito à mão (`source('bronze', 'x')`) nunca recebe modelo automático.
+- Silver automática: `table`; vira `incremental` (merge na chave ou no hash da linha) acima de
+  `DH_AUTO_INCREMENTAL_ROWS`. Exclusão física na origem força `table`.
+- Gold automática: view sobre a Silver, sem colunas técnicas, sem linhas excluídas, com
+  `dh_atualizado_em`. A view é do `dh_transformer`, então o BI lê a Gold sem acesso à Silver.
+- Linha com chave nula não entra na Silver; o teste de origem avisa quantas são.
+- Regras de inferência e limites: [ADR 0008](adr/0008-inbox-e-modelos-automaticos.md) e
+  [Adicionar fonte](ADDING_A_SOURCE.md#como-a-silvergold-automática-decide).
+
+## 14. Componentes opcionais
+
+| Mínimo para funcionar | Opcional |
+|---|---|
+| PostgreSQL, `datahack-ingest`, dbt | Airflow (o mesmo fluxo roda por `dh.ps1 pipeline`), exemplos (`DH_EXAMPLES`), inbox (`DH_INBOX_ENABLED`), geração automática (`DH_AUTO_MODELS`), réplica, backup, pgAdmin, Metabase, alertas, ETL, checagem de volume, detecção de exclusões |
+
+## 15. Registro de decisões (ADRs)
 
 Veja [docs/adr/](adr/). Toda decisão estrutural nova entra como ADR numerado.

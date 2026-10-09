@@ -5,9 +5,12 @@ import io
 import json
 import logging
 import os
+import posixpath
+import time
 import zipfile
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
+from datetime import datetime
 from fnmatch import fnmatch
 from itertools import islice
 from typing import IO, Any
@@ -32,6 +35,14 @@ from datahack_ingest.extractors.base import (
     records_to_frame,
 )
 from datahack_ingest.normalize import to_text
+from datahack_ingest.sniff import (
+    SAMPLE_BYTES,
+    decode_sample,
+    detect_delimiter,
+    detect_encoding,
+    infer_json_records_path,
+    infer_xml_record_tag,
+)
 
 log = logging.getLogger(__name__)
 _HASH_BLOCK = 8 * 1024 * 1024
@@ -79,6 +90,23 @@ def _xml_to_dict(elem) -> dict[str, Any]:
     return out
 
 
+def _modified_epoch(info: dict[str, Any]) -> float | None:
+    for key in ("mtime", "LastModified", "last_modified", "updated", "modified"):
+        value = info.get(key)
+        if isinstance(value, int | float):
+            return float(value)
+        if isinstance(value, datetime):
+            return value.timestamp()
+    return None
+
+
+def accepts(name: str, include: list[str], exclude: list[str]) -> bool:
+    base = posixpath.basename(name.rstrip("/")).lower()
+    if any(fnmatch(base, pattern.lower()) for pattern in exclude):
+        return False
+    return any(fnmatch(base, pattern.lower()) for pattern in include)
+
+
 def _chunks(iterable, size: int) -> Iterator[list]:
     it = iter(iterable)
     while batch := list(islice(it, size)):
@@ -91,11 +119,32 @@ class FileExtractor:
         self.opts = source.file
         self.urlpath = resolve_uri(landing_uri, self.opts.path)
         self.skipped = 0
+        self.deferred: list[str] = []
 
     def list_files(self) -> tuple[fsspec.AbstractFileSystem, list[str]]:
         fs, _, paths = fsspec.get_fs_token_paths(self.urlpath)
-        files = sorted(p for p in paths if fs.isfile(p))
+        candidates: set[str] = set()
+        for p in paths:
+            if fs.isdir(p):
+                candidates.update(f for f in fs.find(p) if not f.endswith("/"))
+            elif fs.isfile(p):
+                candidates.add(p)
+        files = sorted(p for p in candidates if accepts(p, self.opts.include, self.opts.exclude))
+        if self.opts.min_age_seconds:
+            files = self._settled(fs, files)
         return fs, files
+
+    def _settled(self, fs: fsspec.AbstractFileSystem, files: list[str]) -> list[str]:
+        now = time.time()
+        ready = []
+        for path in files:
+            modified = _modified_epoch(fs.info(path))
+            if modified is not None and now - modified < self.opts.min_age_seconds:
+                self.deferred.append(path)
+                log.info("arquivo recente aguardando estabilizar", extra={"file": path})
+                continue
+            ready.append(path)
+        return ready
 
     def units(self, state: ExtractState) -> Iterator[ExtractUnit]:
         fs, files = self.list_files()
@@ -185,12 +234,35 @@ class FileExtractor:
         for _, opener in self._openers(fs, path):
             yield from reader(opener)
 
+    def _sample(self, opener: Opener) -> bytes:
+        with opener() as f:
+            return f.read(SAMPLE_BYTES)
+
+    def _encoding(self, opener: Opener, sample: bytes | None = None) -> str:
+        if self.opts.encoding != "auto":
+            return self.opts.encoding
+        return detect_encoding(sample if sample is not None else self._sample(opener))
+
+    def _csv_dialect(self, opener: Opener) -> tuple[str, str]:
+        sample = None
+        if self.opts.encoding == "auto" or self.opts.sep == "auto":
+            sample = self._sample(opener)
+        encoding = self._encoding(opener, sample)
+        sep = self.opts.sep
+        if sep == "auto":
+            sep = detect_delimiter(decode_sample(sample, encoding), self.opts.quotechar)
+        elif sep == r"\t":
+            sep = "\t"
+        return sep, encoding
+
     def _read_csv(self, opener: Opener) -> Iterator[pd.DataFrame]:
+        sep, encoding = self._csv_dialect(opener)
+        log.info("dialeto csv", extra={"sep": sep, "encoding": encoding})
         with opener() as f:
             yield from pd.read_csv(
                 f,
-                sep=self.opts.sep,
-                encoding=self.opts.encoding,
+                sep=sep,
+                encoding=encoding,
                 encoding_errors="replace",
                 quotechar=self.opts.quotechar,
                 skiprows=self.opts.skip_rows,
@@ -201,13 +273,14 @@ class FileExtractor:
             )
 
     def _read_fixed_width(self, opener: Opener) -> Iterator[pd.DataFrame]:
+        encoding = self._encoding(opener)
         with opener() as f:
             yield from pd.read_fwf(
                 f,
                 widths=self.opts.widths,
                 names=self.opts.names,
                 header=None if self.opts.names else 0,
-                encoding=self.opts.encoding,
+                encoding=encoding,
                 encoding_errors="replace",
                 skiprows=self.opts.skip_rows,
                 dtype=str,
@@ -217,18 +290,28 @@ class FileExtractor:
             )
 
     def _read_jsonl(self, opener: Opener) -> Iterator[pd.DataFrame]:
+        encoding = self._encoding(opener)
+
         def records():
             with opener() as f:
                 for raw in f:
-                    line = raw.decode(self.opts.encoding, errors="replace").strip()
+                    line = raw.decode(encoding, errors="replace").strip().lstrip("\ufeff")
                     if line:
                         yield json.loads(line)
 
         for batch in _chunks(records(), self.source.chunk_size):
             yield records_to_frame(batch, self.opts.flatten_max_level)
 
+    def _records_path(self, opener: Opener) -> str | None:
+        if self.opts.records_path != "auto":
+            return self.opts.records_path
+        with opener() as f:
+            top_array, path = infer_json_records_path(f)
+        return None if top_array else path
+
     def _read_json(self, opener: Opener) -> Iterator[pd.DataFrame]:
-        prefix = f"{self.opts.records_path}.item" if self.opts.records_path else "item"
+        records_path = self._records_path(opener)
+        prefix = f"{records_path}.item" if records_path else "item"
         yielded = False
         with opener() as f:
             for batch in _chunks(ijson.items(f, prefix), self.source.chunk_size):
@@ -236,9 +319,10 @@ class FileExtractor:
                 yield records_to_frame(batch, self.opts.flatten_max_level)
         if yielded:
             return
+        encoding = "utf-8" if self.opts.encoding == "auto" else self.opts.encoding
         with opener() as f:
-            data = json.loads(f.read().decode(self.opts.encoding, errors="replace"))
-        records = get_path(data, self.opts.records_path)
+            data = json.loads(f.read().decode(encoding, errors="replace").lstrip("\ufeff"))
+        records = get_path(data, records_path)
         if isinstance(records, dict):
             records = [records]
         if records is None:
@@ -250,6 +334,12 @@ class FileExtractor:
 
     def _read_xml(self, opener: Opener) -> Iterator[pd.DataFrame]:
         tag = self.opts.record_tag
+        if not tag:
+            with opener() as f:
+                tag = infer_xml_record_tag(f)
+            if not tag:
+                return
+            log.info("record_tag inferido", extra={"record_tag": tag})
 
         def records():
             with opener() as f:

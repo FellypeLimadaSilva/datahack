@@ -20,6 +20,10 @@ select source, reason, count(*) from ops.rejected_rows group by 1, 2;
 
 -- Colunas novas detectadas (schema drift)
 select * from ops.schema_changes order by detected_at desc;
+
+-- O que a geração automática decidiu (tipo, chave, LGPD)
+select tabela_gold, coluna, tipo, formato, classificacao_lgpd, is_chave
+from gold.dh_catalogo_dados order by tabela_gold, ordem;
 ```
 
 ## Problemas comuns
@@ -39,8 +43,18 @@ select * from ops.schema_changes order by detected_at desc;
 | `VolumeAnomalyError` | Volume fora da faixa de `volume_check` | Veja `ops.data_quality_events`; arquivo truncado na origem é o caso mais comum |
 | `TransformError ... colunas inexistentes` | Transformação usa nome não normalizado | Rode `--dry-run` e use os nomes de `columns` |
 | Alertas não chegam | Canal não configurado ou webhook inválido | `dh.ps1 alert-test`; confira `DH_ALERT_*` no `.env` |
+| Arquivo da inbox não virou tabela | Extensão não suportada, nome com `* ? [ ]` ou arquivo de sistema | `dh.ps1 discover` mostra o motivo de cada arquivo ignorado |
+| `arquivo(s) em gravação` no resultado | Arquivo alterado há menos de `DH_INBOX_SETTLE_SECONDS` | Normal; entra na próxima execução |
+| Coluna com tipo errado na Silver automática | Amostra não representativa ou dado mudou de natureza | `dh.ps1 models --reset` e depois `dh.ps1 dbt-build "tag:auto" --full-refresh` |
+| Aviso `dh_invalid_ratio` | Valores que não cabem no tipo inferido (viraram nulo na Silver) | Compare Bronze e Silver; corrija a origem ou rode `--reset` |
+| Linhas "somem" na Silver automática | Chave detectada repetida entre arquivos: vence a versão mais recente | Declare `primary_key` correta no `_source.yml`, ou nenhuma para deduplicar só linhas idênticas |
+| `generate-models já está em execução` | Duas execuções simultâneas | Aguarde; o lock é liberado ao fim |
+| Gold de uma fonte nova não apareceu e a DAG falhou | Aquela fonte falhou; as demais foram publicadas | Veja a task `ingest` vermelha e `ops.ingestion_runs.error` |
 
 ## Reprocessamento
+
+Arquivo da inbox já carregado só é lido de novo se mudar de conteúdo (hash). Para forçar,
+apague a linha dele em `ops.file_manifest`, como abaixo.
 
 ```bash
 # Reprocessar um arquivo já carregado (remove do manifesto e reingere)

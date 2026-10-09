@@ -11,6 +11,10 @@ macro-paths: ["macros"]
 snapshot-paths: ["snapshots"]
 clean-targets: ["target", "dbt_packages", "logs"]
 
+flags:
+  warn_error_options:
+    silence: [UnusedResourceConfigPath]
+
 vars:
   timezone: "America/Cuiaba"
   calendar_start: "2020-01-01"
@@ -33,6 +37,45 @@ models:
         select: ["{{ env_var('DBT_BI_ROLE', 'dh_bi_reader') }}"]
       +post-hook:
         - "{% if config.get('materialized') in ('table', 'incremental') %}analyze {{ this }}{% endif %}"
+    auto:
+      +tags: ["auto"]
+      silver:
+        +schema: silver
+        +materialized: table
+        +tags: ["silver"]
+        +post-hook:
+          - "{% if config.get('materialized') in ('table', 'incremental') %}analyze {{ this }}{% endif %}"
+      gold:
+        +schema: gold
+        +materialized: view
+        +tags: ["gold"]
+        +grants:
+          select: ["{{ env_var('DBT_BI_ROLE', 'dh_bi_reader') }}"]
+    examples:
+      +enabled: "{{ env_var('DH_EXAMPLES', 'true') | lower in ['true', '1', 'yes', 'sim', 'on'] }}"
+      +tags: ["exemplo"]
+      silver:
+        +schema: silver
+        +materialized: view
+        +tags: ["silver"]
+      gold:
+        +schema: gold
+        +materialized: table
+        +tags: ["gold"]
+        +grants:
+          select: ["{{ env_var('DBT_BI_ROLE', 'dh_bi_reader') }}"]
+        +post-hook:
+          - "{% if config.get('materialized') in ('table', 'incremental') %}analyze {{ this }}{% endif %}"
+
+sources:
+  datahack:
+    examples:
+      +enabled: "{{ env_var('DH_EXAMPLES', 'true') | lower in ['true', '1', 'yes', 'sim', 'on'] }}"
+
+snapshots:
+  datahack:
+    examples:
+      +enabled: "{{ env_var('DH_EXAMPLES', 'true') | lower in ['true', '1', 'yes', 'sim', 'on'] }}"
 
 seeds:
   datahack:
@@ -42,3 +85,5 @@ seeds:
 data_tests:
   datahack:
     +store_failures: false
+    examples:
+      +enabled: "{{ env_var('DH_EXAMPLES', 'true') | lower in ['true', '1', 'yes', 'sim', 'on'] }}"

@@ -1,0 +1,2 @@
+dbt/models/auto/
+dbt/target/

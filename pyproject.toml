@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "datahack-ingest"
-version = "0.2.0"
+version = "0.3.0"
 description = "Framework de ingestão ELT config-driven (Bronze) da plataforma de dados DataHack."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -70,7 +70,7 @@ ignore = [
 "src/datahack_ingest/transforms.py" = ["PLR0911", "PLR0912"]
 "src/datahack_ingest/extractors/api.py" = ["PLR0912"]
 "scripts/**" = ["S311"]
-"airflow/dags/**" = ["PLC0415"]
+"airflow/dags/**" = ["PLC0415", "S603"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

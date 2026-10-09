@@ -22,12 +22,3 @@ sources:
         description: Metas mensais por loja (carga full).
       - name: estoque_foto
         description: Fotos mensais de estoque (append-only).
-
-  - name: ops
-    description: Camada de controle e auditoria das ingestões.
-    schema: ops
-    tables:
-      - name: ingestion_runs
-        description: Uma linha por execução de ingestão (sucesso ou falha).
-      - name: rejected_rows
-        description: "Linhas em quarentena (ex.: chave primária nula)."

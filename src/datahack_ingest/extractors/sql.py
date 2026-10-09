@@ -22,6 +22,8 @@ class SqlExtractor:
         self.opts = source.sql
 
     def _url(self) -> str:
+        if self.opts.url:
+            return self.opts.url
         url = os.environ.get(self.opts.url_env)
         if not url:
             raise OSError(f"variável de ambiente obrigatória ausente: {self.opts.url_env}")

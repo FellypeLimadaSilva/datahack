@@ -147,13 +147,19 @@ class VolumeCheck(_Strict):
 FileFormat = Literal["csv", "jsonl", "json", "parquet", "xlsx", "xml", "fixed_width", "avro", "orc"]
 
 
+DEFAULT_EXCLUDE = [".*", "~$*", "*.tmp", "*.part", "*.crdownload", "_source.yml"]
+
+
 class FileOptions(_Strict):
     path: str
     format: FileFormat
     compression: Literal["infer", "none", "gzip", "bz2", "xz", "zstd", "zip"] = "infer"
     zip_member_pattern: str = "*"
+    include: list[str] = ["*"]
+    exclude: list[str] = DEFAULT_EXCLUDE
+    min_age_seconds: Annotated[int, Field(ge=0)] = 0
     sep: str = ","
-    encoding: str = "utf-8"
+    encoding: str = "auto"
     quotechar: str = '"'
     skip_rows: int = 0
     records_path: str | None = None
@@ -165,8 +171,8 @@ class FileOptions(_Strict):
 
     @model_validator(mode="after")
     def _format_rules(self) -> FileOptions:
-        if self.format == "xml" and not self.record_tag:
-            raise ValueError("format xml exige record_tag")
+        if self.sep != "auto" and len(self.sep) != 1 and self.sep != r"\t":
+            raise ValueError("sep deve ser um caractere ou 'auto'")
         if self.format == "fixed_width":
             if not self.widths:
                 raise ValueError("format fixed_width exige widths")
@@ -253,13 +259,18 @@ class SqlPartition(_Strict):
 
 
 class SqlOptions(_Strict):
-    url_env: str
+    url_env: str | None = None
+    url: str | None = None
     query: str | None = None
     table: str | None = None
     partition: SqlPartition | None = None
 
     @model_validator(mode="after")
     def _one_of(self) -> SqlOptions:
+        if bool(self.url_env) == bool(self.url):
+            raise ValueError("informe exatamente um entre 'url_env' e 'url'")
+        if self.url and not self.url.startswith("sqlite:///"):
+            raise ValueError("'url' literal só é aceito para sqlite; use url_env para credenciais")
         if bool(self.query) == bool(self.table):
             raise ValueError("informe exatamente um entre 'query' e 'table'")
         if self.table and not re.match(SRC_COLUMN, self.table):
@@ -284,6 +295,7 @@ class _SourceBase(_Strict):
     transforms: list[TransformStep] = []
     delete_detection: DeleteDetection | None = None
     volume_check: VolumeCheck | None = None
+    auto_model: bool = True
 
     @property
     def table(self) -> str:
@@ -363,14 +375,25 @@ class Catalog(_Strict):
         return [s for s in self.sources if s.enabled]
 
 
-def load_catalog(path: str | Path) -> Catalog:
+def read_catalog_specs(path: str | Path) -> list[dict[str, Any]]:
     raw = yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
-    return Catalog.model_validate(raw)
+    if not isinstance(raw, dict):
+        raise ValueError(f"{path}: o catálogo deve ser um mapeamento com 'sources'")
+    if raw.get("version", 1) != 1:
+        raise ValueError(f"{path}: versão de catálogo não suportada: {raw.get('version')}")
+    sources = raw.get("sources") or []
+    if not isinstance(sources, list):
+        raise ValueError(f"{path}: 'sources' deve ser uma lista")
+    return sources
+
+
+def load_catalog(path: str | Path) -> Catalog:
+    return Catalog.model_validate({"sources": read_catalog_specs(path)})
 
 
 def required_env_vars(source: FileSource | ApiSource | SqlSource) -> list[str]:
     names: list[str] = []
-    if isinstance(source, SqlSource):
+    if isinstance(source, SqlSource) and source.sql.url_env:
         names.append(source.sql.url_env)
     if isinstance(source, ApiSource):
         a = source.api.auth

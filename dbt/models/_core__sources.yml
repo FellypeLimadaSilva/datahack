@@ -1,0 +1,17 @@
+version: 2
+
+sources:
+  - name: ops
+    description: Camada de controle e auditoria das ingestões.
+    schema: ops
+    tables:
+      - name: ingestion_runs
+        description: Uma linha por execução de ingestão (sucesso ou falha).
+      - name: rejected_rows
+        description: "Linhas em quarentena (ex.: chave primária nula)."
+      - name: data_quality_events
+        description: Eventos de qualidade (volume anômalo e afins).
+      - name: auto_models
+        description: Tabelas com Silver e Gold geradas automaticamente (chave, deduplicação, materialização).
+      - name: data_catalog
+        description: Perfil e classificação LGPD de cada coluna das tabelas automáticas.

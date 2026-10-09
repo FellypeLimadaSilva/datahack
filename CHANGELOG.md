@@ -2,6 +2,28 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versionamento: [SemVer](https://semver.org/lang/pt-BR/).
 
+## [0.3.0] — 2026-10-09
+
+### Adicionado
+- Inbox sem configuração (`data/landing/inbox/`): pasta, arquivo, aba de Excel e tabela de SQLite
+  viram fonte; formato, compactação, separador, encoding, nó XML e lista JSON detectados por arquivo;
+  `_source.yml` por pasta; arquivos não tabulares ignorados com motivo; espera de estabilização.
+- `dh-ingest discover` e `dh-ingest generate-models [--reset]`: Silver e Gold automáticas com tipos
+  inferidos (decimal com vírgula, `R$`, dd/mm/aaaa, fuso, booleano pt-BR, `jsonb`), chave validada
+  por arquivo, deduplicação, PII pseudonimizada (CPF com dígito verificador, e-mail, telefone),
+  testes gerados, `_dh_invalid_columns` e Silver incremental para tabelas grandes.
+- `ops.data_catalog`, `ops.auto_models` e `gold.dh_catalogo_dados` (classificação LGPD por coluna).
+- Leitura de SQLite com URL literal; `path` aceita pasta com `include`/`exclude`; `encoding: auto`.
+- `scripts/generate_messy_data.py` e `dh.ps1 demo-inbox` para demonstrar a inbox.
+- `init_env.py` acrescenta variáveis novas a um `.env` existente sem tocar nos segredos.
+
+### Alterado
+- Exemplos de varejo isolados em `config/examples.yml` e `dbt/models/examples/` (`DH_EXAMPLES`).
+- DAG: `generate_models` entre ingestão e dbt; uma fonte com falha não impede a Gold das demais e
+  o `ingestion_gate` marca a execução como falha (`DH_REQUIRE_ALL_SOURCES`, `DH_TASK_RETRIES`).
+- `dh.ps1 pipeline` / `make pipeline`: ingestão continua em caso de erro, gera modelos e roda o dbt.
+- Macros de cast aceitam `R$`, espaços, `d/m/aaaa` com `/ . -`, `mm/dd/aaaa` e timestamp dd/mm.
+
 ## [0.2.0] — 2026-10-08
 
 ### Adicionado

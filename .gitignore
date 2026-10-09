@@ -28,6 +28,7 @@ data/**
 **/.pbi/cache.abf
 **/.pbi/localSettings.json
 !dbt/seeds/*.csv
+!dbt/models/silver/.gitkeep
 
 dbt/target/
 dbt/dbt_packages/
@@ -63,3 +64,7 @@ htmlcov/
 Thumbs.db
 desktop.ini
 *.swp
+
+!data/landing/inbox/
+!data/landing/inbox/.gitkeep
+dbt/models/auto/

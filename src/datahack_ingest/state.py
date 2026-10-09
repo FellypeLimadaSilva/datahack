@@ -88,6 +88,40 @@ CREATE TABLE IF NOT EXISTS ops.data_quality_events (
 CREATE INDEX IF NOT EXISTS data_quality_events_source_idx
     ON ops.data_quality_events (source, created_at DESC);
 
+CREATE TABLE IF NOT EXISTS ops.auto_models (
+    table_name         text PRIMARY KEY,
+    source             text        NOT NULL,
+    model_silver       text        NOT NULL,
+    model_gold         text        NOT NULL,
+    silver_alias       text        NOT NULL,
+    gold_alias         text        NOT NULL,
+    key_columns        text[]      NOT NULL DEFAULT '{}',
+    dedup              text        NOT NULL CHECK (dedup IN ('key','row_hash')),
+    materialization    text        NOT NULL CHECK (materialization IN ('table','incremental')),
+    row_count          bigint      NOT NULL DEFAULT 0,
+    first_generated_at timestamptz NOT NULL DEFAULT now(),
+    generated_at       timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS ops.data_catalog (
+    table_name     text        NOT NULL,
+    column_name    text        NOT NULL,
+    ordinal        integer     NOT NULL,
+    output_name    text        NOT NULL,
+    inferred_type  text        NOT NULL,
+    type_format    text,
+    pii_class      text CHECK (pii_class IN ('identificador','pessoal')),
+    hash_digits    boolean     NOT NULL DEFAULT false,
+    is_key         boolean     NOT NULL DEFAULT false,
+    valid_ratio    numeric,
+    null_ratio     numeric,
+    distinct_ratio numeric,
+    max_length     integer,
+    sample_rows    bigint,
+    profiled_at    timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (table_name, column_name)
+);
+
 DO $$
 DECLARE r record;
 BEGIN

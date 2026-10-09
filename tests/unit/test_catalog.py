@@ -8,10 +8,12 @@ from datahack_ingest.catalog import Catalog, load_catalog, required_env_vars
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_repository_catalog_is_valid():
-    cat = load_catalog(ROOT / "config" / "sources.yml")
-    names = [s.name for s in cat.enabled()]
-    assert {"lojas", "produtos", "vendas", "metas", "estoque_foto"} <= set(names)
+def test_repository_catalogs_are_valid():
+    templates = load_catalog(ROOT / "config" / "sources.yml")
+    assert templates.sources and not templates.enabled()
+    examples = load_catalog(ROOT / "config" / "examples.yml")
+    names = {s.name for s in examples.enabled()}
+    assert names == {"lojas", "produtos", "vendas", "metas", "estoque_foto"}
 
 
 def _src(**over):

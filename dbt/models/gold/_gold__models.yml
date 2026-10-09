@@ -24,103 +24,6 @@ models:
       - { name: data_ano_anterior, data_type: date, description: "Mesma data no ano anterior (LY calendário)." }
       - { name: data_mesmo_dia_semana_ano_anterior, data_type: date, description: "Data - 364 dias (LY varejo, mesmo dia da semana)." }
 
-  - name: dim_loja
-    description: Dimensão de lojas.
-    columns:
-      - { name: loja_id, data_type: bigint, constraints: [{ type: not_null }, { type: primary_key }], data_tests: [unique] }
-      - { name: nome_loja, data_type: text }
-      - { name: cidade, data_type: text }
-      - { name: uf, data_type: text }
-      - { name: regiao, data_type: text }
-      - { name: data_inauguracao, data_type: date }
-      - { name: data_fechamento, data_type: date }
-      - { name: area_m2, data_type: "numeric(12,2)" }
-      - { name: is_ativa, data_type: boolean }
-
-  - name: dim_produto
-    description: Dimensão de produtos.
-    columns:
-      - { name: produto_id, data_type: bigint, constraints: [{ type: not_null }, { type: primary_key }], data_tests: [unique] }
-      - { name: sku, data_type: text }
-      - { name: nome_produto, data_type: text }
-      - { name: departamento, data_type: text }
-      - { name: categoria, data_type: text }
-      - { name: preco_lista, data_type: "numeric(18,2)" }
-      - { name: is_ativo, data_type: boolean }
-      - { name: is_promocional, data_type: boolean }
-
-  - name: fact_vendas
-    description: "Fato de vendas. Grão: 1 linha = 1 item de cupom."
-    data_tests:
-      - dh_unique_combination:
-          arguments:
-            combination_of_columns: [venda_id, item_seq]
-    columns:
-      - { name: venda_id, data_type: bigint, constraints: [{ type: not_null }] }
-      - { name: item_seq, data_type: int, constraints: [{ type: not_null }] }
-      - name: data_venda
-        data_type: date
-        constraints: [{ type: not_null }]
-        data_tests:
-          - relationships:
-              arguments: { to: ref('dim_data'), field: data }
-      - { name: data_hora_venda, data_type: timestamp }
-      - name: loja_id
-        data_type: bigint
-        constraints: [{ type: not_null }]
-        data_tests:
-          - relationships:
-              arguments: { to: ref('dim_loja'), field: loja_id }
-      - name: produto_id
-        data_type: bigint
-        constraints: [{ type: not_null }]
-        data_tests:
-          - relationships:
-              arguments: { to: ref('dim_produto'), field: produto_id }
-      - { name: canal, data_type: text }
-      - { name: status, data_type: text }
-      - { name: is_cancelada, data_type: boolean }
-      - { name: is_excluida, data_type: boolean, description: "Item removido da origem (detecção de exclusão)." }
-      - { name: cliente_hash, data_type: text, description: "Cliente pseudonimizado (LGPD)." }
-      - { name: quantidade, data_type: "numeric(18,3)" }
-      - { name: valor_unitario, data_type: "numeric(18,4)" }
-      - { name: valor_bruto, data_type: "numeric(18,2)" }
-      - { name: valor_desconto, data_type: "numeric(18,2)" }
-      - name: valor_liquido
-        data_type: "numeric(18,2)"
-        data_tests:
-          - dh_min_value:
-              arguments: { min_value: 0 }
-              config: { severity: warn }
-      - { name: _dh_ingested_at, data_type: timestamptz }
-      - { name: _dbt_loaded_at, data_type: timestamptz }
-
-  - name: fact_estoque_foto
-    description: >
-      Fotos de estoque. Medida semiaditiva: some entre lojas/produtos, mas no tempo use
-      apenas a última foto do período (is_ultima_foto_mes).
-    data_tests:
-      - dh_unique_combination:
-          arguments:
-            combination_of_columns: [data_foto, loja_id, produto_id]
-
-  - name: mart_vendas_diarias
-    description: Receita, cupons, itens e ticket médio por dia, loja e canal (somente concluídas).
-    data_tests:
-      - dh_unique_combination:
-          arguments:
-            combination_of_columns: [data_venda, loja_id, canal]
-
-  - name: mart_vendas_mensal_loja
-    description: Mensal por loja com meta, ano anterior (LY) e venda comparável (L4L).
-    data_tests:
-      - dh_unique_combination:
-          arguments:
-            combination_of_columns: [mes, loja_id]
-    columns:
-      - name: is_comparavel_l4l
-        description: Loja aberta durante todo o mês equivalente do ano anterior e ainda aberta no mês.
-
   - name: controle_atualizacao
     description: Última carga e última transformação por fonte — base do "Última atualização" no BI.
     columns:
@@ -133,30 +36,44 @@ models:
       - { name: ultima_transformacao_local, data_type: timestamp }
       - { name: fuso_horario, data_type: text }
 
-  - name: dim_loja_historico
+  - name: dh_catalogo_dados
     description: >
-      Lojas em SCD tipo 2: uma linha por versão do cadastro. Para "como era em uma data",
-      filtre valido_de <= data < coalesce(valido_ate, 'infinity').
+      Catálogo de dados das tabelas geradas automaticamente: tipo inferido, chave, classificação LGPD
+      e perfil da amostra. Nenhum valor de dado é armazenado, apenas metadados.
     data_tests:
       - dh_unique_combination:
           arguments:
-            combination_of_columns: [loja_id]
-          config:
-            where: "is_atual"
+            combination_of_columns: [tabela_bronze, coluna_origem]
     columns:
-      - name: loja_versao_id
-        data_tests: [unique, not_null]
-      - name: valido_de
-        data_tests: [not_null]
-
-  - name: dim_produto_historico
-    description: Produtos em SCD tipo 2 (histórico de preço, categoria e status).
-    data_tests:
-      - dh_unique_combination:
-          arguments:
-            combination_of_columns: [produto_id]
-          config:
-            where: "is_atual"
-    columns:
-      - name: produto_versao_id
-        data_tests: [unique, not_null]
+      - { name: tabela_bronze, data_type: text, data_tests: [not_null] }
+      - { name: fonte, data_type: text }
+      - { name: tabela_silver, data_type: text }
+      - { name: tabela_gold, data_type: text }
+      - { name: coluna_origem, data_type: text, data_tests: [not_null] }
+      - { name: coluna, data_type: text }
+      - { name: ordem, data_type: integer }
+      - name: tipo
+        data_type: text
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [text, bigint, numeric, date, timestamp, timestamptz, boolean, jsonb]
+      - { name: formato, data_type: text }
+      - name: classificacao_lgpd
+        data_type: text
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [nenhum, pessoal, identificador]
+      - { name: is_pseudonimizada, data_type: boolean }
+      - { name: is_chave, data_type: boolean }
+      - { name: deduplicacao, data_type: text }
+      - { name: materializacao, data_type: text }
+      - { name: taxa_validos_amostra, data_type: numeric }
+      - { name: taxa_nulos_amostra, data_type: numeric }
+      - { name: taxa_distintos_amostra, data_type: numeric }
+      - { name: tamanho_maximo, data_type: integer }
+      - { name: linhas_amostra, data_type: bigint }
+      - { name: linhas_bronze, data_type: bigint }
+      - { name: perfilado_em, data_type: timestamptz }
+      - { name: gerado_em, data_type: timestamptz }

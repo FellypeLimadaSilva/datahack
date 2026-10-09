@@ -32,8 +32,8 @@ base as (
     select
         g.mes,
         g.loja_id,
-        coalesce(v.receita, 0)                                                        as receita_liquida,
-        coalesce(ly.receita, 0)                                                       as receita_liquida_ly,
+        coalesce(v.receita, 0)  as receita_liquida,
+        coalesce(ly.receita, 0) as receita_liquida_ly,
         mt.valor_meta,
         (
             g.data_inauguracao <= (g.mes - make_interval(months => {{ var('l4l_min_months') }}))::date
@@ -41,7 +41,7 @@ base as (
                 g.data_fechamento is null
                 or g.data_fechamento >= (g.mes + interval '1 month - 1 day')::date
             )
-        ) as is_comparavel_l4l
+        )                       as is_comparavel_l4l
     from grade as g
     left join venda_mes as v on g.loja_id = v.loja_id and g.mes = v.mes
     left join venda_mes as ly on g.loja_id = ly.loja_id and ly.mes = (g.mes - interval '1 year')::date

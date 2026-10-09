@@ -35,6 +35,7 @@ ENV DH_HOME=/opt/datahack \
     DBT_TARGET_PATH=/tmp/dbt/target \
     DBT_LOG_PATH=/tmp/dbt/logs \
     DH_CATALOG=/opt/datahack/config/sources.yml \
+    DH_EXAMPLES_CATALOG=/opt/datahack/config/examples.yml \
     DH_LANDING_URI=/opt/datahack/data/landing \
     DH_LAKE_URI=/opt/datahack/data/lake \
     DH_LOG_FORMAT=json \

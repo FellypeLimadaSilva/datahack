@@ -21,9 +21,21 @@
       "problemMatcher": []
     },
     {
+      "label": "DH: 2b. gerar inbox de demonstração (arquivos bagunçados)",
+      "type": "shell",
+      "command": "docker compose run --rm cli python scripts/generate_messy_data.py --out data/landing/inbox",
+      "problemMatcher": []
+    },
+    {
+      "label": "DH: 2c. ver o que a inbox detectou",
+      "type": "shell",
+      "command": "docker compose run --rm cli python -m datahack_ingest discover",
+      "problemMatcher": []
+    },
+    {
       "label": "DH: 3. ingerir todas as fontes",
       "type": "shell",
-      "command": "docker compose run --rm cli python -m datahack_ingest run --all",
+      "command": "docker compose run --rm cli python -m datahack_ingest run --all --continue-on-error",
       "problemMatcher": []
     },
     {
@@ -36,6 +48,12 @@
       "label": "DH: 3c. perfilar fonte (dry-run, não grava)",
       "type": "shell",
       "command": "docker compose run --rm cli python -m datahack_ingest run ${input:source} --dry-run",
+      "problemMatcher": []
+    },
+    {
+      "label": "DH: 3d. gerar Silver/Gold automáticas",
+      "type": "shell",
+      "command": "docker compose run --rm cli python -m datahack_ingest generate-models",
       "problemMatcher": []
     },
     {
@@ -93,7 +111,9 @@
       "label": "DH: lint (ruff + sqlfluff)",
       "type": "shell",
       "command": "ruff check . && ruff format --check . && sqlfluff lint dbt/models",
-      "windows": { "command": "ruff check .; ruff format --check .; sqlfluff lint dbt/models" },
+      "windows": {
+        "command": "ruff check .; ruff format --check .; sqlfluff lint dbt/models"
+      },
       "problemMatcher": []
     },
     {
@@ -104,7 +124,17 @@
     }
   ],
   "inputs": [
-    { "id": "source", "type": "promptString", "description": "Nome da fonte (config/sources.yml)", "default": "vendas" },
-    { "id": "dbtSelect", "type": "promptString", "description": "Seletor dbt", "default": "fact_vendas+" }
+    {
+      "id": "source",
+      "type": "promptString",
+      "description": "Nome da fonte (config/sources.yml)",
+      "default": "vendas"
+    },
+    {
+      "id": "dbtSelect",
+      "type": "promptString",
+      "description": "Seletor dbt",
+      "default": "fact_vendas+"
+    }
   ]
 }

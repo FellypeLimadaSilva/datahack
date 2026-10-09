@@ -24,3 +24,6 @@ align_scope = bracketed
 
 [sqlfluff:templater:jinja:macros]
 env_var = {% macro env_var(name, default='') %}{{ default }}{% endmacro %}
+
+[sqlfluff:templater:jinja:context]
+run_started_at = 2026-01-01 00:00:00+00:00

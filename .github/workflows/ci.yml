@@ -65,6 +65,7 @@ jobs:
       DBT_PROFILES_DIR: ${{ github.workspace }}/dbt
       DBT_TARGET: dev
       DH_LOG_FORMAT: json
+      DH_INBOX_SETTLE_SECONDS: "0"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -82,16 +83,25 @@ jobs:
             -v dbname=datahack -v ingest_pw=ci_ingest_pw -v dbt_pw=ci_dbt_pw -v bi_pw=ci_bi_pw \
             -v backup_pw=ci_backup_pw -v repl_pw=ci_repl_pw \
             -f infra/postgres/bootstrap.sql
-      - name: Dados sintéticos
-        run: python scripts/generate_sample_data.py --scale 0.3
+      - name: Dados sintéticos (exemplos) e inbox com arquivos bagunçados
+        run: |
+          python scripts/generate_sample_data.py --scale 0.3
+          python scripts/generate_messy_data.py --rows 20000
+          python -m datahack_ingest discover
       - name: Testes Python (unit + integração)
         run: pytest -q --cov=datahack_ingest --cov-report=term-missing
       - name: Ingestão (todas as fontes)
         run: python -m datahack_ingest run --all
       - name: Ingestão idempotente (reexecução não duplica)
         run: python -m datahack_ingest run --all
-      - name: dbt build (models + 40+ testes de dados)
+      - name: Silver e Gold automáticas
+        run: python -m datahack_ingest generate-models
+      - name: dbt build (exemplos + automáticas + testes de dados)
         working-directory: dbt
+        run: dbt build
+      - name: dbt build sem os exemplos (componentes opcionais)
+        working-directory: dbt
+        env: { DH_EXAMPLES: "false" }
         run: dbt build
       - name: dbt build incremental (segunda execução)
         working-directory: dbt
@@ -100,6 +110,9 @@ jobs:
         env: { PGPASSWORD: ci_bi_pw }
         run: |
           psql -v ON_ERROR_STOP=1 -h localhost -U dh_bi_reader -d datahack -c "select count(*) from gold.fact_vendas"
+          psql -v ON_ERROR_STOP=1 -h localhost -U dh_bi_reader -d datahack -c "select count(*) from gold.clientes"
+          psql -v ON_ERROR_STOP=1 -h localhost -U dh_bi_reader -d datahack -c "select count(*) from gold.dh_catalogo_dados"
+          ! psql -h localhost -U dh_bi_reader -d datahack -c "select 1 from silver.clientes limit 1"
           ! psql -h localhost -U dh_bi_reader -d datahack -c "select 1 from bronze.vendas limit 1"
           ! psql -h localhost -U dh_bi_reader -d datahack -c "select 1 from silver.stg_vendas limit 1"
           ! psql -h localhost -U dh_bi_reader -d datahack -c "create table gold.x (a int)"

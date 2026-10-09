@@ -1,5 +1,54 @@
 # Adicionar uma fonte
 
+## 0. Caminho rápido: inbox
+
+Copie para `data/landing/inbox/` e rode `dh.ps1 pipeline` (ou a DAG). Nada a declarar.
+
+| O que você coloca | Vira |
+|---|---|
+| `inbox/vendas/` com vários arquivos | uma fonte `vendas` (todos os arquivos, inclusive subpastas e compactados) |
+| `inbox/Clientes 2026.csv` | uma fonte `clientes_2026` |
+| `inbox/Estoque.xlsx` com 3 abas | três fontes `estoque_<aba>` |
+| `inbox/legado.db` (SQLite) | uma fonte por tabela, `legado_<tabela>` |
+| `inbox/lote.zip` | uma fonte por formato encontrado dentro do zip |
+| PDF, imagem, `.xls`, Access, dump SQL | ignorado, com motivo em `dh.ps1 discover` |
+
+Detectado sozinho: formato pela extensão, compactação, separador (`,` `;` TAB `|`), encoding
+(UTF-8, UTF-8 com BOM, UTF-16, Windows-1252), elemento de registro do XML e lista de registros do
+JSON. Arquivo modificado há menos de `DH_INBOX_SETTLE_SECONDS` espera a próxima execução.
+Arquivos de uma pasta são lidos em ordem alfabética: nomeie séries com data (`2026_01`, `2026_02`)
+para a versão mais nova vencer na deduplicação.
+
+Ajuste fino por pasta com `_source.yml` (os mesmos campos do catálogo, exceto `kind`):
+
+```yaml
+name: pedidos_erp
+load_strategy: merge
+primary_key: [pedido_id]
+pii_columns: [documento]
+file:
+  format: fixed_width
+  widths: [10, 30, 12]
+  names: [pedido_id, cliente, valor]
+```
+
+Para ver o resultado: `dh.ps1 discover`, depois `dh.ps1 models` e a tabela `gold.dh_catalogo_dados`.
+
+### Como a Silver/Gold automática decide
+
+| Decisão | Regra |
+|---|---|
+| Tipo | `bigint`, `numeric` (ponto ou vírgula, aceita `R$`), `date` (ISO, dd/mm/aaaa, mm/dd/aaaa), `timestamp`/`timestamptz`, `boolean` (sim/não, true/false), `jsonb`, senão `text`; exige 98% dos valores válidos na amostra (`DH_AUTO_TYPE_THRESHOLD`) |
+| Código continua texto | zeros à esquerda, 15+ dígitos, ou nome como `cpf`, `cnpj`, `cep`, `codigo`, `chave`, `matricula` |
+| Chave | `primary_key` declarada; senão `id`, `codigo`, `uuid`, `<tabela>_id`, `cod_<tabela>`, desde que única e não nula em cada arquivo; senão deduplica pelo hash da linha |
+| PII pseudonimizada | nome (`cpf`, `email`, `telefone`, `rg`, `cartao`, `pis`, `cns`...), conteúdo (CPF com dígito verificador válido, e-mail, telefone formatado) ou `pii_columns`; vira `<coluna>_hash` |
+| Dado pessoal sinalizado | `nome_cliente`, `endereco`, `nascimento`, `cep`...: mantido, marcado como `pessoal` no catálogo |
+| Materialização | Silver `table`; `incremental` (merge) a partir de `DH_AUTO_INCREMENTAL_ROWS`; Gold é view sobre a Silver |
+| Estabilidade | tipos e chave ficam gravados em `ops.data_catalog`/`ops.auto_models`; só colunas novas são perfiladas. `dh.ps1 models --reset` refaz tudo |
+
+Valor que não cabe no tipo inferido vira nulo na Silver, fica intacto na Bronze, é contado em
+`_dh_invalid_columns` e gera aviso no teste `dh_invalid_ratio`.
+
 ## 1. Escolha a estratégia
 
 | Pergunta | Resposta → estratégia |
@@ -22,9 +71,9 @@
   pii_columns: [cliente_email]
   file:
     path: "erp/pedidos_*.csv"   # relativo a DH_LANDING_URI; glob permitido
-    format: csv                  # csv | jsonl | json | parquet | xlsx
-    sep: ";"
-    encoding: latin-1
+    format: csv                  # csv | jsonl | json | parquet | xlsx | xml | avro | orc
+    sep: ";"                     # ou "auto"
+    encoding: auto               # padrão; ou utf-8, cp1252, latin-1
 ```
 
 ### API REST
@@ -45,7 +94,7 @@
 ```
 Paginação: `none | page | offset | cursor | link_header`. Retry exponencial para 429/5xx respeitando `Retry-After`.
 
-### Banco relacional
+### Banco relacional (SQLite em arquivo: `url: "sqlite:///caminho.db"` sem segredo)
 ```yaml
 - name: erp_titulos
   kind: sql
@@ -63,11 +112,12 @@ Instale o driver: `pip install -e ".[oracle]"` (ou `mssql`, `mysql`). No Docker,
 
 | `format` | Opções específicas |
 |---|---|
-| `csv` | `sep`, `encoding`, `quotechar`, `skip_rows` |
-| `jsonl` / `json` | `records_path` (ex.: `data.items`), `flatten_max_level`; JSON lido em streaming |
+| `csv` | `sep` (ou `auto`), `encoding` (padrão `auto`), `quotechar`, `skip_rows` |
+| `jsonl` / `json` | `records_path` (ex.: `data.items`, ou `auto`), `flatten_max_level`; JSON lido em streaming |
 | `parquet` / `orc` / `avro` | nenhuma (tipos preservados como texto) |
 | `xlsx` | `sheet_name`, `skip_rows`; leitura em streaming |
-| `xml` | `record_tag` (elemento que representa uma linha); entidades e DTD bloqueados |
+| `xml` | `record_tag` (omitido = inferido); entidades e DTD bloqueados |
+| todos | `path` aceita arquivo, glob ou pasta; `include`/`exclude` (padrões de nome); `min_age_seconds` |
 | `fixed_width` | `widths`, `names` |
 
 `compression: infer` (padrão) reconhece `.gz`, `.bz2`, `.xz`, `.zst` e `.zip`; em zip, use
@@ -113,7 +163,10 @@ python -m datahack_ingest run pedidos              # grava bronze.pedidos
 
 Os nomes de coluna viram snake_case ASCII (`Data Emissão` → `data_emissao`, `valorTotal` → `valor_total`).
 
-## 4. Modele a Silver
+## 4. Modele a Silver (quando a automática não basta)
+
+Ao criar um modelo que use `source('bronze', 'pedidos')`, a geração automática dessa tabela para
+sozinha na próxima execução.
 
 ```sql
 -- dbt/models/silver/stg_pedidos.sql
@@ -129,8 +182,9 @@ select
 from latest
 ```
 
-Registre a tabela em `dbt/models/bronze/_bronze__sources.yml` e os testes em `_silver__models.yml`
-(no mínimo `not_null` + `unique` na chave). Modelo com `dh_hash_pii` deve ser `table`/`incremental`, nunca `view`.
+Registre a tabela numa fonte `bronze` (veja `dbt/models/examples/_examples__sources.yml`) e os
+testes num `.yml` ao lado do modelo (no mínimo `not_null` + `unique` na chave). Modelo com
+`dh_hash_pii` deve ser `table`/`incremental`, nunca `view`.
 
 ## 5. Publique na Gold
 

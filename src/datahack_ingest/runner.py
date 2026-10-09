@@ -258,6 +258,11 @@ def _execute(source: AnySource, settings: Settings, state: StateStore, result: R
         if not full:
             _check_volume(source, state, result)
         result.units_skipped = getattr(extractor, "skipped", 0)
+        deferred = getattr(extractor, "deferred", [])
+        if deferred:
+            result.warnings.append(
+                f"{len(deferred)} arquivo(s) em gravação; entram na próxima execução"
+            )
         result.rows_deleted = getattr(sink, "rows_deleted", 0)
         result.watermark_to = tracker.as_text() or result.watermark_from
         result.new_columns = list(getattr(sink, "new_columns", []))

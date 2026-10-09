@@ -19,6 +19,18 @@ def _env(name: str, default: str | None = None) -> str | None:
     return value if value not in (None, "") else default
 
 
+def _flag(name: str, default: bool) -> bool:
+    value = _env(name)
+    if value is None:
+        return default
+    lowered = value.strip().lower()
+    if lowered in {"1", "true", "yes", "sim", "on"}:
+        return True
+    if lowered in {"0", "false", "no", "nao", "não", "off"}:
+        return False
+    raise ValueError(f"{name}: valor booleano inválido {value!r}")
+
+
 @dataclass(frozen=True)
 class Settings:
     catalog_path: Path
@@ -34,6 +46,16 @@ class Settings:
     app_name: str = "datahack-ingest"
     log_format: str = "text"
     log_level: str = "INFO"
+    examples_enabled: bool = True
+    examples_catalog_path: Path = Path("config/examples.yml")
+    inbox_enabled: bool = True
+    inbox_path: str = "inbox"
+    inbox_settle_seconds: int = 15
+    dbt_project_dir: Path = Path("dbt")
+    auto_models_enabled: bool = True
+    auto_type_threshold: float = 0.98
+    auto_sample_rows: int = 200_000
+    auto_incremental_rows: int = 2_000_000
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -51,6 +73,16 @@ class Settings:
             pg_sslmode=_env("WAREHOUSE_SSLMODE", "prefer"),
             log_format=_env("DH_LOG_FORMAT", "text"),
             log_level=_env("DH_LOG_LEVEL", "INFO"),
+            examples_enabled=_flag("DH_EXAMPLES", True),
+            examples_catalog_path=Path(_env("DH_EXAMPLES_CATALOG", "config/examples.yml")),
+            inbox_enabled=_flag("DH_INBOX_ENABLED", True),
+            inbox_path=_env("DH_INBOX", "inbox"),
+            inbox_settle_seconds=int(_env("DH_INBOX_SETTLE_SECONDS", "15")),
+            dbt_project_dir=Path(_env("DBT_PROJECT_DIR", "dbt")),
+            auto_models_enabled=_flag("DH_AUTO_MODELS", True),
+            auto_type_threshold=float(_env("DH_AUTO_TYPE_THRESHOLD", "0.98")),
+            auto_sample_rows=int(_env("DH_AUTO_SAMPLE_ROWS", "200000")),
+            auto_incremental_rows=int(_env("DH_AUTO_INCREMENTAL_ROWS", "2000000")),
         )
 
     def conninfo(self) -> str:
