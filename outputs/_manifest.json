@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-10-10T18:46:10+00:00",
+  "generated_at": "2026-10-10T19:47:49+00:00",
   "platform_version": "2.0.0",
-  "version": "20261010T184555Z-035aee",
+  "version": "20261010T194732Z-ed5811",
   "sources": {
     "censo_cursos": {
       "rows": 62674,
@@ -131,7 +131,7 @@
     }
   },
   "dbt": {
-    "invocation_id": "bed256aa-5eb4-4fc9-a2ff-e6a589843377",
+    "invocation_id": "723eb951-c635-4ded-afd3-cbb50ff0dbfb",
     "counts": {
       "success": 27,
       "pass": 87
@@ -1102,6 +1102,14 @@
           "type": "bigint"
         },
         {
+          "name": "nu_arquivos_carregados",
+          "type": "bigint"
+        },
+        {
+          "name": "linhas_disponiveis",
+          "type": "bigint"
+        },
+        {
           "name": "ultima_transformacao_local",
           "type": "timestamp without time zone"
         },
@@ -1113,13 +1121,13 @@
       "files": [
         {
           "file": "controle_atualizacao.csv",
-          "bytes": 1055,
-          "sha256": "aa97ea9ca6c4457caa240a45a3dac037d5a3f180870d95f5b38644e8f8e614c9"
+          "bytes": 1148,
+          "sha256": "8635a1e66c5156bb313e7f7700b918fd740d959ca761176a9f65361daded1a17"
         },
         {
           "file": "controle_atualizacao.parquet",
-          "bytes": 3179,
-          "sha256": "a5a46079825c289643b499f15e80ae38522893fbec6dec3ee3c377855ba6b81d"
+          "bytes": 3912,
+          "sha256": "d7bc159fefceb7ceb763e3ff8c38f11574bdbd694bf5f99568ab99efb1173d8c"
         }
       ]
     }
