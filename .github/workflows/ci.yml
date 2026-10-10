@@ -165,7 +165,7 @@ jobs:
         run: |
           docker compose up -d --wait warehouse
           $RUN python -m datahack_ingest init
-          $RUN dbt debug --project-dir dbt
+          $RUN dbt debug --connection --project-dir dbt
       - name: Pipeline com arquivos no layout do INEP
         run: |
           $RUN python scripts/generate_inep_fixtures.py --out data/landing

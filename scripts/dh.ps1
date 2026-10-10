@@ -142,7 +142,7 @@ switch ($Command) {
         Invoke-Cli python -m datahack_ingest --version
         Invoke-Cli python -m datahack_ingest init
         Invoke-Cli python -m datahack_ingest validate
-        Invoke-Cli dbt debug --project-dir dbt
+        Invoke-Cli dbt debug --connection --project-dir dbt
         Write-Host "Smoke test concluido."
     }
     "images-save"  {
