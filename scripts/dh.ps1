@@ -191,7 +191,8 @@ switch ($Command) {
         if ($py -and (Test-Native { & $py.Source -c "import streamlit" })) {
             & $py.Source -m streamlit run dashboard/app.py
         } elseif (Get-Command docker -ErrorAction SilentlyContinue) {
-            Write-Host "Dashboard em http://localhost:8501 (Ctrl+C para sair)"
+            Write-Host "Instalando o Streamlit no container (1 a 2 minutos na primeira vez)."
+            Write-Host "Abra http://localhost:8501 quando aparecer 'You can now view your Streamlit app'. Ctrl+C encerra."
             docker run --rm -it -p 127.0.0.1:8501:8501 -v "${PWD}:/w" -w /w python:3.12-slim-bookworm `
                 bash -c "pip install -q -r dashboard/requirements.txt && streamlit run dashboard/app.py --server.address 0.0.0.0 --server.headless true"
         } else {
