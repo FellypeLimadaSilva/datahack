@@ -7,6 +7,7 @@ import json
 import os
 import shutil
 import sys
+from decimal import Decimal
 from pathlib import Path
 
 import psycopg
@@ -117,6 +118,10 @@ def test_rota_do_diploma_ponta_a_ponta(rota, capsys):
     censo = _gold(s, "SELECT DISTINCT nu_ano_censo FROM p3_rede_modalidade_ano ORDER BY 1")
     assert censo == [(2021,), (2023,)]
     assert _gold(s, "SELECT count(*), count(DISTINCT co_curso) FROM p4_qualidade_curso") == [(6, 6)]
+    participantes = sum(p for p, _ in fx.ENADE_PROFICIENTES.values())
+    proficientes = sum(q for _, q in fx.ENADE_PROFICIENTES.values())
+    funil = _gold(s, "SELECT pct_proficiente FROM p5_funil_licenciaturas WHERE rede = 'Total'")
+    assert funil == [(round(Decimal(100 * proficientes) / participantes, 2),)]
 
     manifest = json.loads((outputs / "_manifest.json").read_text(encoding="utf-8"))
     assert manifest["version"] == v1

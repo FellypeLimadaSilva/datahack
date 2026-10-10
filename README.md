@@ -96,6 +96,9 @@ Tudo isso é exercitado por `tests/integration/test_rota_diploma.py` no CI.
 | P5 Funil das licenciaturas | `p5_licenciaturas_curso`, `p5_funil_licenciaturas` |
 | B1 Desertos de ensino superior | `b1_desertos_municipio` |
 | B2 Financiamento e permanência | `b2_financiamento_ano`, `b2_financiamento_desistencia` |
+| Fator social (o que mais explica) | `s1_fator_social_desistencia`: escola pública, cotas, apoio social, noturno, FIES/ProUni, pretos/pardos/indígenas |
+
+As taxas da Trajetória usam o mesmo método do INEP (ingressantes menos falecidos no denominador) e um teste do dbt confere cada linha contra as colunas TDA, TCA e TAP publicadas pelo INEP.
 
 População, numerador, denominador, período e agregação de cada indicador estão em
 `dbt/models/gold/_gold__models.yml` e em `outputs/_indicadores.json`.

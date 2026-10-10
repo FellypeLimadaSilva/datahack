@@ -6,6 +6,7 @@ import os
 import shutil
 import subprocess
 import sys
+import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -42,7 +43,7 @@ class GateReport:
 
 
 def new_version() -> str:
-    return datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    return f"{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:6]}"
 
 
 def source_gate(

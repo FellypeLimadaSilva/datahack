@@ -8,11 +8,26 @@
       "tabela": "p1_trajetoria_coorte",
       "tipo": "linha",
       "x": "nu_ano_curso",
-      "y": ["taxa_desistencia_acum", "taxa_conclusao_acum", "taxa_permanencia"],
-      "filtros": ["modalidade", "nu_ano_ingresso"],
-      "padrao": { "modalidade": "Presencial", "nu_ano_ingresso": "min" },
+      "y": [
+        "taxa_desistencia_acum",
+        "taxa_conclusao_acum",
+        "taxa_permanencia"
+      ],
+      "filtros": [
+        "modalidade",
+        "nu_ano_ingresso"
+      ],
+      "padrao": {
+        "modalidade": "Presencial",
+        "nu_ano_ingresso": "min"
+      },
       "largura": 8,
-      "visivel": true
+      "visivel": true,
+      "unico": [
+        "modalidade",
+        "nu_ano_ingresso"
+      ],
+      "x_titulo": "ano do curso"
     },
     {
       "id": "p1_perda",
@@ -20,12 +35,25 @@
       "tabela": "p1_trajetoria_coorte",
       "tipo": "barras",
       "x": "nu_ano_curso",
-      "y": ["taxa_desistencia_ano"],
+      "y": [
+        "taxa_desistencia_ano"
+      ],
       "destaque": "is_ano_maior_perda",
-      "filtros": ["modalidade", "nu_ano_ingresso"],
-      "padrao": { "modalidade": "Presencial", "nu_ano_ingresso": "min" },
+      "filtros": [
+        "modalidade",
+        "nu_ano_ingresso"
+      ],
+      "padrao": {
+        "modalidade": "Presencial",
+        "nu_ano_ingresso": "min"
+      },
       "largura": 4,
-      "visivel": true
+      "visivel": true,
+      "unico": [
+        "modalidade",
+        "nu_ano_ingresso"
+      ],
+      "x_titulo": "ano do curso"
     },
     {
       "id": "p2_area",
@@ -33,12 +61,25 @@
       "tabela": "p2_desistencia_area",
       "tipo": "barras_h",
       "x": "no_cine_area_geral",
-      "y": ["taxa_desistencia_acum"],
+      "y": [
+        "taxa_desistencia_acum"
+      ],
       "cor": "nu_ano_ingresso",
-      "filtros": ["modalidade", "nu_ano_curso", "nu_ano_ingresso"],
-      "padrao": { "modalidade": "Presencial", "nu_ano_curso": 4 },
+      "filtros": [
+        "modalidade",
+        "nu_ano_curso",
+        "nu_ano_ingresso"
+      ],
+      "padrao": {
+        "modalidade": "Presencial",
+        "nu_ano_curso": 4
+      },
       "largura": 7,
-      "visivel": true
+      "visivel": true,
+      "unico": [
+        "modalidade",
+        "nu_ano_curso"
+      ]
     },
     {
       "id": "p2_ranking",
@@ -46,12 +87,28 @@
       "tabela": "p2_desistencia_curso",
       "tipo": "ranking",
       "x": "no_curso",
-      "y": ["taxa_desistencia_marco"],
-      "colunas": ["no_curso", "no_ies", "rede", "nu_ano_ingresso", "qt_ingressante", "taxa_desistencia_marco"],
+      "y": [
+        "taxa_desistencia_marco"
+      ],
+      "colunas": [
+        "no_curso",
+        "no_ies",
+        "rede",
+        "nu_ano_ingresso",
+        "qt_ingressante",
+        "taxa_desistencia_marco"
+      ],
       "condicao": "is_elegivel_ranking",
       "n": 10,
-      "filtros": ["modalidade", "rede", "nu_ano_ingresso", "no_cine_area_geral"],
-      "padrao": { "modalidade": "Presencial" },
+      "filtros": [
+        "modalidade",
+        "rede",
+        "nu_ano_ingresso",
+        "no_cine_area_geral"
+      ],
+      "padrao": {
+        "modalidade": "Presencial"
+      },
       "largura": 5,
       "visivel": true
     },
@@ -61,11 +118,20 @@
       "tabela": "p3_rede_modalidade_ano",
       "tipo": "linha",
       "x": "nu_ano_censo",
-      "y": ["taxa_evasao_anual"],
-      "cor": ["rede", "modalidade"],
-      "filtros": ["rede", "modalidade"],
+      "y": [
+        "taxa_evasao_anual"
+      ],
+      "cor": [
+        "rede",
+        "modalidade"
+      ],
+      "filtros": [
+        "rede",
+        "modalidade"
+      ],
       "largura": 6,
-      "visivel": true
+      "visivel": true,
+      "x_titulo": "ano do Censo"
     },
     {
       "id": "p3_matricula",
@@ -73,11 +139,20 @@
       "tabela": "p3_rede_modalidade_ano",
       "tipo": "barras",
       "x": "nu_ano_censo",
-      "y": ["qt_matricula"],
-      "cor": ["rede", "modalidade"],
-      "filtros": ["rede", "modalidade"],
+      "y": [
+        "qt_matricula"
+      ],
+      "cor": [
+        "rede",
+        "modalidade"
+      ],
+      "filtros": [
+        "rede",
+        "modalidade"
+      ],
       "largura": 6,
-      "visivel": true
+      "visivel": true,
+      "x_titulo": "ano do Censo"
     },
     {
       "id": "p4_faixa",
@@ -85,11 +160,16 @@
       "tabela": "p4_qualidade_faixa",
       "tipo": "barras",
       "x": "cpc_faixa",
-      "y": ["taxa_desistencia_marco"],
+      "y": [
+        "taxa_desistencia_marco"
+      ],
       "cor": "rede",
-      "filtros": ["rede"],
+      "filtros": [
+        "rede"
+      ],
       "largura": 6,
-      "visivel": true
+      "visivel": true,
+      "x_titulo": "faixa de CPC"
     },
     {
       "id": "p4_fatores",
@@ -97,21 +177,58 @@
       "tabela": "p4_fatores",
       "tipo": "barras_h",
       "x": "fator",
-      "y": ["correlacao_pearson"],
+      "y": [
+        "correlacao_pearson"
+      ],
       "largura": 6,
       "visivel": true
+    },
+    {
+      "id": "s1_social",
+      "titulo": "Fator social · Desistência até o 4º ano por quartil do perfil do curso",
+      "tabela": "s1_fator_social_desistencia",
+      "tipo": "barras",
+      "x": "quartil",
+      "y": [
+        "taxa_desistencia_marco"
+      ],
+      "filtros": [
+        "fator"
+      ],
+      "padrao": {
+        "fator": "Reserva de vagas (cotas)"
+      },
+      "largura": 12,
+      "visivel": true,
+      "unico": [
+        "fator"
+      ],
+      "x_titulo": "quartil do curso (1 = menor parcela do fator, 4 = maior)"
     },
     {
       "id": "p5_funil",
       "titulo": "P5 · O funil das licenciaturas (de cada 100)",
       "tabela": "p5_funil_licenciaturas",
       "tipo": "funil",
-      "etapas": ["de_100_desistem", "de_100_concluem", "de_100_concluem_proficientes"],
+      "etapas": [
+        "de_100_concluem",
+        "de_100_concluem_proficientes"
+      ],
       "x": "rede",
-      "filtros": ["rede"],
-      "padrao": { "rede": "Total" },
+      "filtros": [
+        "rede"
+      ],
+      "padrao": {
+        "rede": "Total"
+      },
       "largura": 12,
-      "visivel": true
+      "visivel": true,
+      "unico": [
+        "rede"
+      ],
+      "nota": [
+        "de_100_desistem"
+      ]
     },
     {
       "id": "b1_desertos",
@@ -119,11 +236,24 @@
       "tabela": "b1_desertos_municipio",
       "tipo": "ranking",
       "x": "no_municipio",
-      "y": ["vagas_por_100_jovens"],
-      "colunas": ["no_municipio", "nu_populacao_18_24", "nu_vagas_presenciais", "vagas_por_100_jovens", "is_deserto"],
+      "y": [
+        "vagas_por_100_jovens"
+      ],
+      "colunas": [
+        "no_municipio",
+        "nu_populacao_18_24",
+        "nu_vagas_presenciais",
+        "vagas_por_100_jovens",
+        "qt_ingressante_presencial",
+        "ingressantes_por_100_jovens",
+        "is_deserto"
+      ],
       "n": 15,
       "largura": 12,
-      "visivel": true
+      "visivel": true,
+      "desempate": "nu_populacao_18_24",
+      "titulo_maiores": "Mais vagas por jovem",
+      "titulo_menores": "Desertos com mais jovens (0 vaga presencial)"
     },
     {
       "id": "b2_ano",
@@ -131,11 +261,22 @@
       "tabela": "b2_financiamento_ano",
       "tipo": "linha",
       "x": "nu_ano_censo",
-      "y": ["pct_matricula_fies", "pct_matricula_prouni"],
-      "filtros": ["modalidade"],
-      "padrao": { "modalidade": "Presencial" },
+      "y": [
+        "pct_matricula_fies",
+        "pct_matricula_prouni"
+      ],
+      "filtros": [
+        "modalidade"
+      ],
+      "padrao": {
+        "modalidade": "Presencial"
+      },
       "largura": 6,
-      "visivel": true
+      "visivel": true,
+      "x_titulo": "ano do Censo",
+      "unico": [
+        "modalidade"
+      ]
     },
     {
       "id": "b2_quartil",
@@ -143,9 +284,12 @@
       "tabela": "b2_financiamento_desistencia",
       "tipo": "barras",
       "x": "quartil_financiamento",
-      "y": ["taxa_desistencia_marco"],
+      "y": [
+        "taxa_desistencia_marco"
+      ],
       "largura": 6,
-      "visivel": true
+      "visivel": true,
+      "x_titulo": "quartil de financiamento (1 = menos FIES/ProUni, 4 = mais)"
     }
   ]
 }

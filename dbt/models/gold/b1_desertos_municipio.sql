@@ -15,7 +15,8 @@ vagas as (
     select
         c.co_municipio,
         count(distinct c.co_curso) as nu_cursos_presenciais,
-        sum(c.nu_vagas) as nu_vagas_presenciais
+        sum(c.nu_vagas) as nu_vagas_presenciais,
+        sum(c.qt_ing) as qt_ingressante_presencial
     from {{ ref('stg_censo_cursos') }} as c
     inner join ano as a on c.nu_ano_censo = a.nu_ano_censo
     where c.tp_modalidade_ensino = 1 and c.tp_nivel_academico = 1
@@ -31,6 +32,13 @@ select
     coalesce(v.nu_vagas_presenciais, 0)::bigint as nu_vagas_presenciais,
     round((100.0 * coalesce(v.nu_vagas_presenciais, 0) / nullif(p.nu_populacao_18_24, 0))::numeric, 2)
         as vagas_por_100_jovens,
+    {{ dh_mask_count('coalesce(v.qt_ingressante_presencial, 0)') }}::bigint as qt_ingressante_presencial,
+    (
+        case
+            when coalesce(v.qt_ingressante_presencial, 0) not between 1 and {{ var('min_cell') }} - 1
+                then round((100.0 * coalesce(v.qt_ingressante_presencial, 0) / nullif(p.nu_populacao_18_24, 0))::numeric, 2)
+        end
+    )::numeric as ingressantes_por_100_jovens,
     (coalesce(v.nu_vagas_presenciais, 0) = 0)::boolean as is_deserto
 from populacao as p
 left join vagas as v on p.co_municipio = v.co_municipio

@@ -19,9 +19,16 @@ select
     sum(qt_sit_transferido) as qt_sit_transferido,
     sum(qt_sit_falecido) as qt_sit_falecido,
     sum(qt_ing_fies) as qt_ing_fies,
-    sum(qt_ing_prouni_integral + qt_ing_prouni_parcial) as qt_ing_prouni,
+    sum(coalesce(qt_ing_prouni_integral, 0) + coalesce(qt_ing_prouni_parcial, 0)) as qt_ing_prouni,
     sum(qt_mat_fies) as qt_mat_fies,
-    sum(qt_mat_prouni_integral + qt_mat_prouni_parcial) as qt_mat_prouni
+    sum(coalesce(qt_mat_prouni_integral, 0) + coalesce(qt_mat_prouni_parcial, 0)) as qt_mat_prouni,
+    sum(qt_mat_escola_publica) as qt_mat_escola_publica,
+    sum(qt_mat_escola_privada) as qt_mat_escola_privada,
+    sum(qt_mat_reserva_vaga) as qt_mat_reserva_vaga,
+    sum(qt_mat_apoio_social) as qt_mat_apoio_social,
+    sum(qt_mat_noturno) as qt_mat_noturno,
+    sum(qt_mat_ppi) as qt_mat_ppi,
+    sum(qt_mat_cor_declarada) as qt_mat_cor_declarada
 from {{ ref('stg_censo_cursos') }}
 where tp_nivel_academico = 1
 group by nu_ano_censo, co_curso
