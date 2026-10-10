@@ -64,16 +64,21 @@ function Test-Port([int]$Port) {
     return -not $busy
 }
 
+function Test-Native([scriptblock]$Command) {
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try { & $Command 2>&1 | Out-Null; return ($LASTEXITCODE -eq 0) } catch { return $false } finally { $ErrorActionPreference = $previous }
+}
+
 function Invoke-Doctor {
     $ok = $true
     $docker = [bool](Get-Command docker -ErrorAction SilentlyContinue)
     $ok = (Write-Check "Docker CLI" $docker "instale o Docker Desktop") -and $ok
     if ($docker) {
-        docker info --format "{{.ServerVersion}}" *> $null
-        $engine = $LASTEXITCODE -eq 0
+        $engine = Test-Native { docker info --format "{{.ServerVersion}}" }
         $ok = (Write-Check "Docker Engine" $engine "abra o Docker Desktop e aguarde 'Engine running'") -and $ok
-        docker compose version *> $null
-        $ok = (Write-Check "Docker Compose v2" ($LASTEXITCODE -eq 0) "atualize o Docker Desktop") -and $ok
+        $compose = Test-Native { docker compose version }
+        $ok = (Write-Check "Docker Compose v2" $compose "atualize o Docker Desktop") -and $ok
         if ($engine) {
             $mem = [double](docker info --format "{{.MemTotal}}") / 1GB
             $null = Write-Check "Memoria do Docker" ($mem -ge 3.5) "aumente em Settings > Resources (minimo 4 GB; 6 GB com Airflow)" $false ("{0:N1} GB" -f $mem)
@@ -81,8 +86,8 @@ function Invoke-Doctor {
     }
     $wsl = Get-Command wsl -ErrorAction SilentlyContinue
     if ($wsl) {
-        wsl --status *> $null
-        $null = Write-Check "WSL 2" ($LASTEXITCODE -eq 0) "se falhar: wsl --install (admin + reiniciar)" $false
+        $wslOk = Test-Native { wsl --status }
+        $null = Write-Check "WSL 2" $wslOk "se falhar: wsl --install (admin + reiniciar)" $false
     }
     $ok = (Write-Check "Git" ([bool](Get-Command git -ErrorAction SilentlyContinue)) "instale o Git") -and $ok
     $null = Write-Check "Python" ([bool](Get-Python)) "opcional; sem ele o .env e gerado via Docker" $false
@@ -143,7 +148,7 @@ switch ($Command) {
     "images-save"  {
         New-Item -ItemType Directory -Force images | Out-Null
         $images = docker compose --profile cli config --images | Sort-Object -Unique
-        $present = @($images | Where-Object { docker image inspect $_ *> $null; $LASTEXITCODE -eq 0 })
+        $present = @($images | Where-Object { $name = $_; Test-Native { docker image inspect $name } })
         if (-not $present) { throw "Nenhuma imagem local. Rode antes: .\scripts\dh.ps1 up-lite (ou build)" }
         docker save -o $ImagesTar @present; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         Write-Host ("Salvo {0} ({1}) em {2}" -f ($present -join ", "), ("{0:N0} MB" -f ((Get-Item $ImagesTar).Length / 1MB)), $ImagesTar)
