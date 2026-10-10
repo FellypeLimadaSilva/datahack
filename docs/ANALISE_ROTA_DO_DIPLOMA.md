@@ -17,10 +17,10 @@ O protótipo é bom como **arquitetura de informação** (navegação por pergun
 |---|---|---|---|
 | **P1** | Coorte 2015–2019, KPIs Concluíram/Saíram/Em curso, evolução anual, marca "Maior perda". Taxas com arredondamento por maior resto. | Coorte 2015, presencial, situação em 2024, **em que ano do curso a perda é maior**. | Mantido. No Superset a perda por ano vem de `TADA` ponderada (gráfico "Em que ano do curso a perda é maior?"). Taxa = `Σ(taxa × ingressantes) ÷ Σ ingressantes`, nunca média simples. |
 | **P2** | Só **cursos**; coortes 2015–2019; comparação com outras coortes escondida na gaveta "Detalhes". | **Cursos e áreas**, maior **e menor** desistência, coortes 2015–**2020**, comparar **no mesmo ano do curso**. | Adicionados: ranking de áreas, ranking "menor" desistência, matriz rótulo × coorte (heatmap) à vista, coorte 2020. |
-| **P3** | Fórmula `(desvinculados + transferidos) ÷ vínculos`. Séries: só Pública/Privada × Presencial/EAD. Sem leitura de ano atípico. | Evasão anual = **desvinculados ÷ (matriculados + desvinculados + transferidos)**. Pede **privada com e sem fins lucrativos** e "há algum ano atípico, e por quê?". | **Fórmula corrigida** (transferido sai do numerador e entra no denominador). Série por `TP_CATEGORIA_ADMINISTRATIVA` (5 categorias) × modalidade. Tabela dinâmica de matrículas para achar o salto de 2023. |
-| **P4** | Só barras por faixa CPC 1–5 + "Sem CPC", janela coorte = CPC − 3. | "Mostre a **relação** e discuta **o que mais pode explicá-la**." | Mantida a janela Y−3 (4º ano do curso). Adicionados: dispersão CPC contínuo × desistência por curso (tamanho = ingressantes), barras de **controle** por rede e por modalidade, tabela de cobertura. "Sem conceito" ≠ zero. |
+| **P3** | Fórmula `(desvinculados + transferidos) ÷ vínculos`. Séries: só Pública/Privada × Presencial/EAD. Sem leitura de ano atípico. | Evasão anual = **desvinculados ÷ (matriculados + desvinculados + transferidos)**. Pede **privada com e sem fins lucrativos** e "há algum ano atípico, e por quê?". | Painel usa a fórmula do guia (e mostra a da Gold ao lado, ver §5) e destaca ano atípico com os gráficos de variação ano a ano. A divisão da privada depende de a Gold trazer a categoria administrativa. |
+| **P4** | Só barras por faixa CPC 1–5 + "Sem CPC", janela coorte = CPC − 3. | "Mostre a **relação** e discuta **o que mais pode explicá-la**." | Adicionados: dispersão CPC contínuo × desistência por curso (tamanho = ingressantes), controles por rede e modalidade, **correlação por componente do CPC** (`p4_fatores`, da Gold) e tabela de cobertura. "Sem CPC" ≠ zero. |
 | **P5** | Proficiência em **4 níveis** ("Abaixo do básico, Básico, Adequado, Avançado"). | O Enade 2025 Licenciaturas traz **uma** medida: `% de concluintes igual ou acima do Padrão 1`. Os 4 níveis **não existem** na base. | Removidos os 4 níveis. Funil em KPIs (ingressantes → % saiu → participantes → % no padrão) + quadrante curso a curso colorido por área. Aviso fixo: bases e denominadores distintos. |
-| **B1** | Filtros globais (rede, área, IES) aplicados às vagas. Lista de municípios curta. | 142 municípios, zero = sem oferta, EAD por polo. | Base = **os 142 do IBGE** com *left join* (município sem curso entra com 0 vagas, senão sumiria do mapa de desertos). Filtros globais não se aplicam a B1 (a tabela é por município). |
+| **B1** | Filtros globais (rede, área, IES) aplicados às vagas. Lista de municípios curta. | Todos os municípios de MT, zero = sem oferta, EAD por polo. | A Gold já publica o município com zero vagas (`is_deserto`). Painel: KPIs, ranking, faixas de oferta e lista dos maiores desertos por população jovem. Filtros globais não se aplicam a B1. |
 | **B2** | "Evasão **com** o programa vs **sem**" (diferença em p.p.). | "Cursos com **mais** financiados evadem menos?" | **Impossível como desenhado**: o Censo por curso não separa desvinculados por financiado. Trocado por comparação **entre cursos**: faixa de % de ingressantes com FIES/ProUni × evasão anual ponderada. |
 
 ## 3. Outros desvios do protótipo
@@ -42,23 +42,32 @@ O protótipo é bom como **arquitetura de informação** (navegação por pergun
 | Estados Carregando/Erro/Sem dados/Protegido | Carregamento e erro nativos; "Sem dados/Protegido" = gráfico vazio + texto de método |
 | Destaque de série ao passar na legenda | Legenda clicável do ECharts |
 
-## 5. Armadilhas do guia incorporadas
+## 5. O dashboard Superset sobre a Gold (o que mudou depois de ler o repositório)
 
-Códigos (`CO_CURSO`, `CO_IES`, `CO_MUNICIPIO`) como **texto** · EAD por polo (conta-se curso com `COUNT(DISTINCT)`; aluno soma entre polos) · taxa **ponderada** · filtro de graduação (`TP_NIVEL_ACADEMICO = 1`) · junção CPC↔Trajetória com **taxa de match** registrada em `mart.qualidade_checks` · "desconfie do que salta" (tabela de matrículas por ano) · idempotência (`TRUNCATE` + `INSERT`; rodar duas vezes dá as mesmas contagens).
+O dashboard lê **direto o schema `gold`** do warehouse, com o papel somente leitura `dh_bi_reader` (ver `superset/README.md`). As armadilhas do guia (códigos como texto, EAD por polo, filtro de graduação, junções com taxa de match, idempotência, células < 10) são responsabilidade do pipeline dbt e já estão lá. O Superset só reagrega, ponderando taxas pelos ingressantes.
+
+Divergências entre a Gold e o guia que **precisam de decisão do time** (o painel mostra a Gold e sinaliza):
+
+| # | Gold | Guia | Impacto |
+|---|---|---|---|
+| 1 | `p3`: evasão = desvinculados ÷ (matrículas + trancadas + desvinculados + transferidos + falecidos) | desvinculados ÷ (matriculados + desvinculados + transferidos) | Número diferente do gabarito ("Corretude das respostas"). O painel mostra a **fórmula do guia** como principal e a da Gold ("base Gold") na tabela. Decidir qual vale e alinhar o dbt. |
+| 2 | `p3`: só Pública/Privada | Privada **com e sem fins lucrativos** | Falta `TP_CATEGORIA_ADMINISTRATIVA` em `p3_rede_modalidade_ano`. Não dá para resolver no Superset. |
+| 3 | `p2_desistencia_curso`: só o 4º ano do curso, sem município | comparar no mesmo ano do curso; filtros por município | Cursos só no 4º ano (as áreas aceitam qualquer ano do curso). Filtro de município só existe no B1. |
+| 4 | `p4`: coortes 2015–2020 somadas, CPC mais recente do curso | janela do protótipo: CPC do ano Y ↔ coorte Y−3 | Coerente com o dbt; basta descrever assim no pitch. |
+| 5 | `b1`: "os 141 municípios de MT" | o protótipo dizia 142 | Conferir contra a tabela 9514 do IBGE antes de afirmar o total. |
+| 6 | `outputs/` do repositório é parcial: só a coorte 2020, Censo 2021 e 2023, **B1 vazio**, sem Enade | coortes 2015–2020, Censo 2021–2024 | Faltam cargas (`dh.ps1 import-downloads` + `pipeline`). P5 (proficiência) e B1 ficam vazios até lá. |
 
 ## 6. Risco principal: o pitch é em outra sala
 
-O guia exige que o dashboard funcione **sem o banco local da equipe**. Superset precisa de servidor. Opções, da mais segura para a menos:
+O guia exige que o dashboard funcione **sem o banco local da equipe**. O Streamlit lê `outputs/`; o Superset precisa de servidor. Opções, da mais segura para a menos:
 
-1. **Levar o notebook da equipe** (o guia permite) com `docker compose up`. Testar o HDMI antes. Dados vêm do `outputs/` (CSV).
-2. **Publicar na nuvem**: Superset em uma VM + Postgres gratuito (Neon/Supabase, ~0,5 GB bastam para a camada `mart`). Gerar o pacote com `ROTA_DB_URI=… node build_bundle.js`. Testar na rede do evento.
+1. **Levar o notebook da equipe** (o guia permite) com o `warehouse` e o Superset de pé (`superset/up.ps1`). Testar o HDMI antes.
+2. **Publicar na nuvem**: Postgres gratuito (Neon/Supabase; a Gold cabe nos ~0,5 GB) e o container do Superset numa VM, apontando `WAREHOUSE_HOST`/`WAREHOUSE_BI_PASSWORD` para ele. Testar na rede do evento.
 3. **Plano B obrigatório (−3 se faltar):** PDF com prints de cada aba ou vídeo de 1–2 min, junto do link do pitch.
 
-## 7. Validar quando os dados reais chegarem
+## 7. Validar quando os dados completos chegarem
 
-1. **Escala de TDA/TCA/TAP**: 0–100 ou 0–1? Ajustar `escala` em `sql/10_marts_from_staging.sql`.
-2. **TAP + TCA + TDA ≈ 100** (a checagem automática acusa).
-3. **"Desistência" inclui transferência?** O dicionário do INEP não diz. O protótipo assume que sim; confirmar antes de escrever "saíram do curso" no pitch.
-4. **EAD fora de MT**: o filtro usa `CO_UF = 51` e `TP_DIMENSAO IN (1,2)`; conferir o volume de EAD com polo em MT.
-5. **Área do Enade × CINE**: a ligação da P5 é por `CO_CURSO`; conferir a taxa de junção.
-6. **Salto de 2023** no Censo: investigar (mudança de coleta?) antes de explicar.
+1. **"Desistência" inclui transferência?** O dicionário do INEP não diz. O protótipo assume que sim; confirmar antes de escrever "saíram do curso" no pitch.
+2. **Salto de 2023** no Censo: o painel mostra a variação ano a ano (`variacao_evasao_pp`, `variacao_matricula_pct`); investigar a causa antes de explicar.
+3. **Cobertura do CPC**: acompanhar quantos cursos caem em "Sem CPC" (aba P4, tabela de cobertura).
+4. **Enade 2025**: quando carregar, conferir a ligação por `CO_CURSO` e o tamanho dos grupos (a Gold só publica proficiência com 10+ participantes).

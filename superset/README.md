@@ -1,97 +1,72 @@
-# Rota do Diploma · Dashboard Apache Superset
+# Rota do Diploma · Dashboard Apache Superset sobre a Gold
 
-Dashboard de 9 abas (Visão geral, P1–P5, B1, B2, Fontes e metodologia), 50 gráficos, 10 filtros nativos, texto de método em cada gráfico. Segue o Guia de Estilos UNIVAG. Validado no Superset **4.1.2** (importação limpa, 0 erros de consulta, todos os gráficos renderizando).
+Dashboard de 9 abas (Visão geral, P1–P5, B1, B2, Fontes e metodologia), 54 gráficos e 8 filtros nativos, lendo **direto o schema `gold` do warehouse** (o mesmo que o dbt publica e o Streamlit consome via `outputs/`). Segue o Guia de Estilos UNIVAG. Validado no Superset **4.1.2**.
 
 ```
-Superset (8088)  ──lê──▶  Postgres (5434) schema "mart"  ◀──carrega──  seu pipeline (staging → mart)
-   dashboard                 6 tabelas + 1 view                          sql/10_marts_from_staging.sql
+INEP/IBGE ─▶ bronze ─▶ dbt (silver, gold_candidate) ─▶ portões ─▶ gold ─▶ Superset (papel dh_bi_reader, só leitura)
+                                                                    └──▶ outputs/ ─▶ Streamlit
 ```
 
-O Superset **só lê o schema `mart`**. O pipeline da equipe termina de popular as tabelas do contrato (`sql/00_marts_ddl.sql`). O dashboard não conhece os dados brutos.
+Nada de camada própria: cada dataset do Superset é uma tabela `gold.*` (`p1_trajetoria_coorte`, `p2_desistencia_curso`, `p2_desistencia_area`, `p3_rede_modalidade_ano`, `p4_*`, `p5_*`, `b1_desertos_municipio`, `b2_*`, `controle_atualizacao`). Quando o pipeline publica uma nova Gold (troca atômica de schema) ou faz `rollback`, o dashboard passa a mostrar a nova versão sem reimportar nada: a publicação refaz o `GRANT SELECT` ao `dh_bi_reader`.
 
-## Subir (precisa do Docker Desktop aberto)
+## Subir (Windows, PowerShell)
 
-Com dados **sintéticos de demonstração** (para ver tudo funcionando já):
+Pré-requisito: o warehouse de pé e a Gold publicada.
 
-```bash
-docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d --build
+```powershell
+.\scripts\dh.ps1 up-lite
+.\scripts\dh.ps1 pipeline
+cd superset
+powershell -ExecutionPolicy Bypass -File .\up.ps1
 ```
 
-Sem dados (marts vazios, esperando o pipeline):
+O `up.ps1` lê a senha do `dh_bi_reader` no `.env` da raiz (gerado por `dh.ps1 env`), grava um `superset/.env` (fora do Git) com uma chave e uma senha de `admin` aleatórias, sobe Superset + um Postgres só de metadados e imprime o endereço e a senha. Abra **http://localhost:8088**. A primeira abertura demora (o Superset sobe e importa o dashboard); depois cada tela responde em milissegundos.
 
-```bash
-docker compose up -d --build
-```
+Visitantes sem login conseguem **ler** (papel `Public` com acesso aos 13 datasets). Quem edita entra como `admin`.
 
-Abra **http://localhost:8088** (usuário `admin`, senha `admin`). O dashboard é importado sozinho no primeiro boot. A primeira abertura demora ~20–30 s (o Superset sobe e o Postgres esquenta). Link do dashboard: `http://localhost:8088/superset/dashboard/rota-do-diploma/`.
+Em Linux/macOS ou sem PowerShell: crie `superset/.env` com `SUPERSET_SECRET_KEY`, `SUPERSET_ADMIN_PASSWORD`, `WAREHOUSE_BI_PASSWORD`, `WAREHOUSE_NETWORK` (padrão `datahack_warehouse`) e `WAREHOUSE_DB`, e rode `docker compose up -d --build` nesta pasta.
 
-Visitantes sem login conseguem **ler** (`PUBLIC_ROLE_LIKE = "Gamma"`). Troque a senha do `admin` e a `SUPERSET_SECRET_KEY` se for expor na internet.
+## Como o Superset chega ao warehouse
 
-## Trocar os dados sintéticos pelos reais
-
-1. O pipeline da equipe carrega os brutos em tabelas `stg.*` no Postgres `rota` (porta 5434, usuário/senha `rota`). Os nomes de colunas esperados estão no cabeçalho de `sql/10_marts_from_staging.sql`. Códigos como **texto**.
-2. Rode a transformação (idempotente, pode repetir):
-
-```bash
-docker compose exec -T db psql -U rota -d rota -v ON_ERROR_STOP=1 -f - < sql/10_marts_from_staging.sql
-```
-
-3. Confira `mart.qualidade_checks` (aparece na aba "Fontes e metodologia"). **Antes de confiar nos números**, valide os 6 pontos do fim de `../docs/ANALISE_ROTA_DO_DIPLOMA.md` (escala das taxas TDA/TCA/TAP, "desistência inclui transferência?", etc.).
-4. Gere o pacote **sem** a faixa "dados demonstrativos" e reimporte:
-
-```bash
-node build_bundle.js
-docker compose exec -T superset python /app/reimport.py --force
-```
-
-## Extração para o repositório (regra do pitch fora da máquina)
-
-```bash
-sh export_outputs.sh
-```
-
-Grava `outputs/superset/mart_*.csv` (agregados, bem abaixo de 100 MB; vão para o Git). Em qualquer máquina com Docker:
-
-```bash
-docker compose up -d --build && sh load_outputs.sh
-```
+- O container entra na rede Docker do warehouse (`${COMPOSE_PROJECT_NAME}_warehouse`, padrão `datahack_warehouse`) e conecta em `warehouse:5432` com o papel **`dh_bi_reader`** (somente leitura, `search_path = gold`, timeout de 120 s). Não há acesso a bronze, silver ou ops.
+- A senha **nunca vai no pacote nem no Git**: o `docker/reimport.py` cria/atualiza a conexão a cada subida, a partir de `WAREHOUSE_BI_PASSWORD`.
 
 ## Editar o dashboard
 
-- **Pela interface**: edite à vontade. Para guardar a mudança no repositório: dashboard › ⋯ › Exportar. Mas atenção: `reimport.py --force` **apaga e recria** a partir do `rota_do_diploma.zip`.
-- **Pelo código**: edite `build_bundle.js` (gráficos, métricas, filtros, textos) e rode `node build_bundle.js` + `reimport.py --force`. Os UUIDs são derivados dos nomes, então é determinístico.
-- O import padrão do Superset só sobrescreve o dashboard, **não** os gráficos/datasets existentes. Por isso o `--force`.
+- **Pela interface:** edite à vontade como `admin`. Para guardar no repositório: dashboard › ⋯ › Exportar. Atenção: `reimport.py --force` **apaga e recria** a partir do `bundle/rota_do_diploma.zip`.
+- **Pelo código:** edite `build_bundle.js` (métricas, gráficos, filtros, textos), rode `node build_bundle.js` e depois:
 
-## Para a nuvem (pitch em outra sala)
-
-```bash
-ROTA_DB_URI="postgresql+psycopg2://USUARIO:SENHA@HOST:5432/BANCO" node build_bundle.js
+```powershell
+docker compose exec -T superset python /app/reimport.py --force
 ```
 
-Suba o container `superset` em uma VM (ou use Preset) e o Postgres em Neon/Supabase; rode `sql/00_marts_ddl.sql` e `sh load_outputs.sh` adaptado ao host. Teste na rede do evento. **Leve o plano B** (PDF/vídeo) mesmo assim.
+O import padrão do Superset só sobrescreve o dashboard, **não** gráficos/datasets já existentes; por isso o `--force`. Os UUIDs são derivados dos nomes (determinístico).
+
+## Pitch fora da máquina da equipe
+
+O guia exige que o dashboard funcione sem o banco local. O Streamlit lê `outputs/`. O Superset precisa de servidor: o caminho mais simples é **levar o notebook da equipe** com `warehouse` e `up.ps1` de pé (o guia permite notebook próprio; teste o HDMI). Leve o **plano B** (PDF com prints de cada aba ou vídeo de 1–2 min) de qualquer forma: sem ele, −3 pontos.
+
+## Decisões de modelagem que valem no pitch
+
+- **Taxa ponderada.** A Gold já entrega taxas em %. Ao reagregar (filtros que juntam linhas) o painel pondera pelos ingressantes: `SUM(taxa × ingressantes) / SUM(ingressantes)`. Nunca média simples de taxas.
+- **Células pequenas.** A regra (< 10 alunos) é aplicada pelo dbt: o painel só vê o que já foi mascarado. Rankings só com 30+ ingressantes (`is_elegivel_ranking`).
+- **Cor presa à entidade.** Concluíram azul, Saíram rosa, Em curso cinza, em todos os gráficos (paleta UNIVAG).
+- **Filtros nativos casam por nome de coluna** entre datasets, e cada um tem escopo por aba (Coorte: Visão geral, P1, P2; Ano do curso: só as áreas do P2; Rede/Modalidade/Área/Instituição onde a Gold tem a coluna; Município: B1). Matrizes que comparam coortes são excluídas do filtro de coorte de propósito.
+- **Evasão anual (Censo) e desistência acumulada (Trajetória) nunca no mesmo gráfico.**
 
 ## Estrutura
 
 | Arquivo | Para quê |
 |---|---|
-| `sql/00_marts_ddl.sql` | Contrato: tabelas `mart.*` (grão, chaves, colunas) |
-| `sql/10_marts_from_staging.sql` | staging → mart (idempotente, com checagens) |
-| `sql/90_demo_seed.sql` | Dados sintéticos (só demonstração) |
-| `build_bundle.js` | Gera `bundle/rota_do_diploma.zip` (datasets, métricas, 50 gráficos, filtros, layout) |
-| `docker/init.sh`, `docker/reimport.py` | Boot e (re)importação |
-| `superset_config.py` | pt-BR, paleta UNIVAG, acesso público, formato numérico `1.234,5` |
-| `export_outputs.sh`, `load_outputs.sh` | Marts ↔ `outputs/superset/*.csv` |
-
-## Decisões de modelagem que valem no pitch
-
-- **Taxa ponderada**: cada `mart` guarda alunos estimados (`n_* = taxa × ingressantes`); a métrica é `SUM(n_*) / SUM(ingressantes)`. Nunca média de taxas.
-- **Célula pequena < 10**: suprimida por `HAVING` em cada gráfico (a regra mora na consulta, não na tela).
-- **Cor presa à entidade**: Concluíram azul, Saíram rosa, Em curso cinza, em todos os gráficos.
-- **Filtros nativos casam por nome de coluna** entre datasets; por isso `cpc_curso` usa `coorte_cpc` (se fosse `coorte`, o filtro de coorte zeraria o gráfico de CPC).
-- **Evasão anual (Censo)** e **desistência acumulada (Trajetória)** nunca aparecem no mesmo gráfico.
+| `build_bundle.js` | Gera `bundle/rota_do_diploma.zip` (13 datasets sobre a Gold, métricas, 54 gráficos, filtros, layout) |
+| `bundle/rota_do_diploma.zip` | O pacote de importação (a pasta desempacotada fica fora do Git) |
+| `docker-compose.yml`, `Dockerfile` | Superset + Postgres de metadados, na rede do warehouse |
+| `up.ps1` | Gera `superset/.env` a partir do `.env` da raiz e sobe tudo |
+| `docker/init.sh`, `docker/reimport.py` | Boot, conexão com o warehouse, (re)importação e acesso público |
+| `superset_config.py` | pt-BR, paleta UNIVAG, acesso anônimo de leitura, formato numérico `1.234,5` |
 
 ## Problemas comuns
 
-- *"Waiting on Rota do Diploma (mart)"* por muito tempo: o Postgres ainda esquentando; aguarde ou recarregue.
-- *Importação falhou no boot*: `docker compose logs superset`; rode `reimport.py --force` para ver a mensagem.
-- *Alterei o DDL e nada mudou*: o init do Postgres só roda na criação do volume. `docker compose down -v` apaga tudo (inclusive dados carregados).
+- *"Waiting on Warehouse · gold" por muito tempo:* confira se a Gold existe (`dh.ps1 pipeline`) e se a rede `datahack_warehouse` está de pé (`docker network ls`).
+- *Falha ao conectar:* `docker compose logs superset`; a senha do `dh_bi_reader` no `superset/.env` precisa ser a do `.env` da raiz. Rode `up.ps1` de novo para sincronizar.
+- *Gráfico vazio no P5 ou B1:* a fonte correspondente (Enade 2025, IBGE 9514) ainda não foi carregada; veja `controle_atualizacao` na aba "Fontes e metodologia".

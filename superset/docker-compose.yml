@@ -1,38 +1,44 @@
-# Rota do Diploma · Superset + Postgres (camada analítica "mart")
-#   docker compose up -d --build                  -> sobe vazio (marts criados, sem dados)
-#   docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d --build
-#                                                  -> sobe com dados SINTÉTICOS de demonstração
-# Superset: http://localhost:8088  (admin / admin)   ·  Postgres: localhost:5434 (rota / rota / rota)
-name: rota-do-diploma
+# Superset da Rota do Diploma, lendo o schema GOLD do warehouse (Postgres do repositório) com o papel dh_bi_reader.
+#   powershell -File up.ps1          (gera superset/.env a partir do ../.env e sobe tudo)
+# O warehouse precisa estar de pé (scripts\dh.ps1 up-lite). Superset: http://localhost:8088
+name: rota-superset
 services:
-  db:
+  metadata:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: rota
-      POSTGRES_PASSWORD: rota
-      POSTGRES_DB: rota
-    ports: ["5434:5432"]
+      POSTGRES_USER: superset
+      POSTGRES_PASSWORD: superset
+      POSTGRES_DB: superset
     volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./docker/00_superset_db.sql:/docker-entrypoint-initdb.d/00_superset_db.sql:ro
-      - ./sql/00_marts_ddl.sql:/docker-entrypoint-initdb.d/10_marts_ddl.sql:ro
+      - metadata-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U rota -d rota"]
+      test: ["CMD-SHELL", "pg_isready -U superset -d superset"]
       interval: 3s
       retries: 30
   superset:
     build: .
     depends_on:
-      db: { condition: service_healthy }
-    ports: ["8088:8088"]
+      metadata: { condition: service_healthy }
+    ports: ["${SUPERSET_PORT:-8088}:8088"]
     environment:
-      SUPERSET_SECRET_KEY: troque-esta-chave-em-producao-0123456789abcdef0123456789
-      SUPERSET_DB_URI: postgresql+psycopg2://rota:rota@db:5432/superset
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY:?rode up.ps1 (gera o superset/.env)}
+      SUPERSET_ADMIN_PASSWORD: ${SUPERSET_ADMIN_PASSWORD:?rode up.ps1 (gera o superset/.env)}
+      SUPERSET_DB_URI: postgresql+psycopg2://superset:superset@metadata:5432/superset
+      WAREHOUSE_HOST: ${WAREHOUSE_HOST:-warehouse}
+      WAREHOUSE_PORT: ${WAREHOUSE_INTERNAL_PORT:-5432}
+      WAREHOUSE_DB: ${WAREHOUSE_DB:-datahack}
+      WAREHOUSE_BI_USER: ${WAREHOUSE_BI_USER:-dh_bi_reader}
+      WAREHOUSE_BI_PASSWORD: ${WAREHOUSE_BI_PASSWORD:?rode up.ps1 (copia do ../.env)}
     volumes:
       - ./superset_config.py:/app/pythonpath/superset_config.py:ro
       - ./docker/init.sh:/app/init.sh:ro
       - ./docker/reimport.py:/app/reimport.py:ro
       - ./bundle:/bundle:ro
+    networks: [default, warehouse]
     command: ["sh", "/app/init.sh"]
+networks:
+  warehouse:
+    external: true
+    name: ${WAREHOUSE_NETWORK:-datahack_warehouse}
 volumes:
-  pgdata:
+  metadata-data:
