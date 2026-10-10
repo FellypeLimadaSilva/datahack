@@ -1,6 +1,102 @@
 version: 1
 
 sources:
+  - name: censo_cursos
+    kind: file
+    description: >-
+      Censo da Educação Superior, cadastro de cursos (curso x município de oferta x ano), 2021-2024.
+      Recorte MT na extração (SG_UF): o desafio é de Mato Grosso e o arquivo nacional tem 40x o volume.
+    owner: equipe
+    tags: [inep, censo, p3, b1, b2]
+    load_strategy: append
+    chunk_size: 50000
+    transforms:
+      - { op: filter, column: sg_uf, operator: eq, value: MT }
+    file:
+      path: inep/censo
+      include: ["microdados_censo_da_educacao_superior_*.zip"]
+      zip_member_pattern: "*MICRODADOS_CADASTRO_CURSOS_*.CSV"
+      format: csv
+      sep: ";"
+      encoding: cp1252
+
+  - name: censo_ies
+    kind: file
+    description: >-
+      Censo da Educação Superior, cadastro de instituições (IES x ano), Brasil. O nome do arquivo
+      muda entre os anos (CADASTRO_IES em 2021, ED_SUP_IES depois); o padrão cobre os dois.
+    owner: equipe
+    tags: [inep, censo]
+    load_strategy: append
+    file:
+      path: inep/censo
+      include: ["microdados_censo_da_educacao_superior_*.zip"]
+      zip_member_pattern: "*_IES_*.CSV"
+      format: csv
+      sep: ";"
+      encoding: cp1252
+
+  - name: trajetoria
+    kind: file
+    description: >-
+      Indicadores de Trajetória (curso x coorte x ano de referência), um zip por coorte 2015-2020
+      acompanhada até 2024. Cabeçalho na linha 9 e notas de rodapé tratados; recorte MT (CO_UF 51).
+    owner: equipe
+    tags: [inep, trajetoria, p1, p2, p4, p5]
+    load_strategy: append
+    transforms:
+      - { op: filter, column: co_uf, operator: eq, value: "51" }
+    file:
+      path: inep/trajetoria
+      include: ["indicadores_trajetoria_es_*.zip"]
+      zip_member_pattern: "*.xlsx"
+      format: xlsx
+      skip_rows: auto
+      drop_note_rows: true
+      sheet_name: auto
+
+  - name: cpc
+    kind: file
+    description: Conceito Preliminar de Curso 2021-2023, Brasil (curso).
+    owner: equipe
+    tags: [inep, qualidade, p4]
+    load_strategy: append
+    file:
+      path: inep/qualidade
+      include: ["cpc_*.xlsx"]
+      format: xlsx
+      skip_rows: auto
+      drop_note_rows: true
+      sheet_name: auto
+
+  - name: igc
+    kind: file
+    description: Índice Geral de Cursos 2021-2023, Brasil (instituição).
+    owner: equipe
+    tags: [inep, qualidade]
+    load_strategy: append
+    file:
+      path: inep/qualidade
+      include: ["igc_*.xlsx"]
+      format: xlsx
+      skip_rows: auto
+      drop_note_rows: true
+      sheet_name: auto
+
+  - name: enade_licenciaturas
+    kind: file
+    description: Conceito Enade 2025 das Licenciaturas (curso).
+    owner: equipe
+    tags: [inep, qualidade, p5]
+    load_strategy: append
+    file:
+      path: inep/qualidade
+      include: ["conceito_enade_licenciaturas*.xlsx"]
+      format: xlsx
+      skip_rows: auto
+      drop_note_rows: true
+      sheet_name: auto
+
   - name: api_exemplo_pedidos
     kind: api
     enabled: false

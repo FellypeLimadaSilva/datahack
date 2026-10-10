@@ -279,6 +279,10 @@ def _stats(values: list[str | None]) -> ColumnStats:
     )
     counts["bool_ok"] = sum(v.lower() in {"sim", "não", "nao", "true", "false"} for v in present)
     counts["eleven"] = sum(len(re.sub(r"\D", "", v)) == 11 for v in present)
+    counts["num_auto"] = sum(
+        bool(re.search(patterns["num_ok"], v.replace(".", "").replace(",", ".") if "," in v else v))
+        for v in present
+    )
     counts["midnight"] = sum(bool(re.search(r"[ T]00:00(:00)?$", v)) for v in present)
     counts["json_ok"] = sum(v.startswith(("[", "{")) for v in present)
     assert set(counts) == set(CHECKS)
@@ -304,6 +308,7 @@ def _stats(values: list[str | None]) -> ColumnStats:
         ("valor", ["R$ 1.234,56", "7,00", "10"], ("numeric", ",")),
         ("preco", ["10.5", "3"], ("numeric", ".")),
         ("milhar", ["1.234", "2.000"], ("numeric", ".")),
+        ("proporcao", ["0,923076923", "0.5", "1"], ("numeric", "auto")),
         ("data", ["31/12/2025", "1/2/2026"], ("date", "dmy")),
         ("dia", ["2026-01-31"], ("date", "iso")),
         ("criado", ["2026-01-01T10:00:00Z"], ("timestamptz", "iso")),

@@ -10,7 +10,15 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def test_repository_catalogs_are_valid():
     templates = load_catalog(ROOT / "config" / "sources.yml")
-    assert {s.name for s in templates.enabled()} == {"ibge_populacao_idade_mt"}
+    assert {s.name for s in templates.enabled()} == {
+        "censo_cursos",
+        "censo_ies",
+        "trajetoria",
+        "cpc",
+        "igc",
+        "enade_licenciaturas",
+        "ibge_populacao_idade_mt",
+    }
     examples = load_catalog(ROOT / "config" / "examples.yml")
     names = {s.name for s in examples.enabled()}
     assert names == {"lojas", "produtos", "vendas", "metas", "estoque_foto"}

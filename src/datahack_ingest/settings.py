@@ -46,7 +46,7 @@ class Settings:
     app_name: str = "datahack-ingest"
     log_format: str = "text"
     log_level: str = "INFO"
-    examples_enabled: bool = True
+    examples_enabled: bool = False
     examples_catalog_path: Path = Path("config/examples.yml")
     inbox_enabled: bool = True
     inbox_path: str = "inbox"
@@ -77,7 +77,7 @@ class Settings:
             pg_sslmode=_env("WAREHOUSE_SSLMODE", "prefer"),
             log_format=_env("DH_LOG_FORMAT", "text"),
             log_level=_env("DH_LOG_LEVEL", "INFO"),
-            examples_enabled=_flag("DH_EXAMPLES", True),
+            examples_enabled=_flag("DH_EXAMPLES", False),
             examples_catalog_path=Path(_env("DH_EXAMPLES_CATALOG", "config/examples.yml")),
             inbox_enabled=_flag("DH_INBOX_ENABLED", True),
             inbox_path=_env("DH_INBOX", "inbox"),

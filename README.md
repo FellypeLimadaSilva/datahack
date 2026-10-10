@@ -141,7 +141,7 @@ Nada precisa ser usado por inteiro. O mínimo é PostgreSQL + `datahack-ingest` 
 
 | Componente | Desligar com |
 |---|---|
-| Dados e modelos de exemplo (varejo) | `DH_EXAMPLES=false` |
+| Dados e modelos de exemplo (varejo) | desligados por padrão; `DH_EXAMPLES=true` para a demonstração |
 | Descoberta automática da inbox | `DH_INBOX_ENABLED=false` |
 | Silver/Gold automáticas | `DH_AUTO_MODELS=false` |
 | Airflow | não subir os serviços `airflow-*`; usar `dh.ps1 pipeline` |

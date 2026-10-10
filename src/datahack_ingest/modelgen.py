@@ -91,6 +91,10 @@ CHECKS: dict[str, str] = {
     "cpf_fmt": r"{v} ~ '^\d{{3}}\.\d{{3}}\.\d{{3}}-\d{{2}}$'",
     "phone": (r"{v} ~ '^(\+?55\s?)?\(?\d{{2}}\)?\s?9?\d{{4}}[-\s]?\d{{4}}$' AND {v} ~ '[()+\s-]'"),
     "eleven": r"regexp_replace({v}, '\D', '', 'g') ~ '^\d{{11}}$'",
+    "num_auto": (
+        r"(CASE WHEN {m} LIKE '%,%' THEN replace(replace({m}, '.', ''), ',', '.') ELSE {m} END)"
+        r" ~ '^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$'"
+    ),
     "midnight": r"{v} ~ '^\d{{4}}-\d{{2}}-\d{{2}}[ T]00:00(:00(\.0+)?)?$'",
     "json_ok": r"{v} ~ '^\s*[\[{{]' AND pg_input_is_valid({v}, 'jsonb')",
 }
@@ -103,6 +107,7 @@ class ColumnStats:
     nd: int
     maxlen: int
     counts: dict[str, int]
+    digits_maxlen: int = 0
 
     def ratio(self, key: str) -> float:
         return self.counts.get(key, 0) / self.nn if self.nn else 0.0
@@ -171,12 +176,15 @@ TYPE_RULES: tuple[tuple[str, str, str | None], ...] = (
     ("ts_dmy", "timestamp", "dmy"),
     ("br_ok", "numeric", ","),
     ("num_ok", "numeric", "."),
+    ("num_auto", "numeric", "auto"),
 )
 
 
 def _is_code(name: str, st: ColumnStats, threshold: float) -> bool:
     return st.ratio("digits") >= threshold and (
-        st.counts.get("lead0", 0) > 0 or st.maxlen >= 15 or bool(CODE_NAME.search(name))
+        st.counts.get("lead0", 0) > 0
+        or (st.digits_maxlen or st.maxlen) >= 15
+        or bool(CODE_NAME.search(name))
     )
 
 
@@ -629,6 +637,7 @@ class ModelGenerator:
                     sql.SQL(f"count({v})"),
                     sql.SQL(f"count(DISTINCT {v})"),
                     sql.SQL(f"coalesce(max(length({v})), 0)"),
+                    sql.SQL(f"coalesce(max(length({v})) FILTER (WHERE {v} ~ '^\\d+$'), 0)"),
                 ]
                 aggregates += [
                     sql.SQL(f"count(*) FILTER (WHERE {CHECKS[k].format(v=v, m=m)})") for k in CHECKS
@@ -642,7 +651,7 @@ class ModelGenerator:
             )
             values = conn.execute(query).fetchone()
             sample_rows = values[0]
-            width = 3 + len(CHECKS)
+            width = 4 + len(CHECKS)
             for i, name in enumerate(batch):
                 chunk = values[1 + i * width : 1 + (i + 1) * width]
                 stats[name] = ColumnStats(
@@ -650,7 +659,8 @@ class ModelGenerator:
                     nn=chunk[0],
                     nd=chunk[1],
                     maxlen=chunk[2],
-                    counts=dict(zip(CHECKS, chunk[3:], strict=True)),
+                    digits_maxlen=chunk[3],
+                    counts=dict(zip(CHECKS, chunk[4:], strict=True)),
                 )
         return stats, sample_rows
 

@@ -52,7 +52,7 @@ models:
         +grants:
           select: ["{{ env_var('DBT_BI_ROLE', 'dh_bi_reader') }}"]
     examples:
-      +enabled: "{{ env_var('DH_EXAMPLES', 'true') | lower in ['true', '1', 'yes', 'sim', 'on'] }}"
+      +enabled: "{{ env_var('DH_EXAMPLES', 'false') | lower in ['true', '1', 'yes', 'sim', 'on'] }}"
       +tags: ["exemplo"]
       silver:
         +schema: silver
@@ -70,12 +70,12 @@ models:
 sources:
   datahack:
     examples:
-      +enabled: "{{ env_var('DH_EXAMPLES', 'true') | lower in ['true', '1', 'yes', 'sim', 'on'] }}"
+      +enabled: "{{ env_var('DH_EXAMPLES', 'false') | lower in ['true', '1', 'yes', 'sim', 'on'] }}"
 
 snapshots:
   datahack:
     examples:
-      +enabled: "{{ env_var('DH_EXAMPLES', 'true') | lower in ['true', '1', 'yes', 'sim', 'on'] }}"
+      +enabled: "{{ env_var('DH_EXAMPLES', 'false') | lower in ['true', '1', 'yes', 'sim', 'on'] }}"
 
 seeds:
   datahack:
@@ -86,4 +86,4 @@ data_tests:
   datahack:
     +store_failures: false
     examples:
-      +enabled: "{{ env_var('DH_EXAMPLES', 'true') | lower in ['true', '1', 'yes', 'sim', 'on'] }}"
+      +enabled: "{{ env_var('DH_EXAMPLES', 'false') | lower in ['true', '1', 'yes', 'sim', 'on'] }}"

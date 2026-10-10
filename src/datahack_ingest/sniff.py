@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import io
+import re
 from collections import Counter
 from typing import IO
 
@@ -67,15 +68,29 @@ def _filled(value: object) -> bool:
     return value is not None and str(value).strip() != ""
 
 
+_NUMERIC = re.compile(r"^[+-]?\d+([.,]\d+)?$")
+
+
+def _numeric_like(value: object) -> bool:
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, int | float):
+        return True
+    return bool(_NUMERIC.match(str(value).strip()))
+
+
 def detect_header_row(rows: list[list[object]] | list[tuple[object, ...]]) -> int:
     counts = [sum(1 for v in r if _filled(v)) for r in rows]
     if not counts or max(counts) < 2:
         return 0
     threshold = max(2, int(max(counts) * 0.6 + 0.999))
-    for i, count in enumerate(counts):
-        if count >= threshold:
-            return i
-    return 0
+    wide = [i for i, count in enumerate(counts) if count >= threshold]
+    for i in wide:
+        filled = [v for v in rows[i] if _filled(v)]
+        if sum(_numeric_like(v) for v in filled) / len(filled) >= 0.3:
+            previous = [j for j in wide if j < i]
+            return previous[-1] if previous else i
+    return wide[0] if wide else 0
 
 
 def detect_csv_header_row(text: str, delimiter: str, quotechar: str = '"') -> int:

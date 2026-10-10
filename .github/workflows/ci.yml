@@ -68,6 +68,7 @@ jobs:
       DH_LOG_FORMAT: json
       DH_INBOX_SETTLE_SECONDS: "0"
       DH_CATALOG: tests/fixtures/catalog_offline.yml
+      DH_EXAMPLES: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

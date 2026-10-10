@@ -78,7 +78,8 @@ HINTS = {
 SIDECAR = "_source.yml"
 ROOT_OVERRIDES = "_sources.yml"
 DOC_NAME = re.compile(
-    r"dicion|leia[\s_-]?me|readme|manual|layout|nota[\s_-]?t[eé]cnica|questionari|instruc"
+    r"dicion|leia[\s_-]?me|readme|manual|layout|nota[\s_-]?t[eé]cnica|nota[\s_-]?informativa"
+    r"|questionari|instruc|^md5|^sha\d*[_.-]|checksum|^thumbs\.db$"
 )
 YEAR = re.compile(r"(?<![0-9])(19|20)[0-9]{2}(?![0-9])")
 GLOB_CHARS = set("*?[]{}")

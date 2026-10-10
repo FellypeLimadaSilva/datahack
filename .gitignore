@@ -73,3 +73,6 @@ dbt/models/auto/
 !outputs/**
 outputs/.tmp_*
 images/
+
+!data/landing/inep/
+!data/landing/inep/.gitkeep

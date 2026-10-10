@@ -14,6 +14,8 @@
     {%- set stripped = "regexp_replace(" ~ dh_clean_text(col) ~ ", '(R\\$|\\s)', '', 'g')" -%}
     {%- if decimal == ',' -%}
         {%- set expr = "replace(replace(" ~ stripped ~ ", '.', ''), ',', '.')" -%}
+    {%- elif decimal == 'auto' -%}
+        {%- set expr = "case when " ~ stripped ~ " like '%,%' then replace(replace(" ~ stripped ~ ", '.', ''), ',', '.') else " ~ stripped ~ " end" -%}
     {%- else -%}
         {%- set expr = stripped -%}
     {%- endif -%}
