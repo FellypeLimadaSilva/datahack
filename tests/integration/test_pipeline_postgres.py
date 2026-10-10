@@ -169,11 +169,10 @@ def test_volume_check_fail_blocks_full_reload(env):
         c.execute("DELETE FROM ops.data_quality_events WHERE source = %s", (name,))
 
 
-def test_etl_transforms_before_load(env, monkeypatch):
+def test_etl_transforms_before_load(env):
     s, d, name = env
-    monkeypatch.setenv("DBT_PII_SALT", "salt")
     (d / "c.csv").write_text(
-        "id,cpf,status,cartao\n1,111.222.333-44,ativo,4111111111111111\n2,555,inativo,1\n",
+        "id,sg_uf,interno\n1,MT,x\n2,SP,y\n3,MT,z\n",
         encoding="utf-8",
     )
     src = _file_source(
@@ -181,24 +180,20 @@ def test_etl_transforms_before_load(env, monkeypatch):
         "c.csv",
         load_strategy="full",
         transforms=[
-            {"op": "filter", "column": "status", "operator": "eq", "value": "ativo"},
-            {"op": "hash_columns", "columns": ["cpf"], "digits_only": True},
-            {"op": "mask_columns", "columns": ["cartao"], "keep_last": 4},
-            {"op": "drop_columns", "columns": ["status"]},
+            {"op": "filter", "column": "sg_uf", "operator": "eq", "value": "MT"},
+            {"op": "drop_columns", "columns": ["interno"]},
         ],
     )
     r = run_source(src, s)
-    assert (r.rows_extracted, r.rows_filtered, r.rows_loaded) == (2, 1, 1)
-    row = _rows(s, f'SELECT cpf, cartao FROM bronze."{name}"')[0]
-    assert len(row[0]) == 64 and "111" not in row[0]
-    assert row[1] == "************1111"
+    assert (r.rows_extracted, r.rows_filtered, r.rows_loaded) == (3, 1, 2)
+    assert _rows(s, f'SELECT id FROM bronze."{name}" ORDER BY id') == [("1",), ("3",)]
     cols = {
         r[0]
         for r in _rows(
             s, "SELECT column_name FROM information_schema.columns WHERE table_name = %s", name
         )
     }
-    assert "status" not in cols
+    assert "interno" not in cols
     assert _rows(s, "SELECT rows_filtered FROM ops.ingestion_runs WHERE source = %s", name) == [
-        (1,)
+        (2 - 1,)
     ]

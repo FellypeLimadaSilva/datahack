@@ -4,8 +4,6 @@ config-version: 2
 profile: datahack
 
 model-paths: ["models"]
-analysis-paths: ["analyses"]
-test-paths: ["tests"]
 macro-paths: ["macros"]
 clean-targets: ["target", "dbt_packages", "logs"]
 

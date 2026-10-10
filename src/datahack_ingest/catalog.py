@@ -8,7 +8,6 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 IDENT = r"^[a-z][a-z0-9_]{0,62}$"
-CALLABLE_REF = r"^[A-Za-z_][A-Za-z0-9_\.]*:[A-Za-z_][A-Za-z0-9_]*$"
 
 LoadStrategy = Literal["full", "append"]
 Ident = Annotated[str, Field(pattern=IDENT)]
@@ -31,20 +30,6 @@ class SelectColumns(_Strict):
 class RenameColumns(_Strict):
     op: Literal["rename"]
     mapping: dict[Ident, Ident]
-
-
-class HashColumns(_Strict):
-    op: Literal["hash_columns"]
-    columns: list[Ident]
-    salt_env: str = "DBT_PII_SALT"
-    digits_only: bool = False
-
-
-class MaskColumns(_Strict):
-    op: Literal["mask_columns"]
-    columns: list[Ident]
-    keep_last: Annotated[int, Field(ge=0)] = 4
-    char: Annotated[str, Field(min_length=1, max_length=1)] = "*"
 
 
 class FilterRows(_Strict):
@@ -82,39 +67,8 @@ class FilterRows(_Strict):
         return self
 
 
-class Deduplicate(_Strict):
-    op: Literal["deduplicate"]
-    keys: list[Ident]
-    keep: Literal["first", "last"] = "last"
-
-
-class AddConstant(_Strict):
-    op: Literal["add_constant"]
-    column: Ident
-    value: str
-
-
-class TextCase(_Strict):
-    op: Literal["trim", "upper", "lower"]
-    columns: list[Ident]
-
-
-class PythonHook(_Strict):
-    op: Literal["python"]
-    callable: Annotated[str, Field(pattern=CALLABLE_REF)]
-
-
 TransformStep = Annotated[
-    DropColumns
-    | SelectColumns
-    | RenameColumns
-    | HashColumns
-    | MaskColumns
-    | FilterRows
-    | Deduplicate
-    | AddConstant
-    | TextCase
-    | PythonHook,
+    DropColumns | SelectColumns | RenameColumns | FilterRows,
     Field(discriminator="op"),
 ]
 
@@ -135,7 +89,7 @@ class VolumeCheck(_Strict):
         return self
 
 
-FileFormat = Literal["csv", "jsonl", "json", "parquet", "xlsx", "xml", "fixed_width", "avro", "orc"]
+FileFormat = Literal["csv", "xlsx"]
 
 
 DEFAULT_EXCLUDE = [".*", "~$*", "*.tmp", "*.part", "*.crdownload", "_source.yml", "_sources.yml"]
@@ -156,94 +110,24 @@ class FileOptions(_Strict):
     quotechar: str = '"'
     skip_rows: Annotated[int, Field(ge=0)] | Literal["auto"] = 0
     drop_note_rows: bool = False
-    records_path: str | None = None
     sheet_name: str | int = 0
-    flatten_max_level: int = 1
-    record_tag: str | None = None
-    widths: list[Annotated[int, Field(gt=0)]] | None = None
-    names: list[str] | None = None
 
     @model_validator(mode="after")
     def _format_rules(self) -> FileOptions:
         if self.sep != "auto" and len(self.sep) != 1 and self.sep != r"\t":
             raise ValueError("sep deve ser um caractere ou 'auto'")
-        if self.skip_rows == "auto" and self.format not in {"csv", "xlsx"}:
-            raise ValueError("skip_rows auto só se aplica a csv e xlsx")
-        if self.format == "fixed_width":
-            if not self.widths:
-                raise ValueError("format fixed_width exige widths")
-            if self.names and len(self.names) != len(self.widths):
-                raise ValueError("fixed_width: names e widths devem ter o mesmo tamanho")
         return self
-
-
-class ApiAuth(_Strict):
-    type: Literal["none", "bearer", "header", "basic", "oauth2_client_credentials"] = "none"
-    token_env: str | None = None
-    header: str = "X-API-Key"
-    username_env: str | None = None
-    password_env: str | None = None
-    token_url: str | None = None
-    client_id_env: str | None = None
-    client_secret_env: str | None = None
-    scope: str | None = None
-    audience: str | None = None
-    client_auth: Literal["body", "basic"] = "body"
-
-    @model_validator(mode="after")
-    def _oauth_rules(self) -> ApiAuth:
-        if self.type == "oauth2_client_credentials" and not (
-            self.token_url and self.client_id_env and self.client_secret_env
-        ):
-            raise ValueError(
-                "oauth2_client_credentials exige token_url, client_id_env e client_secret_env"
-            )
-        return self
-
-
-class ApiPagination(_Strict):
-    type: Literal["none", "page", "offset", "cursor", "link_header"] = "none"
-    page_param: str = "page"
-    size_param: str = "page_size"
-    page_size: int = 100
-    start_page: int = 1
-    offset_param: str = "offset"
-    limit_param: str = "limit"
-    cursor_param: str = "cursor"
-    next_cursor_path: str | None = None
-    max_pages: int = 100_000
-
-
-class GraphQLOptions(_Strict):
-    query: str
-    variables: dict[str, Any] = {}
-    cursor_variable: str = "after"
-    page_info_path: str | None = None
 
 
 class ApiOptions(_Strict):
     url: str
-    method: Literal["GET", "POST"] = "GET"
     headers: dict[str, str] = {}
     params: dict[str, Any] = {}
-    body: dict[str, Any] | None = None
-    auth: ApiAuth = ApiAuth()
-    pagination: ApiPagination = ApiPagination()
-    graphql: GraphQLOptions | None = None
     records_path: str | None = None
     timeout_seconds: float = 60
     max_retries: int = 5
     verify_tls: bool = True
-    rate_limit_per_second: float | None = None
     flatten_max_level: int = 1
-
-    @model_validator(mode="after")
-    def _graphql_rules(self) -> ApiOptions:
-        if self.graphql and self.pagination.type != "none":
-            raise ValueError("graphql usa paginação própria (page_info_path); remova 'pagination'")
-        if self.graphql and not self.records_path:
-            raise ValueError("graphql exige records_path (ex.: data.pedidos.nodes)")
-        return self
 
 
 class _SourceBase(_Strict):
@@ -257,7 +141,6 @@ class _SourceBase(_Strict):
     load_strategy: LoadStrategy = "append"
     essential_columns: list[Ident] = []
     chunk_size: Annotated[int, Field(ge=100, le=1_000_000)] = 50_000
-    pii_columns: list[str] = []
     transforms: list[TransformStep] = []
     volume_check: VolumeCheck | None = None
 
@@ -318,22 +201,3 @@ def read_catalog_specs(path: str | Path) -> list[dict[str, Any]]:
 
 def load_catalog(path: str | Path) -> Catalog:
     return Catalog.model_validate({"sources": read_catalog_specs(path)})
-
-
-def required_env_vars(source: AnySource) -> list[str]:
-    names: list[str] = []
-    if isinstance(source, ApiSource):
-        a = source.api.auth
-        names += [
-            n
-            for n in (
-                a.token_env,
-                a.username_env,
-                a.password_env,
-                a.client_id_env,
-                a.client_secret_env,
-            )
-            if n
-        ]
-    names += [t.salt_env for t in source.transforms if isinstance(t, HashColumns)]
-    return names

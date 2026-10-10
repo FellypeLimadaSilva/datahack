@@ -1,6 +1,3 @@
-import io
-import json
-
 import pandas as pd
 import pytest
 from openpyxl import Workbook
@@ -8,12 +5,7 @@ from openpyxl import Workbook
 from datahack_ingest.catalog import Catalog
 from datahack_ingest.extractors import ExtractState, build_extractor
 from datahack_ingest.normalize import to_text_frame
-from datahack_ingest.sniff import (
-    detect_delimiter,
-    detect_encoding,
-    infer_json_records_path,
-    infer_xml_record_tag,
-)
+from datahack_ingest.sniff import detect_delimiter, detect_encoding
 
 
 @pytest.mark.parametrize(
@@ -43,28 +35,6 @@ def test_detect_encoding(raw, expected):
 )
 def test_detect_delimiter(text, expected):
     assert detect_delimiter(text) == expected
-
-
-def test_infer_xml_record_tag_prefers_shallowest_repeated_record():
-    xml = (
-        b'<?xml version="1.0"?><lote xmlns="urn:x"><cab><v>1</v></cab>'
-        b'<nota id="1"><item><q>1</q></item><item><q>2</q></item></nota>'
-        b'<nota id="2"><item><q>3</q></item></nota></lote>'
-    )
-    assert infer_xml_record_tag(io.BytesIO(xml)) == "nota"
-
-
-@pytest.mark.parametrize(
-    ("payload", "expected"),
-    [
-        ([{"id": 1}], (True, None)),
-        ({"meta": {"n": 1}, "data": {"items": [{"id": 1}]}}, (False, "data.items")),
-        ({"tags": ["a"], "rows": [{"id": 1}]}, (False, "rows")),
-        ({"id": 1}, (False, None)),
-    ],
-)
-def test_infer_json_records_path(payload, expected):
-    assert infer_json_records_path(io.BytesIO(json.dumps(payload).encode())) == expected
 
 
 def _read(tmp_path, file_opts):

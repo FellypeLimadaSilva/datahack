@@ -34,7 +34,7 @@ jobs:
         run: |
           python scripts/init_env.py
           docker compose config -q
-          docker compose --profile tools --profile cli config -q
+          docker compose --profile cli config -q
       - name: Gitleaks (varredura de segredos no histórico)
         uses: gitleaks/gitleaks-action@v2
         env:
@@ -62,7 +62,6 @@ jobs:
       WAREHOUSE_INGEST_PASSWORD: ci_ingest_pw
       WAREHOUSE_DBT_PASSWORD: ci_dbt_pw
       WAREHOUSE_BI_PASSWORD: ci_bi_pw
-      DBT_PII_SALT: ci_salt
       DBT_PROFILES_DIR: ${{ github.workspace }}/dbt
       DBT_TARGET: dev
       DH_LOG_FORMAT: json

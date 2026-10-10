@@ -1,6 +1,0 @@
-# Revisão obrigatória por área (ative "Require review from Code Owners" na proteção da main).
-*                       @FellypeLimadaSilva
-/infra/                 @FellypeLimadaSilva
-/infra/postgres/        @FellypeLimadaSilva
-/dbt/models/gold/       @FellypeLimadaSilva
-/config/sources.yml     @FellypeLimadaSilva

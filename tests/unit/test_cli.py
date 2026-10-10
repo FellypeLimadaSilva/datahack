@@ -27,16 +27,6 @@ def test_list_json(tmp_path, capsys):
     assert json.loads(capsys.readouterr().out)[0]["name"] == "clientes"
 
 
-def test_validate_reports_missing_secret(tmp_path, monkeypatch, capsys):
-    monkeypatch.delenv("TOKEN_X", raising=False)
-    extra = (
-        "  - name: api_x\n    kind: api\n"
-        "    api: { url: 'https://x', auth: { type: bearer, token_env: TOKEN_X } }\n"
-    )
-    assert main(["--catalog", _catalog(tmp_path, extra), "validate"]) == 2
-    assert "TOKEN_X" in capsys.readouterr().err
-
-
 def test_invalid_catalog_exit_code_2(tmp_path):
     bad = tmp_path / "bad.yml"
     bad.write_text("version: 1\nsources:\n  - name: X Y\n    kind: file\n", encoding="utf-8")
@@ -73,3 +63,15 @@ def test_publish_without_dbt_results_is_rejected_offline(tmp_path):
     report = dbt_gate(tmp_path / "run_results.json", 0)
     assert not report.ok
     assert "run_results" in report.problems[0]
+
+
+def test_validate_lists_files_and_warns_on_missing_required(tmp_path, capsys):
+    extra = (
+        "  - name: falta\n    kind: file\n"
+        "    file: { path: nada, include: ['*.csv'], format: csv }\n"
+    )
+    assert main(["--catalog", _catalog(tmp_path, extra), "validate"]) == 0
+    captured = capsys.readouterr()
+    report = json.loads(captured.out)
+    assert report[0]["files"] == ["a.csv"]
+    assert "falta" in captured.err

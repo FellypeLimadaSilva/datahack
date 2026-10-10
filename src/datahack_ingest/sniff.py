@@ -4,10 +4,6 @@ import csv
 import io
 import re
 from collections import Counter
-from typing import IO
-
-import ijson
-from defusedxml.ElementTree import iterparse
 
 SAMPLE_BYTES = 1024 * 1024
 DELIMITERS = (",", ";", "\t", "|")
@@ -101,57 +97,3 @@ def detect_header_row(rows: list[list[object]] | list[tuple[object, ...]]) -> in
 
 def detect_csv_header_row(text: str, delimiter: str, quotechar: str = '"') -> int:
     return detect_header_row(_sample_records(text, delimiter, quotechar))
-
-
-def infer_xml_record_tag(f: IO[bytes], max_events: int = 50_000) -> str | None:
-    counts: Counter[tuple[int, str]] = Counter()
-    record_like: set[tuple[int, str]] = set()
-    depth = -1
-    root_children: Counter[str] = Counter()
-    try:
-        for n, (event, elem) in enumerate(iterparse(f, events=("start", "end"))):
-            tag = elem.tag.rsplit("}", 1)[-1] if isinstance(elem.tag, str) else str(elem.tag)
-            if event == "start":
-                depth += 1
-                continue
-            key = (depth, tag)
-            counts[key] += 1
-            if len(elem) or elem.attrib:
-                record_like.add(key)
-            if depth == 1:
-                root_children[tag] += 1
-            depth -= 1
-            if depth >= 1:
-                elem.clear()
-            if n >= max_events:
-                break
-    except Exception:
-        if not counts:
-            raise
-    repeated = [
-        (d, -c, t) for (d, t), c in counts.items() if d >= 1 and c >= 2 and (d, t) in record_like
-    ]
-    if repeated:
-        return min(repeated)[2]
-    if root_children:
-        return root_children.most_common(1)[0][0]
-    return None
-
-
-def infer_json_records_path(f: IO[bytes], max_events: int = 200_000) -> tuple[bool, str | None]:
-    previous: tuple[str, str] | None = None
-    for n, (prefix, event, _) in enumerate(ijson.parse(f)):
-        if n == 0 and event == "start_array":
-            return True, None
-        expected_item = f"{previous[0]}.item" if previous and previous[0] else "item"
-        if (
-            previous
-            and previous[1] == "start_array"
-            and event == "start_map"
-            and prefix == expected_item
-        ):
-            return False, previous[0] or None
-        previous = (prefix, event)
-        if n >= max_events:
-            break
-    return False, None

@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from datahack_ingest.catalog import Catalog, load_catalog, required_env_vars
+from datahack_ingest.catalog import Catalog, load_catalog
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -35,6 +35,8 @@ def test_only_full_and_append_strategies():
         Catalog.model_validate({"sources": [_src(load_strategy="merge")]})
     with pytest.raises(ValidationError):
         Catalog.model_validate({"sources": [_src(kind="sql", sql={"url": "sqlite:///x"})]})
+    with pytest.raises(ValidationError):
+        Catalog.model_validate({"sources": [_src(file={"path": "a.json", "format": "json"})]})
 
 
 def test_invalid_identifier_rejected():
@@ -52,18 +54,3 @@ def test_duplicate_target_table_rejected():
         Catalog.model_validate(
             {"sources": [_src(name="a", target_table="t"), _src(name="b", target_table="t")]}
         )
-
-
-def test_required_env_vars_for_api():
-    cat = Catalog.model_validate(
-        {
-            "sources": [
-                {
-                    "name": "a",
-                    "kind": "api",
-                    "api": {"url": "https://x", "auth": {"type": "bearer", "token_env": "TOK"}},
-                },
-            ]
-        }
-    )
-    assert required_env_vars(cat.get("a")) == ["TOK"]

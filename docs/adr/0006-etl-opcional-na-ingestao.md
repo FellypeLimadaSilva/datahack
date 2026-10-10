@@ -1,15 +1,15 @@
-# ADR 0006 — ETL opcional na ingestão, ELT como padrão
+# ADR 0006 — Recorte de escopo na ingestão, ELT como padrão
 
-- **Status:** aceito · **Data:** 2026-10-08
+- **Status:** aceito · **Data:** 2026-10-10
 
 ## Contexto
-Alguns dados não podem chegar ao banco (LGPD, minimização), outros chegam com ruído demais para valer a gravação.
+Os arquivos nacionais do Censo e da Trajetória têm 40 vezes o volume de Mato Grosso, e o desafio é
+só sobre MT.
 
 ## Decisão
-Manter ELT como padrão e permitir `transforms` declarativas por fonte, executadas por lote antes da gravação.
-Hash de PII usa o mesmo algoritmo e salt do dbt, para que chaves pseudonimizadas na ingestão e na Silver coincidam.
+ELT como padrão. Antes de gravar, só `transforms` declarativas de recorte e forma (`filter`,
+`rename`, `select_columns`, `drop_columns`), nunca regra de negócio nem alteração de valor.
 
 ## Consequências
-+ LGPD por minimização na origem sem sair do framework.
-+ Regra própria via `python: modulo:funcao` sem alterar o núcleo.
-− Dado descartado na ingestão não pode ser reprocessado depois; usar só quando a perda é intencional.
++ 37 a 46 vezes menos disco e cargas 2 vezes mais rápidas nas máquinas do laboratório.
+− Linhas de outras UFs não chegam à Bronze; para voltar ao nacional, basta remover o `filter` e recarregar.

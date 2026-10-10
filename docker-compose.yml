@@ -27,7 +27,6 @@ x-airflow-env: &airflow-env
   WAREHOUSE_INGEST_PASSWORD: ${WAREHOUSE_INGEST_PASSWORD:?}
   WAREHOUSE_DBT_PASSWORD: ${WAREHOUSE_DBT_PASSWORD:?}
   WAREHOUSE_BI_PASSWORD: ${WAREHOUSE_BI_PASSWORD:?}
-  DBT_PII_SALT: ${DBT_PII_SALT:?}
   DBT_TARGET: prod
   DBT_PROFILES_DIR: /opt/datahack/dbt
   DBT_PROJECT_DIR: /opt/datahack/dbt
@@ -43,7 +42,6 @@ x-airflow-common: &airflow-common
     <<: *airflow-env
   volumes:
     - ./airflow/dags:/opt/airflow/dags
-    - ./airflow/plugins:/opt/airflow/plugins
     - airflow-logs:/opt/airflow/logs
     - ./src:/opt/datahack/src:ro
     - ./config:/opt/datahack/config:ro
@@ -231,24 +229,6 @@ services:
       warehouse:
         condition: service_healthy
 
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    profiles: [tools]
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@datahack.dev}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:?}
-      PGADMIN_CONFIG_SERVER_MODE: "False"
-      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "True"
-    volumes:
-      - pgadmin-data:/var/lib/pgadmin
-    ports:
-      - "127.0.0.1:${PGADMIN_PORT:-5050}:80"
-    networks: [warehouse]
-    depends_on:
-      warehouse:
-        condition: service_healthy
-    restart: unless-stopped
-
 networks:
   backend:
     name: ${COMPOSE_PROJECT_NAME:-datahack}_backend
@@ -259,4 +239,3 @@ volumes:
   warehouse-data:
   airflow-db-data:
   airflow-logs:
-  pgadmin-data:

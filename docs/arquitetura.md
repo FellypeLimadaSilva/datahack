@@ -156,5 +156,4 @@ com a origem e confere as permissões de leitura da Gold. O CI executa essa veri
 | `dh_bi_reader` | ler `gold` publicada (somente leitura, timeout de 120 s) | ler `gold_candidate`, `gold_previous`, `silver`, `bronze` |
 | `dh_backup` | `pg_dump` (somente leitura) | escrever |
 
-Os dados do desafio são públicos e agregados por curso; não há dado pessoal. O código de hash de
-PII (`hash_columns`, `dh_hash_pii`) fica disponível para fontes futuras.
+Os dados do desafio são públicos e agregados por curso; não há dado pessoal na plataforma.

@@ -4,8 +4,6 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs, urlparse
 
 import pandas as pd
-import pyarrow as pa
-import pyarrow.parquet as pq
 import pytest
 
 from datahack_ingest.catalog import Catalog
@@ -67,62 +65,13 @@ def test_full_strategy_without_files_fails_safe(tmp_path):
         list(build_extractor(src, str(tmp_path)).units(ExtractState(strategy="full")))
 
 
-def test_parquet_ints_with_nulls_stay_ints(tmp_path):
-    table = pa.table(
-        {"id": pa.array([1, None, 3], pa.int64()), "ts": pa.array([0, 1, 2], pa.timestamp("s"))}
-    )
-    pq.write_table(table, tmp_path / "p.parquet")
-    src = _source(
-        {
-            "name": "p",
-            "kind": "file",
-            "chunk_size": 100,
-            "file": {"path": "p.parquet", "format": "parquet"},
-        }
-    )
-    _, df = _collect(build_extractor(src, str(tmp_path)))
-    assert df["id"].tolist() == ["1", None, "3"]
-    assert df["ts"].iloc[0].startswith("1970-01-01 00:00:00")
-
-
-def test_jsonl_and_json_records_path(tmp_path):
-    (tmp_path / "e.jsonl").write_text('{"a": 1}\n\n{"a": 2, "b": {"c": "x"}}\n', encoding="utf-8")
-    src = _source(
-        {
-            "name": "j",
-            "kind": "file",
-            "chunk_size": 100,
-            "file": {"path": "e.jsonl", "format": "jsonl"},
-        }
-    )
-    _, df = _collect(build_extractor(src, str(tmp_path)))
-    assert df["a"].tolist() == ["1", "2"] and df["b_c"].tolist()[1] == "x"
-
-    (tmp_path / "d.json").write_text(
-        json.dumps({"data": {"items": [{"k": 1}, {"k": 2}]}}), encoding="utf-8"
-    )
-    src = _source(
-        {
-            "name": "d",
-            "kind": "file",
-            "chunk_size": 100,
-            "file": {"path": "d.json", "format": "json", "records_path": "data.items"},
-        }
-    )
-    _, df = _collect(build_extractor(src, str(tmp_path)))
-    assert df["k"].tolist() == ["1", "2"]
-
-
 class _Api(BaseHTTPRequestHandler):
     calls: list = []
 
     def do_GET(self):
         q = parse_qs(urlparse(self.path).query)
         _Api.calls.append({"q": q, "auth": self.headers.get("Authorization")})
-        page = int(q.get("page", ["1"])[0])
-        items = [{"id": i} for i in range((page - 1) * 2, (page - 1) * 2 + 2)] if page <= 2 else []
-        if page == 2:
-            items = items[:1]
+        items = [{"id": i} for i in range(3)]
         body = json.dumps({"data": items}).encode()
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
@@ -133,8 +82,7 @@ class _Api(BaseHTTPRequestHandler):
         return
 
 
-def test_api_paginates_with_bearer(monkeypatch):
-    monkeypatch.setenv("TEST_TOKEN", "segredo")
+def test_api_get_with_records_path_and_chunks():
     server = HTTPServer(("127.0.0.1", 0), _Api)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     try:
@@ -144,18 +92,13 @@ def test_api_paginates_with_bearer(monkeypatch):
                 "name": "a",
                 "kind": "api",
                 "chunk_size": 100,
-                "api": {
-                    "url": url,
-                    "records_path": "data",
-                    "auth": {"type": "bearer", "token_env": "TEST_TOKEN"},
-                    "pagination": {"type": "page", "page_size": 2, "size_param": "per_page"},
-                },
+                "api": {"url": url, "records_path": "data", "params": {"v": "93"}},
             }
         )
         _Api.calls = []
         _, df = _collect(build_extractor(src, ""), ExtractState())
         assert df["id"].tolist() == ["0", "1", "2"]
-        assert len(_Api.calls) == 2
-        assert _Api.calls[0]["auth"] == "Bearer segredo"
+        assert len(_Api.calls) == 1
+        assert _Api.calls[0]["q"] == {"v": ["93"]}
     finally:
         server.shutdown()

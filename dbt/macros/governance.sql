@@ -1,15 +1,3 @@
-{% macro dh_hash_pii(col, digits_only=false) -%}
-    {%- if digits_only -%}
-        {%- set normalized = "regexp_replace(" ~ col ~ ", '\\D', '', 'g')" -%}
-    {%- else -%}
-        {%- set normalized = "lower(btrim(" ~ col ~ "))" -%}
-    {%- endif -%}
-    case
-        when {{ dh_clean_text(col) }} is null then null
-        else encode(sha256(convert_to('{{ env_var("DBT_PII_SALT", "") }}' || {{ normalized }}, 'UTF8')), 'hex')
-    end
-{%- endmacro %}
-
 {% macro dh_mask_count(expr) -%}
     case when ({{ expr }}) between 1 and {{ var('min_cell') }} - 1 then null else ({{ expr }}) end
 {%- endmacro %}

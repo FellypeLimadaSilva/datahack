@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -13,8 +12,9 @@ from psycopg import sql
 from pydantic import ValidationError
 
 from datahack_ingest import __version__
-from datahack_ingest.catalog import Catalog, load_catalog, required_env_vars
+from datahack_ingest.catalog import Catalog, FileSource, load_catalog
 from datahack_ingest.export import Exporter, ExportError, load_export_config
+from datahack_ingest.extractors.files import FileExtractor
 from datahack_ingest.logging_setup import configure
 from datahack_ingest.publish import (
     GateReport,
@@ -44,7 +44,7 @@ def _parser() -> argparse.ArgumentParser:
     ls = sub.add_parser("list", help="lista as fontes do catálogo")
     ls.add_argument("--json", action="store_true")
 
-    sub.add_parser("validate", help="valida catálogo e variáveis de ambiente exigidas")
+    sub.add_parser("validate", help="valida o catálogo e mostra os arquivos encontrados")
     sub.add_parser("init", help="cria/atualiza as tabelas de controle (schema ops)")
 
     run = sub.add_parser("run", help="ingere uma ou mais fontes na Bronze")
@@ -94,7 +94,7 @@ def main(argv: list[str] | None = None) -> int:
 
     handlers = {
         "list": lambda: _list(catalog, args.json),
-        "validate": lambda: _validate(catalog),
+        "validate": lambda: _validate(catalog, settings),
         "init": lambda: _init(settings),
         "run": lambda: _run(catalog, settings, args),
         "gate": lambda: _gate(catalog, settings, args.orchestrator_run_id),
@@ -119,20 +119,24 @@ def _init(settings: Settings) -> int:
     return 0
 
 
-def _validate(catalog: Catalog) -> int:
-    missing = {
-        s.name: [v for v in required_env_vars(s) if not os.environ.get(v)]
-        for s in catalog.enabled()
-    }
-    missing = {k: v for k, v in missing.items() if v}
+def _validate(catalog: Catalog, settings: Settings) -> int:
+    report, missing = [], []
+    for source in catalog.enabled():
+        if not isinstance(source, FileSource):
+            report.append({"source": source.name, "kind": source.kind, "files": None})
+            continue
+        try:
+            _, files = FileExtractor(source, settings.landing_uri).list_files()
+        except (FileNotFoundError, OSError):
+            files = []
+        names = [Path(f).name for f in files]
+        report.append({"source": source.name, "required": source.required, "files": names})
+        if source.required and not names:
+            missing.append(source.name)
+    _print(report)
     if missing:
-        print(f"[erro] variáveis ausentes: {json.dumps(missing)}", file=sys.stderr)
-        return 2
-    required = sum(1 for s in catalog.enabled() if s.required)
-    print(
-        f"catálogo válido: {len(catalog.sources)} fontes "
-        f"({len(catalog.enabled())} habilitadas, {required} obrigatórias)"
-    )
+        print(f"[aviso] fontes obrigatórias ainda sem arquivo: {missing}", file=sys.stderr)
+    print(f"catálogo válido: {len(catalog.enabled())} fontes habilitadas", file=sys.stderr)
     return 0
 
 
