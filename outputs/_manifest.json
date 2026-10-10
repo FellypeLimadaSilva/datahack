@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-10-10T14:20:51+00:00",
+  "generated_at": "2026-10-10T17:48:00+00:00",
   "platform_version": "2.0.0",
-  "version": "20261010T142037Z-e7c03b",
+  "version": "20261010T174746Z-d13c66",
   "sources": {
     "censo_cursos": {
       "rows": 62674,
@@ -131,10 +131,10 @@
     }
   },
   "dbt": {
-    "invocation_id": "9597bc9b-678b-4563-8557-3a1d1c3331d3",
+    "invocation_id": "c57255f7-b4f4-4dc6-b2a5-bbaaf9359996",
     "counts": {
-      "success": 25,
-      "pass": 82
+      "success": 27,
+      "pass": 87
     },
     "warnings": []
   },
@@ -227,12 +227,12 @@
         {
           "file": "p1_trajetoria_coorte.csv",
           "bytes": 1745,
-          "sha256": "f19f672680849d2aee1f5ac0a9a80279a27c3f4fe209949fc71a8e030446c605"
+          "sha256": "f47d58dff1050a7726c886fd75e039fc9ae11b475bdb9d8ba12d26d7db29336f"
         },
         {
           "file": "p1_trajetoria_coorte.parquet",
-          "bytes": 7226,
-          "sha256": "b1d47cebdab60bef4233ad701b39b69b130cd08f463d3750d333962129f1249d"
+          "bytes": 7212,
+          "sha256": "af2956a94d5f8792a8ee099fb1404c379c8f80cbdd73eb37362e2567d246c033"
         }
       ]
     },
@@ -322,12 +322,12 @@
         {
           "file": "p2_desistencia_curso.csv",
           "bytes": 212023,
-          "sha256": "eb9b20e1fdbb01482b4b9a5f638bcff7d24aafb8be6d81bc7cbe69f32469943b"
+          "sha256": "74ca8a8050b6d3d75854aaf563a59a6ea9152b5d00b7c9f262b652cebfe9872e"
         },
         {
           "file": "p2_desistencia_curso.parquet",
-          "bytes": 32719,
-          "sha256": "27117f85b5334203d53a3cc06aeabe57e3084c5e75171e7657cfeb2dfb4a0af2"
+          "bytes": 32744,
+          "sha256": "e5c71c8dbc5bfa1b13090508a70b1714fefe4f98a1cc1d3d7380e4b9562a89bd"
         }
       ]
     },
@@ -381,12 +381,12 @@
         {
           "file": "p2_desistencia_area.csv",
           "bytes": 11695,
-          "sha256": "b501048cefdb1933181055cecdac4156262ab02853fc834ea7b25ac0f30ad735"
+          "sha256": "96a99c142b02b04a42ee78110de49b47b6ddf39b2aab727136c591d1a68cf94b"
         },
         {
           "file": "p2_desistencia_area.parquet",
-          "bytes": 5873,
-          "sha256": "3b30eb09fb68d0c76d13af1bf04c1bdd7bdf45cb9f9cfe4d616455195c276e02"
+          "bytes": 5866,
+          "sha256": "9b39f3e3ea27fc183b55c487033e30fcbdc6aa45275daa1bdc36fea63211cd46"
         }
       ]
     },
@@ -583,12 +583,12 @@
         {
           "file": "p4_qualidade_curso.csv",
           "bytes": 134113,
-          "sha256": "38024cbeb3c336176d3ae21dd51629fa046657626688285387421b5c72dc6010"
+          "sha256": "1efffbc5446ce52266b0a0a3c9a411979d0d67914c606d3532629bd5074865e2"
         },
         {
           "file": "p4_qualidade_curso.parquet",
-          "bytes": 38969,
-          "sha256": "972c7d657e4f4b42edb9d6a8c3b2e30a9c105f44309870b421a637886fa82e75"
+          "bytes": 38980,
+          "sha256": "f779ca1cd0a93bb535f77336555a54e95f1b65f7dea0a54d1f3530bf70bf4093"
         }
       ]
     },
@@ -630,12 +630,12 @@
         {
           "file": "p4_qualidade_faixa.csv",
           "bytes": 466,
-          "sha256": "3b82735d7aadb453e72374e10d3f305073e22baf4f6c7bab798bf9dc92be0cd3"
+          "sha256": "5bb893efd6d7093603204e4074d4c84f083f23f1c85b255905f2ebb7d20a1b49"
         },
         {
           "file": "p4_qualidade_faixa.parquet",
-          "bytes": 2421,
-          "sha256": "d362780df81e0b6ecdccca1c75e259ab28faabc8c2090d62d0deeefd0d684ad1"
+          "bytes": 2410,
+          "sha256": "7410420940ed2e2dee918a020b6ed2c82883ed8b2875296039a753b4e2b2c3b1"
         }
       ]
     },
@@ -665,12 +665,12 @@
         {
           "file": "p4_fatores.csv",
           "bytes": 245,
-          "sha256": "128929aca668865408f5bb57fd2bbf36bb01f8911ace0dee8639b5016ae46743"
+          "sha256": "4828795d6a017a066958d4d5a8671e0f4802807f8a67157a6f4bcc89d2e21b00"
         },
         {
           "file": "p4_fatores.parquet",
           "bytes": 1382,
-          "sha256": "27b56e04448ef76c34b40716387805d73d37cdd55442281b9ce528b19d9314ef"
+          "sha256": "d032e67652c2050f4b694cbbb6f0fca50c619c87a22fb2e8f8f2e203a8503647"
         }
       ]
     },
@@ -756,12 +756,12 @@
         {
           "file": "p5_licenciaturas_curso.csv",
           "bytes": 16116,
-          "sha256": "a768bd935cdaa14a63f996c69dc8c931111b256b4e33a693aaa209fbb7186315"
+          "sha256": "e2f703bcf282090ee915ebe8d867776898fac209d0ccaff7f8113e51ce22ec78"
         },
         {
           "file": "p5_licenciaturas_curso.parquet",
-          "bytes": 9800,
-          "sha256": "a005b9b38af88c89e8a9512694ade88a254b4f62cf7d13eb298d2ccf78e6cb95"
+          "bytes": 9802,
+          "sha256": "bc52bc5bfcc1c80af9624753ac8a3d346ce0c4be7a7d477d057458bc751f9d21"
         }
       ]
     },
@@ -815,12 +815,12 @@
         {
           "file": "p5_funil_licenciaturas.csv",
           "bytes": 286,
-          "sha256": "a97fdca90e1bb3acc6f9bb7796d4d1775e49d22347dbc596639e9941af5fb951"
+          "sha256": "a2dc5769f754d6ee07bcd1ef5191cd4b7975290e2c84864ca43ac0fe8ff8424e"
         },
         {
           "file": "p5_funil_licenciaturas.parquet",
           "bytes": 3319,
-          "sha256": "2d11a1263e10d8baf711c3dde9e41fa91481bfdfe160031fcc67aa9ac30d7385"
+          "sha256": "832578a3678779c228c6057568ac62859e342a19498a33d81de02b67854ba28f"
         }
       ]
     },
@@ -994,12 +994,71 @@
         {
           "file": "b2_financiamento_desistencia.csv",
           "bytes": 262,
-          "sha256": "7ec23dbed08f8fdf1c00bc0890d12f988bedf1f770f77c953fc073a8e2bd416b"
+          "sha256": "b856f83da051043e0444463a7c4d7deee7e4295b9516e5530c714d82e4c58fdc"
         },
         {
           "file": "b2_financiamento_desistencia.parquet",
           "bytes": 2733,
-          "sha256": "541cdebb714644dee0a996d249bdbfd2a250742fc91ac7ed94e01fb38659d6fb"
+          "sha256": "675c7fca7340bda308bf4477824fa70e66a1cf810efd37136b82c2c659e58360"
+        }
+      ]
+    },
+    {
+      "table": "gold.s1_fator_social_desistencia",
+      "rows": 24,
+      "suppressed_rows": 0,
+      "base_columns": [
+        "qt_ingressante"
+      ],
+      "min_cell": 10,
+      "columns": [
+        {
+          "name": "fator",
+          "type": "text"
+        },
+        {
+          "name": "quartil",
+          "type": "integer"
+        },
+        {
+          "name": "pct_min",
+          "type": "numeric"
+        },
+        {
+          "name": "pct_max",
+          "type": "numeric"
+        },
+        {
+          "name": "nu_cursos",
+          "type": "bigint"
+        },
+        {
+          "name": "qt_ingressante",
+          "type": "bigint"
+        },
+        {
+          "name": "qt_desistencia_marco",
+          "type": "bigint"
+        },
+        {
+          "name": "taxa_desistencia_marco",
+          "type": "numeric"
+        },
+        {
+          "name": "correlacao_pearson",
+          "type": "numeric"
+        }
+      ],
+      "files": [
+        {
+          "file": "s1_fator_social_desistencia.csv",
+          "bytes": 1625,
+          "sha256": "1dcb0e49131a17e83da054adf7b84e2c518eec9aad9847b7d668e388df5cd78f"
+        },
+        {
+          "file": "s1_fator_social_desistencia.parquet",
+          "bytes": 3919,
+          "sha256": "088afed4a444ccad6eda6d395e75b1d6d115c86821db7d2fa2d4d74e543cc804"
         }
       ]
     },
@@ -1047,12 +1106,12 @@
         {
           "file": "controle_atualizacao.csv",
           "bytes": 1055,
-          "sha256": "44a41a1798a41e2a828bb734152c5e9a38a31988294edafccf6bf6342d6d44fc"
+          "sha256": "33a423fc55288a6e87416ba5ea5a2076a7e342cc11446a0bd9a2f5926a42f589"
         },
         {
           "file": "controle_atualizacao.parquet",
-          "bytes": 3175,
-          "sha256": "26dc53a66596c22605acf39d5655a26169ff6c66f01eae89710c859ec6b88875"
+          "bytes": 3184,
+          "sha256": "dd2540a1cbdb7ee9bad8021b5f4ae656f98bc11a598c4d8fd567c1e890ac2e71"
         }
       ]
     }
