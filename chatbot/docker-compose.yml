@@ -1,0 +1,30 @@
+# Chat com IA (DeepSeek) do dashboard Rota do Diploma. Lê a camada gold com o papel dh_bi_reader.
+#   powershell -File up.ps1     (gera chatbot/.env a partir do ../.env e sobe)
+# O warehouse precisa estar de pé (scripts\dh.ps1 up-lite). Chat: http://localhost:8099/widget
+name: rota-chatbot
+services:
+  chatbot:
+    build: .
+    ports: ["127.0.0.1:${CHAT_PORT:-8099}:8099"]
+    # Chave e modelo da DeepSeek NÃO ficam aqui nem em .env: o administrador informa em
+    # Settings > Configurações do chat (IA) e o serviço guarda no volume chatbot-data.
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    environment:
+      CHAT_DATA_DIR: /data
+      WAREHOUSE_HOST: ${WAREHOUSE_HOST:-warehouse}
+      WAREHOUSE_PORT: ${WAREHOUSE_INTERNAL_PORT:-5432}
+      WAREHOUSE_DB: ${WAREHOUSE_DB:-datahack}
+      WAREHOUSE_BI_USER: ${WAREHOUSE_BI_USER:-dh_bi_reader}
+      WAREHOUSE_BI_PASSWORD: ${WAREHOUSE_BI_PASSWORD:?rode up.ps1 (copia do ../.env)}
+    volumes:
+      - chatbot-data:/data
+      - ../superset/bundle:/knowledge/bundle:ro
+      - ../outputs/_indicadores.json:/knowledge/outputs/_indicadores.json:ro
+    networks: [warehouse]
+    restart: unless-stopped
+volumes:
+  chatbot-data:
+networks:
+  warehouse:
+    external: true
+    name: ${WAREHOUSE_NETWORK:-datahack_warehouse}

@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Configurações do chat · Rota do Diploma</title>
+<style>
+  :root { --azul:#0066CC; --marinho:#1A2B5E; --claro:#EAF1FA; --borda:#D3DEEC; --texto:#1b2433; --muted:#5b6b82; --fundo:#f5f8fc; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--texto); background:var(--fundo); }
+  header { background:var(--marinho); color:#fff; padding:12px 20px; display:flex; align-items:center; gap:16px; }
+  header a { color:#cfe0f7; text-decoration:none; font-size:14px; }
+  header a:hover, header a:focus-visible { color:#fff; text-decoration:underline; }
+  header h1 { margin:0; font-size:17px; font-weight:600; }
+  main { max-width:760px; margin:0 auto; padding:20px 16px 40px; display:flex; flex-direction:column; gap:14px; }
+  h2 { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:10px 0 -4px; }
+  .card { background:#fff; border:1px solid var(--borda); border-radius:12px; padding:14px 16px; display:flex; flex-direction:column; gap:10px; }
+  .row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .row.sp { justify-content:space-between; }
+  .lamp { width:16px; height:16px; border-radius:50%; flex:none; border:2px solid #aab5c5; background:transparent; }
+  .lamp.green { background:#28A745; border-color:#28A745; box-shadow:0 0 9px #28A745; }
+  .lamp.red { background:#DC3545; border-color:#DC3545; box-shadow:0 0 9px #DC3545; }
+  .lamp.amber { background:#FF8C00; border-color:#FF8C00; box-shadow:0 0 9px #FF8C00; }
+  .lamp.busy { animation:pisca 1s infinite; }
+  @keyframes pisca { 50% { opacity:.25; } }
+  @media (prefers-reduced-motion: reduce) { .lamp.busy { animation:none; } }
+  .lbl { font-weight:600; }
+  .hint { font-size:13px; color:var(--muted); }
+  input, select { border:1px solid var(--borda); border-radius:8px; padding:8px 10px; font:inherit; background:#fff; }
+  input { flex:1; min-width:200px; }
+  input:focus, select:focus { outline:2px solid var(--azul); outline-offset:-1px; }
+  .btn { border:1px solid var(--azul); background:#fff; color:var(--azul); border-radius:8px; padding:7px 14px; font:inherit; font-weight:600; cursor:pointer; }
+  .btn.pri { background:var(--azul); color:#fff; }
+  .btn.danger { border-color:#DC3545; color:#DC3545; }
+  .btn:disabled { opacity:.5; cursor:default; }
+  .btn:focus-visible { outline:2px solid var(--marinho); outline-offset:2px; }
+  .sys { display:grid; grid-template-columns:auto 1fr; gap:10px 10px; align-items:start; font-size:14px; }
+  .sys .lamp { margin-top:3px; }
+  .sys b { display:block; }
+  details { font-size:13px; }
+  details summary { cursor:pointer; color:var(--azul); }
+  details table { width:100%; border-collapse:collapse; margin-top:8px; }
+  details td { padding:4px 6px; border-top:1px solid var(--borda); }
+  details td:last-child { text-align:right; font-variant-numeric:tabular-nums; }
+  .lock { background:#fff7e6; border:1px solid #ffd591; border-radius:12px; padding:14px 16px; }
+  .lock a { color:var(--azul); font-weight:600; }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<header>
+  <a href="/" id="back">← Voltar ao dashboard</a>
+  <h1>Configurações do chat com IA</h1>
+</header>
+<main>
+  <div class="lock" id="lock" role="alert" hidden>
+    <div class="lbl">Acesso só para administradores</div>
+    <p id="lockmsg" style="margin:6px 0"></p>
+    <a href="/login/?next=/assistente/configuracoes">Entrar no Superset</a>
+  </div>
+
+  <div id="adm" hidden style="display:flex;flex-direction:column;gap:14px">
+    <h2>Chaves de API</h2>
+    <div class="card">
+      <div class="row sp">
+        <div class="row"><span class="lamp" id="klamp" role="img" aria-label="Vazio"></span><span class="lbl">DeepSeek</span><span class="hint" id="klabel">Vazio</span></div>
+        <span class="hint" id="kmask"></span>
+      </div>
+      <div class="hint" id="kmsg" aria-live="polite"></div>
+      <form class="row" id="kf">
+        <input type="password" id="kin" autocomplete="off" spellcheck="false" placeholder="Cole a chave da DeepSeek (sk-…)" aria-label="Chave da API da DeepSeek">
+        <button class="btn pri" type="submit" id="ksave">Salvar e testar</button>
+      </form>
+      <div class="row">
+        <label for="kmodel" class="hint">Modelo</label>
+        <select id="kmodel" aria-label="Modelo da DeepSeek"></select>
+        <button class="btn" type="button" id="ktest">Testar conexão</button>
+        <button class="btn danger" type="button" id="kdel">Remover chave</button>
+      </div>
+      <div class="hint">Cinza = vazio · Verde = conectada e funcional · Vermelho = recusada · Laranja = não deu para verificar. A chave fica guardada só no servidor e nunca volta ao navegador.</div>
+    </div>
+
+    <h2>Status do sistema</h2>
+    <div class="card">
+      <div class="row sp">
+        <div class="row"><span class="lamp" id="slamp" role="img" aria-label="Sem leitura"></span><span class="lbl" id="sres">Sem leitura ainda</span></div>
+        <button class="btn" type="button" id="sref">Atualizar</button>
+      </div>
+      <div class="sys" id="sys"></div>
+      <details><summary>Tabelas da camada gold</summary><table id="ttab"></table></details>
+    </div>
+  </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+async function api(method, path, body) {
+  const r = await fetch(path, { method, headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: body ? JSON.stringify(body) : undefined });
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 401) { lock(j.detail); throw new Error(j.detail || 'Acesso negado'); }
+  if (!r.ok) throw new Error(typeof j.detail === 'string' ? j.detail : 'Erro ' + r.status);
+  return j;
+}
+function lock(msg) { $('lock').hidden = false; $('adm').hidden = true; $('lockmsg').textContent = msg || 'Entre no Superset como administrador.'; }
+function unlock() { $('lock').hidden = true; $('adm').hidden = false; }
+
+const LAMP = { off: ['', 'Vazio'], green: ['green', 'Conectada'], red: ['red', 'Recusada'], amber: ['amber', 'Sem verificação'] };
+function setLamp(el, cls, label, busy) { el.className = 'lamp ' + cls + (busy ? ' busy' : ''); el.setAttribute('aria-label', label); }
+
+function paintKey(k) {
+  const [cls, label] = LAMP[k.estado] || LAMP.off;
+  setLamp($('klamp'), cls, label); $('klabel').textContent = label;
+  $('kmask').textContent = k.configurada ? k.mascara : '';
+  const quando = k.verificada_em ? ` (verificada às ${new Date(k.verificada_em).toLocaleTimeString('pt-BR')})` : '';
+  $('kmsg').textContent = (k.mensagem || '') + (k.configurada ? quando : '');
+  $('ktest').disabled = !k.configurada; $('kdel').disabled = !k.configurada;
+  const sel = $('kmodel');
+  if (!sel.options.length) (k.modelos || []).forEach((m) => sel.add(new Option(m, m)));
+  sel.value = k.modelo;
+}
+async function refreshKey() { const j = await api('GET', 'api/settings'); paintKey(j.deepseek); }
+
+async function keyAction(fn) {
+  setLamp($('klamp'), 'amber', 'Verificando', true); $('klabel').textContent = 'Verificando…'; $('kmsg').textContent = 'Testando a chave com uma chamada real à DeepSeek…';
+  ['ksave', 'ktest', 'kdel'].forEach((id) => { $(id).disabled = true; });
+  try { paintKey((await fn()).deepseek); }
+  catch (err) { $('kmsg').textContent = err.message; try { await refreshKey(); } catch { /* sem acesso */ } }
+  finally { $('ksave').disabled = false; }
+}
+$('kf').addEventListener('submit', (e) => { e.preventDefault(); const k = $('kin').value.trim(); if (!k) { $('kmsg').textContent = 'Cole a chave antes de salvar.'; return; } $('kin').value = ''; keyAction(() => api('PUT', 'api/settings/deepseek-key', { key: k })); });
+$('ktest').onclick = () => keyAction(() => api('POST', 'api/settings/deepseek-key/test'));
+$('kmodel').onchange = () => keyAction(() => api('PUT', 'api/settings/model', { model: $('kmodel').value }));
+$('kdel').onclick = () => { if (confirm('Remover a chave da DeepSeek? O chat para de responder até uma nova chave ser informada.')) keyAction(() => api('DELETE', 'api/settings/deepseek-key')); };
+
+function sysRow(ok, titulo, detalhe, amber) {
+  const l = document.createElement('span'); l.className = 'lamp ' + (ok ? (amber ? 'amber' : 'green') : 'red'); l.setAttribute('role', 'img'); l.setAttribute('aria-label', ok ? (amber ? 'Atenção' : 'OK') : 'Falha');
+  const t = document.createElement('div'); const b = document.createElement('b'); b.textContent = titulo; const d = document.createElement('span'); d.className = 'hint'; d.textContent = detalhe;
+  t.append(b, d); $('sys').append(l, t);
+}
+async function refreshStatus() {
+  setLamp($('slamp'), 'amber', 'Verificando', true); $('sres').textContent = 'Verificando o banco…'; $('sref').disabled = true;
+  try {
+    const s = await api('GET', 'api/status');
+    setLamp($('slamp'), s.geral, { green: 'OK', amber: 'Atenção', red: 'Falha' }[s.geral]); $('sres').textContent = s.resumo;
+    $('sys').replaceChildren();
+    const c = s.conexao; sysRow(c.ok, 'Banco de dados', c.ok ? `${c.detalhe} · ${c.latencia_ms} ms` : c.detalhe);
+    sysRow(s.somente_leitura.ok, 'Acesso somente leitura', s.somente_leitura.detalhe || 'Não testado (sem conexão).');
+    const tb = s.tabelas, ok = tb.filter((t) => t.existe).length, vazias = tb.filter((t) => t.existe && !t.linhas).length;
+    sysRow(ok === tb.length && tb.length > 0, 'Camada gold', `${ok}/${tb.length} tabelas do dashboard existem; ${vazias} vazia(s).`, vazias > 0);
+    sysRow(s.dicionario.ok, 'Dicionário do assistente', `${s.dicionario.tabelas} tabelas · ${s.dicionario.caracteres.toLocaleString('pt-BR')} caracteres de contexto`);
+    sysRow(!!s.ultima_carga, 'Última carga dos dados', s.ultima_carga ? String(s.ultima_carga).slice(0, 19) : 'Sem registro em controle_atualizacao.', !s.ultima_carga);
+    const tt = $('ttab'); tt.replaceChildren();
+    tb.forEach((t) => { const tr = tt.insertRow(); tr.insertCell().textContent = (t.existe ? (t.linhas ? '● ' : '○ ') : '✕ ') + t.tabela; tr.insertCell().textContent = t.existe ? Number(t.linhas).toLocaleString('pt-BR') + ' linhas' : 'não existe'; });
+    paintKey(s.deepseek);
+  } catch (err) { setLamp($('slamp'), 'red', 'Falha'); $('sres').textContent = err.message; }
+  finally { $('sref').disabled = false; }
+}
+$('sref').onclick = refreshStatus;
+
+if (!location.pathname.startsWith('/assistente/')) $('back').hidden = true;   // acesso direto à porta do chat
+refreshKey().then(() => { unlock(); refreshStatus(); }).catch(() => { /* lock() já explicou */ });
+</script>
+</body>
+</html>

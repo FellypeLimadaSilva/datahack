@@ -34,6 +34,8 @@ services:
       - ./docker/init.sh:/app/init.sh:ro
       - ./docker/reimport.py:/app/reimport.py:ro
       - ./bundle:/bundle:ro
+      # botão flutuante do chat com IA (serviço ../chatbot); só aparece nas páginas de dashboard
+      - ./chat/tail_js_custom_extra.html:/app/superset/templates/tail_js_custom_extra.html:ro
     networks: [default, warehouse]
     command: ["sh", "/app/init.sh"]
 networks:

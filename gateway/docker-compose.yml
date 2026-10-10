@@ -1,0 +1,15 @@
+# Porta única do sistema: http://localhost:8088 (dashboard + chat com IA).
+#   powershell -File up.ps1
+# Superset e chat continuam sendo containers próprios, mas só esta porta é o endereço de uso.
+name: rota-gateway
+services:
+  gateway:
+    image: nginx:1.27-alpine
+    ports: ["127.0.0.1:${GATEWAY_PORT:-8088}:8088"]
+    environment:
+      SUPERSET_PORT: ${SUPERSET_PORT:-8090}   # porta do Superset publicada no host (o up.ps1 acerta)
+      CHAT_PORT: ${CHAT_PORT:-8099}
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    volumes:
+      - ./nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+    restart: unless-stopped

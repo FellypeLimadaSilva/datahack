@@ -1,0 +1,840 @@
+{
+ "gerado_por": "superset/build_bundle.js",
+ "tabelas": {
+  "p1_trajetoria_coorte": {
+   "descricao": "P1 · Indicadores de Trajetória (INEP). Grão: modalidade × coorte × ano de referência. Taxas já em %, ponderadas pelos ingressantes ao reagregar.",
+   "colunas": [
+    {
+     "nome": "modalidade",
+     "tipo": "TEXT",
+     "rotulo": ""
+    },
+    {
+     "nome": "nu_ano_ingresso",
+     "tipo": "BIGINT",
+     "rotulo": "Coorte (ano de ingresso)"
+    },
+    {
+     "nome": "nu_ano_referencia",
+     "tipo": "BIGINT",
+     "rotulo": "Ano de referência"
+    },
+    {
+     "nome": "nu_ano_curso",
+     "tipo": "BIGINT",
+     "rotulo": "Ano do curso"
+    },
+    {
+     "nome": "nu_cursos",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "qt_ingressante",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "qt_permanencia",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "qt_concluinte_ano",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "qt_desistencia_ano",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "qt_concluinte_acum",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "qt_desistencia_acum",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "qt_falecido_acum",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "taxa_desistencia_acum",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "taxa_conclusao_acum",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "taxa_permanencia",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "taxa_desistencia_ano",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "taxa_desistencia_sobre_ativos",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "is_ano_maior_perda",
+     "tipo": "BOOLEAN",
+     "rotulo": ""
+    }
+   ]
+  },
+  "p2_desistencia_curso": {
+   "descricao": "P2 · Desistência por curso e coorte no mesmo ano do curso (4º, padrão do dbt). Grão: curso × coorte.",
+   "colunas": [
+    {
+     "nome": "co_curso",
+     "tipo": "TEXT",
+     "rotulo": ""
+    },
+    {
+     "nome": "nu_ano_ingresso",
+     "tipo": "BIGINT",
+     "rotulo": "Coorte (ano de ingresso)"
+    },
+    {
+     "nome": "no_curso",
+     "tipo": "TEXT",
+     "rotulo": "Nome do curso"
+    },
+    {
+     "nome": "no_ies",
+     "tipo": "TEXT",
+     "rotulo": "Instituição"
+    },
+    {
+     "nome": "rede",
+     "tipo": "TEXT",
+     "rotulo": ""
+    },
+    {
+     "nome": "modalidade",
+     "tipo": "TEXT",
+     "rotulo": ""
+    },
+    {
+     "nome": "grau_academico",
+     "tipo": "TEXT",
+     "rotulo": ""
+    },
+    {
+     "nome": "no_cine_area_geral",
+     "tipo": "TEXT",
+     "rotulo": "Área (CINE)"
+    },
+    {
+     "nome": "no_cine_rotulo",
+     "tipo": "TEXT",
+     "rotulo": "Curso (rótulo CINE)"
+    },
+    {
+     "nome": "nu_ano_curso_marco",
+     "tipo": "BIGINT",
+     "rotulo": "Ano do curso da comparação"
+    },
+    {
+     "nome": "qt_ingressante",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "qt_desistencia_marco",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "taxa_desistencia_marco",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "taxa_conclusao_marco",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "nu_ultimo_ano_observado",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "taxa_desistencia_final",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "taxa_conclusao_final",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "is_elegivel_ranking",
+     "tipo": "BOOLEAN",
+     "rotulo": ""
+    }
+   ]
+  },
+  "p2_desistencia_area": {
+   "descricao": "P2 · Desistência por área CINE, coorte e ano do curso. Grão: área × modalidade × coorte × ano do curso.",
+   "colunas": [
+    {
+     "nome": "no_cine_area_geral",
+     "tipo": "TEXT",
+     "rotulo": "Área (CINE)"
+    },
+    {
+     "nome": "modalidade",
+     "tipo": "TEXT",
+     "rotulo": ""
+    },
+    {
+     "nome": "nu_ano_ingresso",
+     "tipo": "BIGINT",
+     "rotulo": "Coorte (ano de ingresso)"
+    },
+    {
+     "nome": "nu_ano_curso",
+     "tipo": "BIGINT",
+     "rotulo": "Ano do curso"
+    },
+    {
+     "nome": "nu_cursos",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "qt_ingressante",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "qt_desistencia_acum",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "taxa_desistencia_acum",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "taxa_conclusao_acum",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    }
+   ]
+  },
+  "p3_rede_modalidade_ano": {
+   "descricao": "P3 · Censo da Educação Superior 2021–2024. Grão: ano × rede × modalidade.",
+   "colunas": [
+    {
+     "nome": "nu_ano_censo",
+     "tipo": "BIGINT",
+     "rotulo": "Ano do Censo"
+    },
+    {
+     "nome": "rede",
+     "tipo": "TEXT",
+     "rotulo": ""
+    },
+    {
+     "nome": "modalidade",
+     "tipo": "TEXT",
+     "rotulo": ""
+    },
+    {
+     "nome": "nu_cursos",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "nu_vagas",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "qt_ingressante",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "qt_matricula",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "qt_concluinte",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "qt_trancada",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "qt_desvinculado",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "qt_transferido",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "qt_vinculo",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "taxa_evasao_anual",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "taxa_trancamento",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "variacao_evasao_pp",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "variacao_matricula_pct",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    }
+   ]
+  },
+  "p4_qualidade_curso": {
+   "descricao": "P4 · CPC e desistência no 4º ano por curso (coortes somadas).",
+   "colunas": [
+    {
+     "nome": "co_curso",
+     "tipo": "TEXT",
+     "rotulo": ""
+    },
+    {
+     "nome": "no_curso",
+     "tipo": "TEXT",
+     "rotulo": "Nome do curso"
+    },
+    {
+     "nome": "no_ies",
+     "tipo": "TEXT",
+     "rotulo": "Instituição"
+    },
+    {
+     "nome": "rede",
+     "tipo": "TEXT",
+     "rotulo": ""
+    },
+    {
+     "nome": "modalidade",
+     "tipo": "TEXT",
+     "rotulo": ""
+    },
+    {
+     "nome": "grau_academico",
+     "tipo": "TEXT",
+     "rotulo": ""
+    },
+    {
+     "nome": "no_cine_area_geral",
+     "tipo": "TEXT",
+     "rotulo": "Área (CINE)"
+    },
+    {
+     "nome": "nu_coortes",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "nu_ano_curso_marco",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "qt_ingressante",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "qt_desistencia_marco",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "taxa_desistencia_marco",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "nu_edicao_cpc",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "cpc_faixa",
+     "tipo": "TEXT",
+     "rotulo": ""
+    },
+    {
+     "nome": "cpc_continuo",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "enade_continuo",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "idd_padronizado",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "doutores_padronizado",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "regime_trabalho_padronizado",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "infraestrutura_padronizado",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "didatico_pedagogica_padronizado",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "tem_cpc",
+     "tipo": "BOOLEAN",
+     "rotulo": ""
+    },
+    {
+     "nome": "is_elegivel_ranking",
+     "tipo": "BOOLEAN",
+     "rotulo": ""
+    }
+   ]
+  },
+  "p4_qualidade_faixa": {
+   "descricao": "P4 · Desistência no 4º ano por faixa de CPC e rede.",
+   "colunas": [
+    {
+     "nome": "cpc_faixa",
+     "tipo": "TEXT",
+     "rotulo": ""
+    },
+    {
+     "nome": "rede",
+     "tipo": "TEXT",
+     "rotulo": ""
+    },
+    {
+     "nome": "nu_cursos",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "qt_ingressante",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "qt_desistencia_marco",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "taxa_desistencia_marco",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    }
+   ]
+  },
+  "p4_fatores": {
+   "descricao": "P4 · Correlação de Pearson de cada componente do CPC com a desistência no 4º ano (um curso, um ponto).",
+   "colunas": [
+    {
+     "nome": "fator",
+     "tipo": "TEXT",
+     "rotulo": ""
+    },
+    {
+     "nome": "correlacao_pearson",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "nu_cursos",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    }
+   ]
+  },
+  "p5_licenciaturas_curso": {
+   "descricao": "P5 · Licenciaturas de MT: desistência (Trajetória) e proficiência no Enade 2025, por curso.",
+   "colunas": [
+    {
+     "nome": "co_curso",
+     "tipo": "TEXT",
+     "rotulo": ""
+    },
+    {
+     "nome": "no_curso",
+     "tipo": "TEXT",
+     "rotulo": "Licenciatura"
+    },
+    {
+     "nome": "no_ies",
+     "tipo": "TEXT",
+     "rotulo": "Instituição"
+    },
+    {
+     "nome": "rede",
+     "tipo": "TEXT",
+     "rotulo": ""
+    },
+    {
+     "nome": "modalidade",
+     "tipo": "TEXT",
+     "rotulo": ""
+    },
+    {
+     "nome": "no_cine_area_geral",
+     "tipo": "TEXT",
+     "rotulo": "Área (CINE)"
+    },
+    {
+     "nome": "nu_coortes",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "qt_ingressante",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "taxa_desistencia_marco",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "taxa_desistencia_final",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "taxa_conclusao_final",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "area_enade",
+     "tipo": "TEXT",
+     "rotulo": "Área de avaliação (Enade)"
+    },
+    {
+     "nome": "qt_participante_enade",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "pct_proficiente",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "conceito_enade_faixa",
+     "tipo": "TEXT",
+     "rotulo": ""
+    },
+    {
+     "nome": "tem_enade",
+     "tipo": "BOOLEAN",
+     "rotulo": ""
+    }
+   ]
+  },
+  "p5_funil_licenciaturas": {
+   "descricao": "P5 · De cada 100 que entram: quantos desistem, concluem e concluem proficientes (a última etapa é estimativa).",
+   "colunas": [
+    {
+     "nome": "rede",
+     "tipo": "TEXT",
+     "rotulo": ""
+    },
+    {
+     "nome": "nu_cursos",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "qt_ingressante",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "de_100_desistem",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "de_100_concluem",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "nu_cursos_enade",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "qt_participante_enade",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "pct_proficiente",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "de_100_concluem_proficientes",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    }
+   ]
+  },
+  "b1_desertos_municipio": {
+   "descricao": "B1 · Vagas presenciais por 100 jovens de 18 a 24 anos (Censo da Educação Superior × IBGE 2022). Zero = sem oferta.",
+   "colunas": [
+    {
+     "nome": "co_municipio",
+     "tipo": "TEXT",
+     "rotulo": ""
+    },
+    {
+     "nome": "no_municipio",
+     "tipo": "TEXT",
+     "rotulo": "Município"
+    },
+    {
+     "nome": "nu_ano_censo",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "nu_populacao_18_24",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "nu_cursos_presenciais",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "nu_vagas_presenciais",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "vagas_por_100_jovens",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "is_deserto",
+     "tipo": "BOOLEAN",
+     "rotulo": ""
+    }
+   ]
+  },
+  "b2_financiamento_ano": {
+   "descricao": "B2 · Peso de FIES e ProUni na rede privada. Grão: ano × modalidade.",
+   "colunas": [
+    {
+     "nome": "nu_ano_censo",
+     "tipo": "BIGINT",
+     "rotulo": "Ano do Censo"
+    },
+    {
+     "nome": "modalidade",
+     "tipo": "TEXT",
+     "rotulo": ""
+    },
+    {
+     "nome": "nu_cursos",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "qt_ingressante",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "qt_ingressante_fies",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "qt_ingressante_prouni",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "qt_matricula",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "qt_matricula_fies",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "qt_matricula_prouni",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "pct_ingressante_fies",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "pct_ingressante_prouni",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "pct_matricula_fies",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "pct_matricula_prouni",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    }
+   ]
+  },
+  "b2_financiamento_desistencia": {
+   "descricao": "B2 · Desistência no 4º ano por quartil de financiamento (cursos privados com 30+ ingressantes).",
+   "colunas": [
+    {
+     "nome": "quartil_financiamento",
+     "tipo": "BIGINT",
+     "rotulo": "Quartil de financiamento"
+    },
+    {
+     "nome": "pct_financiado_min",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "pct_financiado_max",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    },
+    {
+     "nome": "nu_cursos",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "qt_ingressante",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "qt_desistencia_marco",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "taxa_desistencia_marco",
+     "tipo": "NUMERIC",
+     "rotulo": ""
+    }
+   ]
+  },
+  "controle_atualizacao": {
+   "descricao": "Última carga de cada fonte.",
+   "colunas": [
+    {
+     "nome": "fonte",
+     "tipo": "TEXT",
+     "rotulo": ""
+    },
+    {
+     "nome": "ultimo_status",
+     "tipo": "TEXT",
+     "rotulo": ""
+    },
+    {
+     "nome": "ultima_carga_sucesso_local",
+     "tipo": "TIMESTAMP",
+     "rotulo": ""
+    },
+    {
+     "nome": "ultima_carga_sucesso_utc",
+     "tipo": "TIMESTAMP",
+     "rotulo": ""
+    },
+    {
+     "nome": "linhas_ultima_execucao",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "linhas_rejeitadas_ultima_execucao",
+     "tipo": "BIGINT",
+     "rotulo": ""
+    },
+    {
+     "nome": "ultima_transformacao_local",
+     "tipo": "TIMESTAMP",
+     "rotulo": ""
+    },
+    {
+     "nome": "fuso_horario",
+     "tipo": "TEXT",
+     "rotulo": ""
+    }
+   ]
+  }
+ }
+}
