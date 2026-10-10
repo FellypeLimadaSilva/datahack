@@ -68,7 +68,9 @@ def _filled(value: object) -> bool:
     return value is not None and str(value).strip() != ""
 
 
-_NUMERIC = re.compile(r"^[+-]?\d+([.,]\d+)?$")
+_NUMERIC = re.compile(
+    r"^(R\$\s*)?[+-]?(\d{1,3}([.,]\d{3})+|\d+)([.,]\d+)?%?$|^\d{1,4}[/.-]\d{1,2}[/.-]\d{1,4}"
+)
 
 
 def _numeric_like(value: object) -> bool:
@@ -89,6 +91,10 @@ def detect_header_row(rows: list[list[object]] | list[tuple[object, ...]]) -> in
         filled = [v for v in rows[i] if _filled(v)]
         if sum(_numeric_like(v) for v in filled) / len(filled) >= 0.3:
             previous = [j for j in wide if j < i]
+            wide_set = set(wide)
+            for j in previous:
+                if j + 1 in wide_set:
+                    return j
             return previous[-1] if previous else i
     return wide[0] if wide else 0
 
