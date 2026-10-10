@@ -1,0 +1,88 @@
+co_curso,no_curso,no_ies,rede,modalidade,no_cine_area_geral,nu_coortes,qt_ingressante,taxa_desistencia_marco,taxa_desistencia_final,taxa_conclusao_final,area_enade,qt_participante_enade,pct_proficiente,conceito_enade_faixa,tem_enade
+100010,EDUCAÇÃO FÍSICA,FACULDADE ANHANGUERA DE RONDONÓPOLIS,Privada,Presencial,Educação,1,15,93.33,93.33,6.67,,,,,false
+100358,PEDAGOGIA,CENTRO UNIVERSITÁRIO CATHEDRAL,Privada,Presencial,Educação,1,39,41.03,48.72,51.28,,,,,false
+100775,CIêNCIAS NATURAIS E MATEMáTICA - MATEMáTICA,UNIVERSIDADE FEDERAL DE MATO GROSSO,Pública,Presencial,Educação,1,21,19.05,19.05,4.76,,,,,false
+100776,CIêNCIAS NATURAIS E MATEMáTICA - QUíMICA,UNIVERSIDADE FEDERAL DE MATO GROSSO,Pública,Presencial,Educação,1,24,12.50,16.67,12.50,,,,,false
+100777,CIêNCIAS NATURAIS E MATEMáTICA - FíSICA,UNIVERSIDADE FEDERAL DE MATO GROSSO,Pública,Presencial,Educação,1,10,0.00,0.00,10.00,,,,,false
+101054,LETRAS - LíNGUA E LITERATURAS DE LíNGUA INGLESA,Universidade Federal de Rondonópolis,Pública,Presencial,Educação,1,20,20.00,55.00,5.00,,,,,false
+101184,FÍSICA,UNIVERSIDADE FEDERAL DE MATO GROSSO,Pública,Presencial,Educação,1,17,5.88,11.76,5.88,,,,,false
+106050,QUÍMICA,UNIVERSIDADE FEDERAL DE MATO GROSSO,Pública,Presencial,Educação,1,22,18.18,18.18,4.55,,,,,false
+106052,EDUCAÇÃO FÍSICA,UNIVERSIDADE FEDERAL DE MATO GROSSO,Pública,Presencial,Educação,1,39,10.26,10.26,12.82,,,,,false
+1103426,GEOGRAFIA,UNIVERSIDADE FEDERAL DE MATO GROSSO,Pública,Presencial,Educação,1,48,16.67,16.67,20.83,,,,,false
+1103701,CIÊNCIAS SOCIAIS,UNIVERSIDADE FEDERAL DE MATO GROSSO,Pública,Presencial,Educação,1,25,16.00,20.00,8.00,,,,,false
+1103708,FILOSOFIA,UNIVERSIDADE FEDERAL DE MATO GROSSO,Pública,Presencial,Educação,1,32,6.25,9.38,9.38,,,,,false
+1103710,HISTÓRIA,UNIVERSIDADE FEDERAL DE MATO GROSSO,Pública,Presencial,Educação,1,84,15.48,16.67,15.48,,,,,false
+1103711,QUÍMICA,UNIVERSIDADE FEDERAL DE MATO GROSSO,Pública,Presencial,Educação,1,48,31.25,35.42,2.08,,,,,false
+1105780,PEDAGOGIA,CENTRO UNIVERSITÁRIO LA SALLE,Privada,Presencial,Educação,1,15,53.33,60.00,40.00,,,,,false
+1108440,PEDAGOGIA,FACULDADE ANHANGUERA DE PRIMAVERA DO LESTE,Privada,Presencial,Educação,1,12,91.67,91.67,8.33,,,,,false
+1128666,EDUCAÇÃO FÍSICA,CENTRO UNIVERSITÁRIO LA SALLE,Privada,Presencial,Educação,1,20,70.00,80.00,15.00,,,,,false
+114388,MATEMÁTICA,"INSTITUTO FEDERAL DE EDUCAÇÃO, CIÊNCIA E TECNOLOGIA DE MATO GROSSO",Pública,Presencial,Educação,1,17,11.76,88.24,5.88,,,,,false
+1160424,MATEMÁTICA,"INSTITUTO FEDERAL DE EDUCAÇÃO, CIÊNCIA E TECNOLOGIA DE MATO GROSSO",Pública,Presencial,Educação,1,25,16.00,96.00,4.00,,,,,false
+1160425,CIÊNCIAS BIOLÓGICAS,"INSTITUTO FEDERAL DE EDUCAÇÃO, CIÊNCIA E TECNOLOGIA DE MATO GROSSO",Pública,Presencial,Educação,1,38,5.26,65.79,2.63,,,,,false
+1160759,CIêNCIAS DA NATUREZA - QUíMICA,"INSTITUTO FEDERAL DE EDUCAÇÃO, CIÊNCIA E TECNOLOGIA DE MATO GROSSO",Pública,Presencial,Educação,1,20,10.00,80.00,5.00,,,,,false
+116690,GEOGRAFIA,UNIVERSIDADE FEDERAL DE MATO GROSSO,Pública,Presencial,Educação,1,29,13.79,17.24,3.45,,,,,false
+1185732,GEOGRAFIA,Universidade do Estado de Mato Grosso Carlos Alberto Reyes Maldonado - UNEMAT,Pública,Presencial,Educação,1,38,71.05,71.05,2.63,,,,,false
+118762,EDUCAÇÃO FÍSICA,FACULDADE CATÓLICA DE CUIABÁ,Privada,Presencial,Educação,1,23,82.61,86.96,13.04,,,,,false
+1204389,EDUCAÇÃO FÍSICA,FACULDADE DE CIÊNCIAS SOCIAIS APLICADAS DO VALE DO SÃO LOURENÇO,Privada,Presencial,Educação,1,24,54.17,54.17,45.83,,,,,false
+1205603,LETRAS - LIBRAS,UNIVERSIDADE FEDERAL DE MATO GROSSO,Pública,Presencial,Educação,1,21,9.52,9.52,23.81,,,,,false
+121537,FÍSICA,"INSTITUTO FEDERAL DE EDUCAÇÃO, CIÊNCIA E TECNOLOGIA DE MATO GROSSO",Pública,Presencial,Educação,1,25,48.00,88.00,0.00,,,,,false
+1260665,PEDAGOGIA,FACULDADE CATÓLICA RAINHA DA PAZ DE ARAPUTANGA,Privada,Presencial,Educação,1,20,10.00,30.00,50.00,,,,,false
+1280059,EDUCAÇÃO FÍSICA,FACULDADE UNIBRAS DO MATO GROSSO,Privada,Presencial,Educação,1,18,22.22,22.22,33.33,,,,,false
+1332677,PEDAGOGIA,FACULDADE CATÓLICA DE MATO GROSSO,Privada,Presencial,Educação,1,34,79.41,82.35,17.65,,,,,false
+1342324,CIÊNCIAS DA NATUREZA,"INSTITUTO FEDERAL DE EDUCAÇÃO, CIÊNCIA E TECNOLOGIA DE MATO GROSSO",Pública,Presencial,Educação,1,25,44.00,72.00,4.00,,,,,false
+1342497,BIOLOGIA,"INSTITUTO FEDERAL DE EDUCAÇÃO, CIÊNCIA E TECNOLOGIA DE MATO GROSSO",Pública,Presencial,Educação,1,20,10.00,60.00,20.00,,,,,false
+1342504,FÍSICA,"INSTITUTO FEDERAL DE EDUCAÇÃO, CIÊNCIA E TECNOLOGIA DE MATO GROSSO",Pública,Presencial,Educação,1,23,17.39,69.57,4.35,,,,,false
+1354638,PEDAGOGIA,FACULDADE UNIVEST DE EDUCAÇÃO,Privada,Presencial,Educação,1,16,12.50,25.00,56.25,,,,,false
+1368260,QUÍMICA,"INSTITUTO FEDERAL DE EDUCAÇÃO, CIÊNCIA E TECNOLOGIA DE MATO GROSSO",Pública,Presencial,Educação,1,40,5.00,47.50,0.00,,,,,false
+1399733,CIÊNCIAS DA NATUREZA - BIOLOGIA,"INSTITUTO FEDERAL DE EDUCAÇÃO, CIÊNCIA E TECNOLOGIA DE MATO GROSSO",Pública,Presencial,Educação,1,13,0.00,38.46,15.38,,,,,false
+1399738,CIÊNCIAS BIOLÓGICAS,"INSTITUTO FEDERAL DE EDUCAÇÃO, CIÊNCIA E TECNOLOGIA DE MATO GROSSO",Pública,Presencial,Educação,1,42,7.14,71.43,14.29,,,,,false
+1438391,CIÊNCIAS DA NATUREZA - BIOLOGIA,"INSTITUTO FEDERAL DE EDUCAÇÃO, CIÊNCIA E TECNOLOGIA DE MATO GROSSO",Pública,Presencial,Educação,1,36,19.44,44.44,16.67,,,,,false
+1484336,EDUCAÇÃO FÍSICA,"INSTITUTO FEDERAL DE EDUCAÇÃO, CIÊNCIA E TECNOLOGIA DE MATO GROSSO",Pública,Presencial,Educação,1,51,11.76,49.02,15.69,,,,,false
+16264,LETRAS,Universidade do Estado de Mato Grosso Carlos Alberto Reyes Maldonado - UNEMAT,Pública,Presencial,Educação,1,35,48.57,48.57,8.57,,,,,false
+16265,PEDAGOGIA,Universidade do Estado de Mato Grosso Carlos Alberto Reyes Maldonado - UNEMAT,Pública,Presencial,Educação,1,37,48.65,48.65,24.32,,,,,false
+16266,HISTÓRIA,Universidade do Estado de Mato Grosso Carlos Alberto Reyes Maldonado - UNEMAT,Pública,Presencial,Educação,1,35,60.00,62.86,5.71,,,,,false
+16267,GEOGRAFIA,Universidade do Estado de Mato Grosso Carlos Alberto Reyes Maldonado - UNEMAT,Pública,Presencial,Educação,1,36,69.44,69.44,11.11,,,,,false
+16268,MATEMÁTICA,Universidade do Estado de Mato Grosso Carlos Alberto Reyes Maldonado - UNEMAT,Pública,Presencial,Educação,1,39,56.41,58.97,17.95,,,,,false
+16269,CIÊNCIAS BIOLÓGICAS,Universidade do Estado de Mato Grosso Carlos Alberto Reyes Maldonado - UNEMAT,Pública,Presencial,Educação,1,37,45.95,45.95,5.41,,,,,false
+16270,LETRAS - PORTUGUÊS E INGLÊS,Universidade do Estado de Mato Grosso Carlos Alberto Reyes Maldonado - UNEMAT,Pública,Presencial,Educação,1,37,43.24,51.35,21.62,,,,,false
+16271,PEDAGOGIA,Universidade do Estado de Mato Grosso Carlos Alberto Reyes Maldonado - UNEMAT,Pública,Presencial,Educação,1,39,61.54,66.67,12.82,,,,,false
+16272,MATEMÁTICA,Universidade do Estado de Mato Grosso Carlos Alberto Reyes Maldonado - UNEMAT,Pública,Presencial,Educação,1,37,70.27,83.78,0.00,,,,,false
+16273,LETRAS - PORTUGUÊS E INGLÊS,Universidade do Estado de Mato Grosso Carlos Alberto Reyes Maldonado - UNEMAT,Pública,Presencial,Educação,1,35,77.14,77.14,2.86,,,,,false
+16274,LETRAS,Universidade do Estado de Mato Grosso Carlos Alberto Reyes Maldonado - UNEMAT,Pública,Presencial,Educação,1,40,60.00,65.00,17.50,,,,,false
+16275,CIÊNCIAS BIOLÓGICAS,Universidade do Estado de Mato Grosso Carlos Alberto Reyes Maldonado - UNEMAT,Pública,Presencial,Educação,1,38,71.05,73.68,13.16,,,,,false
+16276,CIÊNCIAS BIOLÓGICAS,Universidade do Estado de Mato Grosso Carlos Alberto Reyes Maldonado - UNEMAT,Pública,Presencial,Educação,1,35,62.86,62.86,0.00,,,,,false
+16819,PEDAGOGIA,UNIVERSIDADE DE CUIABÁ,Privada,Presencial,Educação,1,100,87.00,88.00,9.00,,,,,false
+16863,PEDAGOGIA,Centro Universitário Invest,Privada,Presencial,Educação,1,61,39.34,68.85,29.51,,,,,false
+17056,LETRAS,Universidade do Estado de Mato Grosso Carlos Alberto Reyes Maldonado - UNEMAT,Pública,Presencial,Educação,1,37,51.35,54.05,13.51,,,,,false
+17120,PEDAGOGIA,CENTRO UNIVERSITÁRIO DO VALE DO ARAGUAIA,Privada,Presencial,Educação,1,44,25.00,25.00,50.00,,,,,false
+18354,MATEMÁTICA,UNIVERSIDADE FEDERAL DE MATO GROSSO,Pública,Presencial,Educação,1,27,18.52,18.52,11.11,,,,,false
+19,EDUCAÇÃO FÍSICA,UNIVERSIDADE FEDERAL DE MATO GROSSO,Pública,Presencial,Educação,1,49,10.20,12.24,10.20,,,,,false
+19594,PEDAGOGIA,CENTRO UNIVERSITÁRIO DE VÁRZEA GRANDE,Privada,Presencial,Educação,1,28,71.43,71.43,28.57,,,,,false
+20472,PEDAGOGIA,FACULDADE DE GUARANTÃ DO NORTE,Privada,Presencial,Educação,1,14,28.57,64.29,35.71,,,,,false
+22118,LETRAS PORTUGUÊS E INGLÊS,UNIVERSIDADE FEDERAL DE MATO GROSSO,Pública,Presencial,Educação,1,25,16.00,16.00,16.00,,,,,false
+22837,LETRAS - LÍNGUA PORTUGUESA,Universidade Federal de Rondonópolis,Pública,Presencial,Educação,1,30,13.33,53.33,6.67,,,,,false
+23,PEDAGOGIA,Universidade Federal de Rondonópolis,Pública,Presencial,Educação,1,30,13.33,26.67,13.33,,,,,false
+24,GEOGRAFIA,Universidade Federal de Rondonópolis,Pública,Presencial,Educação,1,38,10.53,28.95,2.63,,,,,false
+25,HISTÓRIA,Universidade Federal de Rondonópolis,Pública,Presencial,Educação,1,23,0.00,30.43,17.39,,,,,false
+25902,LETRAS PORTUGUÊS E FRANCÊS,UNIVERSIDADE FEDERAL DE MATO GROSSO,Pública,Presencial,Educação,1,16,18.75,18.75,12.50,,,,,false
+25903,LETRAS - PORTUGUÊS E LITERATURAS,UNIVERSIDADE FEDERAL DE MATO GROSSO,Pública,Presencial,Educação,1,21,14.29,19.05,33.33,,,,,false
+25949,LETRAS - LÍNGUA PORTUGUESA E LITERATURAS DE LíNGUA PORTUGUESA,UNIVERSIDADE FEDERAL DE MATO GROSSO,Pública,Presencial,Educação,1,33,18.18,18.18,36.36,,,,,false
+26,MATEMÁTICA,UNIVERSIDADE FEDERAL DE MATO GROSSO,Pública,Presencial,Educação,1,55,23.64,25.45,10.91,,,,,false
+26025,LETRAS PORTUGUÊS E ESPANHOL E RESPECTIVAS LITERATURAS,UNIVERSIDADE FEDERAL DE MATO GROSSO,Pública,Presencial,Educação,1,21,9.52,9.52,33.33,,,,,false
+27,FÍSICA,UNIVERSIDADE FEDERAL DE MATO GROSSO,Pública,Presencial,Educação,1,74,22.97,24.32,0.00,,,,,false
+29,CIÊNCIAS BIOLÓGICAS,UNIVERSIDADE FEDERAL DE MATO GROSSO,Pública,Presencial,Educação,1,35,22.86,22.86,17.14,,,,,false
+30537,LETRAS - PORTUGUÊS E INGLÊS,CENTRO UNIVERSITÁRIO DE VÁRZEA GRANDE,Privada,Presencial,Educação,1,16,68.75,75.00,25.00,,,,,false
+32,CIÊNCIAS BIOLÓGICAS,Universidade Federal de Rondonópolis,Pública,Presencial,Educação,1,26,7.69,11.54,26.92,,,,,false
+34,MATEMÁTICA,Universidade Federal de Rondonópolis,Pública,Presencial,Educação,1,47,10.64,29.79,12.77,,,,,false
+41690,CIÊNCIAS BIOLÓGICAS,UNIVERSIDADE FEDERAL DE MATO GROSSO,Pública,Presencial,Educação,1,34,23.53,23.53,5.88,,,,,false
+43037,MATEMÁTICA,Universidade do Estado de Mato Grosso Carlos Alberto Reyes Maldonado - UNEMAT,Pública,Presencial,Educação,1,37,48.65,48.65,10.81,,,,,false
+56912,PEDAGOGIA,FACULDADE ANHANGUERA DE RONDONÓPOLIS,Privada,Presencial,Educação,1,60,100.00,100.00,0.00,,,,,false
+58506,CIÊNCIAS BIOLÓGICAS,Universidade do Estado de Mato Grosso Carlos Alberto Reyes Maldonado - UNEMAT,Pública,Presencial,Educação,1,37,64.86,67.57,5.41,,,,,false
+6,PEDAGOGIA,UNIVERSIDADE FEDERAL DE MATO GROSSO,Pública,Presencial,Educação,1,89,12.36,12.36,41.57,,,,,false
+60584,EDUCAÇÃO FÍSICA,CENTRO UNIVERSITÁRIO DE VÁRZEA GRANDE,Privada,Presencial,Educação,1,18,83.33,83.33,16.67,,,,,false
+71115,EDUCAÇÃO FÍSICA,Universidade do Estado de Mato Grosso Carlos Alberto Reyes Maldonado - UNEMAT,Pública,Presencial,Educação,1,37,56.76,56.76,5.41,,,,,false
+73084,EDUCAÇÃO FÍSICA,UNIVERSIDADE DE CUIABÁ,Privada,Presencial,Educação,1,27,96.30,96.30,3.70,,,,,false
+80232,EDUCAÇÃO FÍSICA,FACULDADE CATÓLICA RAINHA DA PAZ DE ARAPUTANGA,Privada,Presencial,Educação,1,12,25.00,25.00,58.33,,,,,false
+80922,PEDAGOGIA,Universidade do Estado de Mato Grosso Carlos Alberto Reyes Maldonado - UNEMAT,Pública,Presencial,Educação,1,40,55.00,55.00,20.00,,,,,false
+94331,MÚSICA,UNIVERSIDADE FEDERAL DE MATO GROSSO,Pública,Presencial,Educação,1,11,9.09,18.18,0.00,,,,,false
+96415,EDUCAÇÃO FÍSICA,Universidade do Estado de Mato Grosso Carlos Alberto Reyes Maldonado - UNEMAT,Pública,Presencial,Educação,1,34,67.65,67.65,5.88,,,,,false

@@ -14,11 +14,10 @@
 | Hash de PII revertido por dicionário | Salt secreto (`DBT_PII_SALT`); modelos com PII nunca como `view` |
 | Metadados do Airflow misturados ao warehouse | PostgreSQL dedicado (`airflow-db`) em rede separada |
 | Backup com credencial de admin | Role `dh_backup` com `pg_read_all_data` e sessão read-only |
-| Replicação aberta | Role `dh_replicator` exclusiva, regra `replication` própria no `pg_hba.conf` |
 | XML malicioso (XXE, billion laughs) | Leitura com `defusedxml` |
 | PII chegando ao banco sem necessidade | `transforms` (hash, máscara, descarte) aplicados antes da gravação |
 | Exclusão em massa por extração quebrada | Trava `max_delete_ratio` e snapshot vazio nunca apaga |
-| PII em arquivo jogado na inbox | Detecção por nome e conteúdo (CPF com dígito verificador, e-mail, telefone) com hash na Silver; dado pessoal sinalizado em `gold.dh_catalogo_dados` |
+| Célula com menos de 10 alunos | Gold não publica base < 10 e mascara contagens 1–9; teste dbt bloqueia a publicação; exportação confere de novo; dashboard só lê `outputs/` |
 | Catálogo de dados vazando conteúdo | `ops.data_catalog` guarda só metadados (tipo, taxas, tamanho); nenhum valor de amostra é persistido |
 | Modelos gerados com nome de coluna sensível no Git | `dbt/models/auto/` fora do Git; regenerado a partir de `ops` |
 

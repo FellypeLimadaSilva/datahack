@@ -1,0 +1,6 @@
+modalidade,nu_ano_ingresso,nu_ano_referencia,nu_ano_curso,nu_cursos,qt_ingressante,qt_permanencia,qt_concluinte_ano,qt_desistencia_ano,qt_concluinte_acum,qt_desistencia_acum,qt_falecido_acum,taxa_desistencia_acum,taxa_conclusao_acum,taxa_permanencia,taxa_desistencia_ano,taxa_desistencia_sobre_ativos,is_ano_maior_perda
+Presencial,2020,2020,1,621,28985,22031,227,6725,227,6725,,23.20,0.78,76.01,23.20,23.20,true
+Presencial,2020,2021,2,621,28985,18598,651,2780,878,9505,,32.79,3.03,64.16,9.59,12.62,false
+Presencial,2020,2022,3,621,28985,15435,679,2482,1557,11987,,41.36,5.37,53.25,8.56,13.35,false
+Presencial,2020,2023,4,621,28985,11688,1346,2398,2903,14385,,49.63,10.02,40.32,8.27,15.54,false
+Presencial,2020,2024,5,621,28985,6297,3390,1999,6293,16384,11,56.53,21.71,21.73,6.90,17.10,false

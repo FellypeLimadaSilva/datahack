@@ -1,0 +1,5 @@
+quartil_financiamento,pct_financiado_min,pct_financiado_max,nu_cursos,qt_ingressante,qt_desistencia_marco,taxa_desistencia_marco
+1,0.00,6.11,52,2765,1238,44.77
+2,6.14,12.38,52,3706,2120,57.20
+3,12.42,19.44,52,4392,2809,63.96
+4,19.82,66.97,52,6181,4305,69.65

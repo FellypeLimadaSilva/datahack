@@ -2,6 +2,19 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versionamento: [SemVer](https://semver.org/lang/pt-BR/).
 
+
+## 2.0.0 (2026-10-10)
+
+- Escopo reduzido ao desafio: removidos inbox e descoberta automática, geração automática de
+  modelos, exemplos de varejo e SCD2, réplica, alertas, lake Parquet e nuvens, merge, watermark,
+  detecção de exclusões e fontes SQL.
+- Catálogo explícito com `required` e `essential_columns`.
+- Silver e Gold escritas à mão para P1–P5, B1 e B2, com grão e métricas documentados.
+- Publicação atômica com portões (`gold_candidate` → `gold`, `gold_previous`, `rollback`) e
+  `ops.publications`.
+- Células com menos de 10 alunos bloqueadas na Gold, no dbt e na exportação.
+- Exportação em duas fases com versão, fontes e metadados; dashboard por blocos.
+- Restauração real verificada no CI; teste ponta a ponta de repetição, republicação e falhas.
 ## [0.4.0] — 2026-10-09
 
 ### Adicionado

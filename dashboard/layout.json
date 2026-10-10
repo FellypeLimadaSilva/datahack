@@ -1,0 +1,151 @@
+{
+  "titulo": "Rota do Diploma · Mato Grosso",
+  "subtitulo": "De cada 100 que entram numa graduação em MT, quantos chegam ao diploma, e onde a rota se perde?",
+  "blocos": [
+    {
+      "id": "p1_curva",
+      "titulo": "P1 · Quanto da turma fica pelo caminho",
+      "tabela": "p1_trajetoria_coorte",
+      "tipo": "linha",
+      "x": "nu_ano_curso",
+      "y": ["taxa_desistencia_acum", "taxa_conclusao_acum", "taxa_permanencia"],
+      "filtros": ["modalidade", "nu_ano_ingresso"],
+      "padrao": { "modalidade": "Presencial", "nu_ano_ingresso": "min" },
+      "largura": 8,
+      "visivel": true
+    },
+    {
+      "id": "p1_perda",
+      "titulo": "P1 · Em que ano a perda é maior",
+      "tabela": "p1_trajetoria_coorte",
+      "tipo": "barras",
+      "x": "nu_ano_curso",
+      "y": ["taxa_desistencia_ano"],
+      "destaque": "is_ano_maior_perda",
+      "filtros": ["modalidade", "nu_ano_ingresso"],
+      "padrao": { "modalidade": "Presencial", "nu_ano_ingresso": "min" },
+      "largura": 4,
+      "visivel": true
+    },
+    {
+      "id": "p2_area",
+      "titulo": "P2 · Desistência por área no mesmo ano do curso",
+      "tabela": "p2_desistencia_area",
+      "tipo": "barras_h",
+      "x": "no_cine_area_geral",
+      "y": ["taxa_desistencia_acum"],
+      "cor": "nu_ano_ingresso",
+      "filtros": ["modalidade", "nu_ano_curso", "nu_ano_ingresso"],
+      "padrao": { "modalidade": "Presencial", "nu_ano_curso": 4 },
+      "largura": 7,
+      "visivel": true
+    },
+    {
+      "id": "p2_ranking",
+      "titulo": "P2 · Cursos com maior e menor desistência (30+ ingressantes)",
+      "tabela": "p2_desistencia_curso",
+      "tipo": "ranking",
+      "x": "no_curso",
+      "y": ["taxa_desistencia_marco"],
+      "colunas": ["no_curso", "no_ies", "rede", "nu_ano_ingresso", "qt_ingressante", "taxa_desistencia_marco"],
+      "condicao": "is_elegivel_ranking",
+      "n": 10,
+      "filtros": ["modalidade", "rede", "nu_ano_ingresso", "no_cine_area_geral"],
+      "padrao": { "modalidade": "Presencial" },
+      "largura": 5,
+      "visivel": true
+    },
+    {
+      "id": "p3_evasao",
+      "titulo": "P3 · Evasão anual por rede e modalidade",
+      "tabela": "p3_rede_modalidade_ano",
+      "tipo": "linha",
+      "x": "nu_ano_censo",
+      "y": ["taxa_evasao_anual"],
+      "cor": ["rede", "modalidade"],
+      "filtros": ["rede", "modalidade"],
+      "largura": 6,
+      "visivel": true
+    },
+    {
+      "id": "p3_matricula",
+      "titulo": "P3 · Matrículas por rede e modalidade",
+      "tabela": "p3_rede_modalidade_ano",
+      "tipo": "barras",
+      "x": "nu_ano_censo",
+      "y": ["qt_matricula"],
+      "cor": ["rede", "modalidade"],
+      "filtros": ["rede", "modalidade"],
+      "largura": 6,
+      "visivel": true
+    },
+    {
+      "id": "p4_faixa",
+      "titulo": "P4 · Qualidade retém? Desistência até o 4º ano por faixa de CPC",
+      "tabela": "p4_qualidade_faixa",
+      "tipo": "barras",
+      "x": "cpc_faixa",
+      "y": ["taxa_desistencia_marco"],
+      "cor": "rede",
+      "filtros": ["rede"],
+      "largura": 6,
+      "visivel": true
+    },
+    {
+      "id": "p4_fatores",
+      "titulo": "P4 · O que mais se associa à desistência",
+      "tabela": "p4_fatores",
+      "tipo": "barras_h",
+      "x": "fator",
+      "y": ["correlacao_pearson"],
+      "largura": 6,
+      "visivel": true
+    },
+    {
+      "id": "p5_funil",
+      "titulo": "P5 · O funil das licenciaturas (de cada 100)",
+      "tabela": "p5_funil_licenciaturas",
+      "tipo": "funil",
+      "etapas": ["de_100_desistem", "de_100_concluem", "de_100_concluem_proficientes"],
+      "x": "rede",
+      "filtros": ["rede"],
+      "padrao": { "rede": "Total" },
+      "largura": 12,
+      "visivel": true
+    },
+    {
+      "id": "b1_desertos",
+      "titulo": "B1 · Vagas presenciais por 100 jovens de 18 a 24 anos",
+      "tabela": "b1_desertos_municipio",
+      "tipo": "ranking",
+      "x": "no_municipio",
+      "y": ["vagas_por_100_jovens"],
+      "colunas": ["no_municipio", "nu_populacao_18_24", "nu_vagas_presenciais", "vagas_por_100_jovens", "is_deserto"],
+      "n": 15,
+      "largura": 12,
+      "visivel": true
+    },
+    {
+      "id": "b2_ano",
+      "titulo": "B2 · Peso de FIES e ProUni na rede privada",
+      "tabela": "b2_financiamento_ano",
+      "tipo": "linha",
+      "x": "nu_ano_censo",
+      "y": ["pct_matricula_fies", "pct_matricula_prouni"],
+      "filtros": ["modalidade"],
+      "padrao": { "modalidade": "Presencial" },
+      "largura": 6,
+      "visivel": true
+    },
+    {
+      "id": "b2_quartil",
+      "titulo": "B2 · Desistência até o 4º ano por quartil de financiamento",
+      "tabela": "b2_financiamento_desistencia",
+      "tipo": "barras",
+      "x": "quartil_financiamento",
+      "y": ["taxa_desistencia_marco"],
+      "largura": 6,
+      "visivel": true
+    }
+  ]
+}

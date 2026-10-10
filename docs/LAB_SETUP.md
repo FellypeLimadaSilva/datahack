@@ -26,8 +26,8 @@ Meta: em até 30 minutos, Postgres no ar, ingestão e dbt funcionando, sem depen
 | 4. Imagens do pendrive (se a rede estiver lenta) | copie o `.tar` para `images\` e rode `.\scripts\dh.ps1 images-load` | 2–4 min |
 | 5. Subir | `.\scripts\dh.ps1 up-lite` | 1 min com imagens, 5–8 min sem |
 | 6. Testar | `.\scripts\dh.ps1 smoke` | 30 s |
-| 7. Dados | baixar das fontes do evento para `data\landing\inbox\` (veja `docs/estrategia.md`) | rede |
-| 8. Rodar | `.\scripts\dh.ps1 discover` e depois `.\scripts\dh.ps1 pipeline` | minutos |
+| 7. Dados | baixar para `data\landing\inep\censo`, `trajetoria` e `qualidade` (veja `docs/estrategia.md`) | rede |
+| 8. Rodar | `.\scripts\dh.ps1 pipeline` e `.\scripts\dh.ps1 dashboard` | minutos |
 
 `up-lite` sobe só o Postgres e a imagem CLI (cerca de 2 GB de RAM). O Airflow é opcional: se a máquina
 tiver 8 GB ou mais e der tempo, `.\scripts\dh.ps1 up` sobe a plataforma completa.
@@ -75,7 +75,7 @@ Do zero, em qualquer máquina com Docker:
 ```powershell
 git clone <repositório>; cd <repositório>
 .\scripts\dh.ps1 up-lite
-# baixar as bases para data\landing\inbox\ (links no README)
+# baixar as bases para data\landing\inep\ (links no README)
 .\scripts\dh.ps1 pipeline
 ```
 

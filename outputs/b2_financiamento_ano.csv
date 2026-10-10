@@ -1,0 +1,5 @@
+nu_ano_censo,modalidade,nu_cursos,qt_ingressante,qt_ingressante_fies,qt_ingressante_prouni,qt_matricula,qt_matricula_fies,qt_matricula_prouni,pct_ingressante_fies,pct_ingressante_prouni,pct_matricula_fies,pct_matricula_prouni
+2021,EAD,1965,52248,,450,74370,,2131,0.00,0.86,0.00,2.87
+2021,Presencial,479,17003,477,582,51852,4203,4435,2.81,3.42,8.11,8.55
+2023,EAD,2793,68872,,514,94585,,1676,0.00,0.75,0.00,1.77
+2023,Presencial,515,20021,919,238,48803,4711,1507,4.59,1.19,9.65,3.09

@@ -71,3 +71,4 @@ images/
 
 !data/landing/inep/
 !data/landing/inep/.gitkeep
+dashboard/layout.local.json

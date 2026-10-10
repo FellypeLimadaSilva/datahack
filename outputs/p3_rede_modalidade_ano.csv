@@ -1,0 +1,9 @@
+nu_ano_censo,rede,modalidade,nu_cursos,nu_vagas,qt_ingressante,qt_matricula,qt_concluinte,qt_trancada,qt_desvinculado,qt_transferido,qt_vinculo,taxa_evasao_anual,taxa_trancamento,variacao_evasao_pp,variacao_matricula_pct
+2021,Privada,EAD,1965,0,52248,74370,9011,14764,28719,1099,118979,24.14,12.41,,
+2021,Privada,Presencial,479,70349,17003,51852,11891,9766,14949,127,76703,19.49,12.73,,
+2021,Pública,EAD,27,0,979,4884,1017,252,512,0,5650,9.06,4.46,,
+2021,Pública,Presencial,263,16890,10021,45450,3735,13814,2074,123,61463,3.37,22.48,,
+2023,Privada,EAD,2793,0,68872,94585,9972,18985,48315,1196,163086,29.63,11.64,5.49,27.18
+2023,Privada,Presencial,515,64706,20021,48803,8603,8127,11939,223,69104,17.28,11.76,-2.21,-5.88
+2023,Pública,EAD,25,0,2234,4222,79,518,1046,0,5786,18.08,8.95,9.02,-13.55
+2023,Pública,Presencial,295,19612,10969,43725,4005,15134,10375,,69240,14.98,21.86,11.61,-3.80

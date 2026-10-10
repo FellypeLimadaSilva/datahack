@@ -1,0 +1,51 @@
+no_cine_area_geral,modalidade,nu_ano_ingresso,nu_ano_curso,nu_cursos,qt_ingressante,qt_desistencia_acum,taxa_desistencia_acum,taxa_conclusao_acum
+"Agricultura, silvicultura, pesca e veterinária",Presencial,2020,1,51,2809,510,18.16,0.25
+"Agricultura, silvicultura, pesca e veterinária",Presencial,2020,2,51,2809,722,25.70,1.42
+"Agricultura, silvicultura, pesca e veterinária",Presencial,2020,3,51,2809,903,32.15,2.60
+"Agricultura, silvicultura, pesca e veterinária",Presencial,2020,4,51,2809,1097,39.05,3.49
+"Agricultura, silvicultura, pesca e veterinária",Presencial,2020,5,51,2809,1347,47.95,18.08
+Artes e humanidades,Presencial,2020,1,6,136,19,13.97,0.00
+Artes e humanidades,Presencial,2020,2,6,136,35,25.74,11.03
+Artes e humanidades,Presencial,2020,3,6,136,64,47.06,12.50
+Artes e humanidades,Presencial,2020,4,6,136,68,50.00,17.65
+Artes e humanidades,Presencial,2020,5,6,136,72,52.94,19.12
+"Ciências naturais, matemática e estatística",Presencial,2020,1,8,323,22,6.81,0.00
+"Ciências naturais, matemática e estatística",Presencial,2020,2,8,323,35,10.84,0.31
+"Ciências naturais, matemática e estatística",Presencial,2020,3,8,323,38,11.76,0.62
+"Ciências naturais, matemática e estatística",Presencial,2020,4,8,323,54,16.72,1.86
+"Ciências naturais, matemática e estatística",Presencial,2020,5,8,323,87,26.93,13.62
+"Ciências sociais, comunicação e informação",Presencial,2020,1,38,2102,433,20.60,0.19
+"Ciências sociais, comunicação e informação",Presencial,2020,2,38,2102,627,29.83,0.95
+"Ciências sociais, comunicação e informação",Presencial,2020,3,38,2102,815,38.77,2.33
+"Ciências sociais, comunicação e informação",Presencial,2020,4,38,2102,982,46.72,4.38
+"Ciências sociais, comunicação e informação",Presencial,2020,5,38,2102,1094,52.05,24.79
+Computação e Tecnologias da Informação e Comunicação (TIC),Presencial,2020,1,34,1048,188,17.94,0.67
+Computação e Tecnologias da Informação e Comunicação (TIC),Presencial,2020,2,34,1048,301,28.72,1.24
+Computação e Tecnologias da Informação e Comunicação (TIC),Presencial,2020,3,34,1048,360,34.35,5.82
+Computação e Tecnologias da Informação e Comunicação (TIC),Presencial,2020,4,34,1048,464,44.27,9.35
+Computação e Tecnologias da Informação e Comunicação (TIC),Presencial,2020,5,34,1048,604,57.63,14.89
+Educação,Presencial,2020,1,92,2887,286,9.91,0.10
+Educação,Presencial,2020,2,92,2887,460,15.93,0.66
+Educação,Presencial,2020,3,92,2887,621,21.51,1.39
+Educação,Presencial,2020,4,92,2887,1073,37.17,8.69
+Educação,Presencial,2020,5,92,2887,1381,47.84,15.21
+"Engenharia, produção e construção",Presencial,2020,1,91,3290,849,25.81,1.40
+"Engenharia, produção e construção",Presencial,2020,2,91,3290,1162,35.32,5.56
+"Engenharia, produção e construção",Presencial,2020,3,91,3290,1435,43.62,7.23
+"Engenharia, produção e construção",Presencial,2020,4,91,3290,1682,51.12,8.63
+"Engenharia, produção e construção",Presencial,2020,5,91,3290,1937,58.88,17.02
+"Negócios, administração e direito",Presencial,2020,1,156,9223,2397,25.99,1.28
+"Negócios, administração e direito",Presencial,2020,2,156,9223,3491,37.85,4.26
+"Negócios, administração e direito",Presencial,2020,3,156,9223,4467,48.43,7.34
+"Negócios, administração e direito",Presencial,2020,4,156,9223,5148,55.82,12.51
+"Negócios, administração e direito",Presencial,2020,5,156,9223,5762,62.47,24.05
+Saúde e bem-estar,Presencial,2020,1,128,6454,1743,27.01,0.60
+Saúde e bem-estar,Presencial,2020,2,128,6454,2333,36.15,2.59
+Saúde e bem-estar,Presencial,2020,3,128,6454,2856,44.25,4.49
+Saúde e bem-estar,Presencial,2020,4,128,6454,3323,51.49,11.82
+Saúde e bem-estar,Presencial,2020,5,128,6454,3574,55.38,25.92
+Serviços,Presencial,2020,1,17,713,278,38.99,0.42
+Serviços,Presencial,2020,2,17,713,339,47.55,3.79
+Serviços,Presencial,2020,3,17,713,428,60.03,15.43
+Serviços,Presencial,2020,4,17,713,494,69.28,18.65
+Serviços,Presencial,2020,5,17,713,526,73.77,20.76

@@ -1,179 +1,126 @@
-# DataHack — Plataforma de Dados ELT/ETL (Medalhão)
+# Rota do Diploma · DataHack Univag 2026
 
-Ambiente pré-montado de engenharia de dados para o evento **DataHack**. Solte um arquivo ou banco
-em `data/landing/inbox/` e ele chega sozinho a **Bronze → Silver → Gold**: formato, separador e
-encoding detectados, tipos inferidos (decimal com vírgula, datas dd/mm, JSON), chave e duplicatas
-tratadas, CPF/e-mail/telefone pseudonimizados e testes de qualidade gerados. Para fontes que pedem
-regra de negócio, o catálogo YAML e o dbt continuam disponíveis. Warehouse PostgreSQL 16 com
-menor privilégio, orquestração com **Airflow 3** e entrega para **Power BI / Metabase**, tudo em
-Docker e versionado como código.
+De cada 100 que entram numa graduação em Mato Grosso, quantos chegam ao diploma, e em quais cursos
+a rota se perde?
+
+ELT em PostgreSQL 16 com dbt e Airflow: os arquivos públicos do INEP e a API do IBGE entram na
+Bronze, o dbt monta Silver e Gold num schema candidato, e a Gold só é publicada (e exportada para
+`outputs/`) quando as fontes obrigatórias e todos os testes passam. O dashboard lê `outputs/` e abre
+em qualquer computador.
 
 ```mermaid
 flowchart LR
-    subgraph Fontes
-        F0[Inbox<br/>solte e pronto]
-        F1[Arquivos<br/>CSV · JSON · XLSX · XML · Parquet · SQLite]
-        F2[APIs REST<br/>paginação · token · incremental]
-        F3[Bancos<br/>Oracle · SQL Server · MySQL · PG]
-    end
-    subgraph Ingestão["datahack-ingest (Python)"]
-        I[Descoberta + catálogo YAML<br/>full · append · merge<br/>watermark · manifesto · ETL]
-    end
-    subgraph WH["PostgreSQL 16"]
-        B[(bronze<br/>texto fiel + _dh_*)]
-        O[(ops<br/>auditoria)]
-        S[(silver<br/>tipado · dedup · PII hash)]
-        G[(gold<br/>star schema · marts)]
-    end
-    L[(Lake Parquet<br/>alto volume)]
-    BI[Power BI · Metabase<br/>dh_bi_reader]
-    M[generate-models<br/>tipos · chave · PII]
-    F0 & F1 & F2 & F3 --> I --> B
-    I -.-> L
-    I --> O
-    B --> M -->|dbt| S -->|dbt + testes| G --> BI
-    A{{Airflow 3<br/>medallion_pipeline}} -. orquestra .-> I
-    A -. orquestra .-> S
+    F[INEP + IBGE] --> B[(bronze)] --> C[dbt: silver + gold_candidate] --> P{portões} -->|ok| G[(gold)] --> O[outputs/] --> D[dashboard]
+    P -->|falha| K[versão anterior mantida]
 ```
 
 ## Como rodar do zero (Windows, PowerShell)
 
-Pré-requisitos: **Docker Desktop** (4 GB+ de RAM; 6 GB com Airflow) e **Git**. Python é opcional.
+Pré-requisitos: Docker Desktop aberto, Git e 10 GB livres.
 
 ```powershell
+git config --global core.autocrlf false
 git clone https://github.com/FellypeLimadaSilva/datahack.git
 cd datahack
-.\scripts\dh.ps1 doctor           # confere Docker, WSL, disco, portas
-.\scripts\dh.ps1 up-lite          # .env com segredos aleatórios + Postgres + imagem CLI
-.\scripts\dh.ps1 smoke            # testa CLI, banco e dbt
-# coloque os arquivos em data\landing\inbox\ (fora do Git)
-.\scripts\dh.ps1 pipeline         # ingestão + Silver/Gold + dbt build + exportação para outputs\
+Set-ExecutionPolicy -Scope Process Bypass
+.\scripts\dh.ps1 doctor
+.\scripts\dh.ps1 up-lite
+.\scripts\dh.ps1 smoke
 ```
 
-Plataforma completa com Airflow: `.\scripts\dh.ps1 up`. Sem Docker, laboratório e pendrive:
-[docs/LAB_SETUP.md](docs/LAB_SETUP.md). Dados de demonstração: `dh.ps1 sample` (varejo) e
-`dh.ps1 demo-inbox` (arquivos bagunçados).
+Coloque os downloads (sem descompactar) em:
 
-Com os seus dados: copie para `data/landing/inbox/` e rode `.\scripts\dh.ps1 pipeline`
-(ou dispare a DAG `medallion_pipeline`). `.\scripts\dh.ps1 discover` mostra antes o que cada
-arquivo vai virar.
+| Pasta | Arquivos |
+|---|---|
+| `data\landing\inep\censo\` | `microdados_censo_da_educacao_superior_2021.zip` ... `_2024.zip` |
+| `data\landing\inep\trajetoria\` | `indicadores_trajetoria_es_2015_2024.zip` ... `_2020_2024.zip` |
+| `data\landing\inep\qualidade\` | `CPC_2021.xlsx`, `cpc_2022.xlsx`, `CPC_2023.xlsx`, `IGC_*.xlsx`, `conceito_enade_licenciaturas.xlsx` |
 
-Linux/macOS/WSL: troque `.\scripts\dh.ps1 <cmd>` por `make <cmd>`. No VS Code:
-`Ctrl+Shift+P → Tasks: Run Task → DH: ...` executa os mesmos passos.
+Links em [docs/estrategia.md](docs/estrategia.md#3-fontes-e-onde-colocar-cada-uma). O IBGE vem pela
+API, sem download. Depois:
 
-| Serviço | Endereço | Credencial |
-|---|---|---|
-| Airflow (UI/API) | http://localhost:8080 | `AIRFLOW_ADMIN_USER` / `AIRFLOW_ADMIN_PASSWORD` do `.env` |
-| PostgreSQL (warehouse) | `localhost:5433` / db `datahack` | roles abaixo, senhas no `.env` |
-| pgAdmin (`--profile tools`) | http://localhost:5050 | `PGADMIN_*` |
-| Metabase (`--profile bi`) | http://localhost:3000 | criado no primeiro acesso |
-| Réplica de leitura (`--profile ha`) | `localhost:5434` | mesmas roles do warehouse |
+```powershell
+.\scripts\dh.ps1 pipeline
+.\scripts\dh.ps1 dashboard
+```
 
-**Dashboard fora da máquina:** `dh.ps1 export` grava as tabelas da Gold listadas em
-[`config/exports.yml`](config/exports.yml) em `outputs/` (CSV e Parquet), removendo grupos com
-menos de 10 alunos, e o `_manifest.json` registra linhas e hash de cada arquivo. O dashboard lê
-de `outputs/`: Power BI (Obter dados → Parquet/Texto), ou o app pronto em
-[`dashboard/app.py`](dashboard/app.py) (`streamlit run dashboard/app.py`, publicável no Streamlit
-Community Cloud). Conexão direta ao banco para desenvolvimento: `localhost:5433`, banco `datahack`,
-usuário `dh_bi_reader`, que só enxerga o schema `gold`.
+Sem Docker: [docs/LAB_SETUP.md](docs/LAB_SETUP.md#plano-sem-docker). Com Airflow:
+`.\scripts\dh.ps1 up` e a DAG `medallion_pipeline` em http://localhost:8080.
+
+## O que o `pipeline` garante
+
+| Situação | Resultado |
+|---|---|
+| Rodar de novo sem arquivo novo | nada é recarregado; `outputs/` sai com o mesmo hash |
+| Dois anos do Censo ou várias coortes | coexistem; cada partição tem sua versão |
+| INEP republica uma coorte | só aquela coorte muda; a antiga fica na Bronze para auditoria |
+| Fonte obrigatória falha ou perde coluna essencial | nada é publicado; a Gold e `outputs/` anteriores continuam |
+| Teste do dbt falha | idem; motivo em `ops.publications` |
+| Publicação errada | `.\scripts\dh.ps1 rollback` volta a versão anterior |
+| Grupo com menos de 10 alunos | não sai da Gold; contagens de 1 a 9 saem vazias; o export confere de novo |
+
+Tudo isso é exercitado por `tests/integration/test_rota_diploma.py` no CI.
+
+## Respostas e onde estão
+
+| Pergunta | Mart (Gold) e arquivo em `outputs/` |
+|---|---|
+| P1 Quanto da turma fica pelo caminho | `p1_trajetoria_coorte` |
+| P2 Onde a rota mais se perde | `p2_desistencia_curso`, `p2_desistencia_area` |
+| P3 Pública × privada, presencial × EAD | `p3_rede_modalidade_ano` |
+| P4 Qualidade retém? | `p4_qualidade_curso`, `p4_qualidade_faixa`, `p4_fatores` |
+| P5 Funil das licenciaturas | `p5_licenciaturas_curso`, `p5_funil_licenciaturas` |
+| B1 Desertos de ensino superior | `b1_desertos_municipio` |
+| B2 Financiamento e permanência | `b2_financiamento_ano`, `b2_financiamento_desistencia` |
+
+População, numerador, denominador, período e agregação de cada indicador estão em
+`dbt/models/gold/_gold__models.yml` e em `outputs/_indicadores.json`.
+
+Primeiros números (coorte 2020, presencial, MT, acompanhada até 2024): 28.985 ingressantes em 621
+cursos; de cada 100, 21,7 concluíram, 56,5 desistiram e 21,7 seguiam matriculados. A maior perda é
+no primeiro ano (23,2 de cada 100).
 
 ## Estrutura
 
 ```
-config/        catálogo de fontes, exemplos e exportação
-data/          landing/inbox (dados brutos, fora do Git)
-dbt/           macros, modelos Gold, exemplos; models/auto gerado (fora do Git)
-src/           datahack-ingest: descoberta, ingestão, geração de modelos, exportação
-sql/           consultas de apoio
-outputs/       tabelas finais versionadas que alimentam o dashboard
-dashboard/     app Streamlit que lê outputs/
-prompts/       conversas com IA (obrigatório no evento) e índice
-docs/          estrategia.md (Fase 1), arquitetura.md, LAB_SETUP.md, ADRs
-airflow/       DAGs (opcional)
-infra/         Dockerfiles e configuração do Postgres
+config/sources.yml        fontes do desafio (obrigatórias, colunas essenciais)
+config/exports.yml        o que vai para outputs/
+src/datahack_ingest/      ingestão, portões, publicação e exportação
+dbt/models/silver/        stg_* (tipagem, grão) e int_* (acumulados, junções)
+dbt/models/gold/          marts P1-P5, B1, B2
+airflow/dags/             medallion_pipeline e warehouse_maintenance
+dashboard/                Streamlit lendo outputs/ (layout.json define os blocos)
+outputs/                  tabelas publicadas (CSV, Parquet, manifesto)
+docs/                     estrategia.md (Fase 1), arquitetura.md (Fases 2 e 3)
+prompts/                  conversas com IA usadas no projeto
+sql/                      consultas de exploração
 ```
+
+## Comandos
+
+| Comando | O que faz |
+|---|---|
+| `.\scripts\dh.ps1 pipeline` | ingestão + portão + dbt em `gold_candidate` + publicação + `outputs/` |
+| `.\scripts\dh.ps1 ingest [fonte]` | só a ingestão |
+| `.\scripts\dh.ps1 gate` | mostra se as fontes obrigatórias estão completas |
+| `.\scripts\dh.ps1 dbt-build [seletor]` | dbt no schema candidato, sem publicar |
+| `.\scripts\dh.ps1 publish` / `rollback` | promove o candidato / volta a versão anterior |
+| `.\scripts\dh.ps1 export` | exporta a Gold publicada |
+| `.\scripts\dh.ps1 dashboard` | abre o dashboard |
 
 ## Camadas e roles
 
-| Schema | Conteúdo | Escrita | Leitura |
+| Schema | Conteúdo | Escreve | Lê |
 |---|---|---|---|
-| `bronze` | Dado bruto fiel à origem; todas as colunas `text` + `_dh_batch_id`, `_dh_ingested_at`, `_dh_source_file`, `_dh_row_hash` | `dh_ingestor` | `dh_transformer` |
-| `ops` | Execuções, watermarks, manifesto, schema drift, rejeições, perfil das tabelas automáticas | `dh_ingestor` | `dh_transformer` |
-| `silver` | Tipado (casts seguros), deduplicado, PII pseudonimizada; automática por tabela ou modelada à mão | `dh_transformer` | — |
-| `gold` | Uma view pronta por tabela automática, `dh_catalogo_dados`, `dim_data`, `controle_atualizacao` e o modelo dimensional de exemplo | `dh_transformer` | `dh_bi_reader` (somente leitura, timeout 120 s) |
-
-## Comandos principais
-
-| Objetivo | PowerShell | make |
-|---|---|---|
-| Subir / parar | `dh.ps1 up` / `dh.ps1 down` | `make up` / `make down` |
-| Ver o que a inbox detectou | `dh.ps1 discover` | `make discover` |
-| Ingerir tudo / uma fonte | `dh.ps1 ingest` / `dh.ps1 ingest vendas` | `make ingest` / `make ingest s=vendas` |
-| Gerar Silver/Gold automáticas | `dh.ps1 models` / `dh.ps1 models --reset` | `make models` / `make models reset=1` |
-| Exportar Gold para `outputs/` | `dh.ps1 export` | `make export` |
-| Pipeline completo | `dh.ps1 pipeline` | `make pipeline` |
-| Diagnóstico / teste rápido | `dh.ps1 doctor` / `dh.ps1 smoke` | `make smoke` |
-| Imagens para pendrive | `dh.ps1 images-save` / `dh.ps1 images-load` | `make images-save` / `make images-load` |
-| Perfilar fonte nova sem gravar | `docker compose run --rm cli python -m datahack_ingest run <fonte> --dry-run` | idem |
-| dbt (models + testes) | `dh.ps1 dbt-build` / `dh.ps1 dbt-build fact_vendas+` | `make dbt-build sel=fact_vendas+` |
-| Testes Python | `dh.ps1 test` | `make test` |
-| Console SQL | `dh.ps1 psql` | `make psql` |
-| Backup imediato | `dh.ps1 backup` | `make backup` |
-| Subir réplica de leitura | `dh.ps1 ha-up` | `make ha-up` |
-| Testar canais de alerta | `dh.ps1 alert-test` | `make alert-test` |
-
-## Três formas de trazer dados
-
-| Forma | Quando usar | O que você faz |
-|---|---|---|
-| **Inbox** (zero configuração) | Arquivos e bancos SQLite do evento | Copia para `data/landing/inbox/`; uma pasta = uma tabela; arquivos soltos com o mesmo nome a menos do ano (`CPC_2021`, `CPC_2022`) = uma tabela; zip solto = uma tabela por arquivo de dados dentro dele; cada aba do Excel e cada tabela do SQLite = uma tabela |
-| **Inbox + `_source.yml`** | Precisa ajustar chave, filtro, PII, estratégia ou formato | `_source.yml` na pasta, ou `inbox/_sources.yml` (nome da fonte → campos) para arquivos soltos |
-| **Catálogo** (`config/sources.yml`) | APIs, bancos corporativos, ETL antes de gravar, exclusões | Declara a fonte; segredos só por nome de variável |
-
-Silver e Gold são geradas para toda tabela que não tenha modelo dbt escrito à mão. Quando a regra
-de negócio pedir (dimensões, fatos, marts), crie o modelo em `dbt/models/` usando
-`source('bronze', '<tabela>')`: a geração automática daquela tabela para sozinha.
-Guia completo: [docs/ADDING_A_SOURCE.md](docs/ADDING_A_SOURCE.md).
-
-## Componentes opcionais
-
-Nada precisa ser usado por inteiro. O mínimo é PostgreSQL + `datahack-ingest` + dbt.
-
-| Componente | Desligar com |
-|---|---|
-| Dados e modelos de exemplo (varejo) | desligados por padrão; `DH_EXAMPLES=true` para a demonstração |
-| Descoberta automática da inbox | `DH_INBOX_ENABLED=false` |
-| Silver/Gold automáticas | `DH_AUTO_MODELS=false` |
-| Airflow | não subir os serviços `airflow-*`; usar `dh.ps1 pipeline` |
-| Réplica, backup, pgAdmin, Metabase | perfis `ha`, `tools`, `bi` ou não subir o serviço |
-| ETL na ingestão, alertas, checagem de volume, exclusões | só atuam quando declarados |
-
-## Garantias de engenharia
-
-- **Exactly-once na Bronze:** cada arquivo/execução é gravado na mesma transação do seu registro de controle; reexecutar não duplica (manifesto por SHA-256).
-- **Falha isolada:** uma fonte quebrada não impede a Gold das demais; a execução termina como falha e alerta (`DH_REQUIRE_ALL_SOURCES=true` exige todas). `dbt build` usa os testes como gate.
-- **Inferência auditável:** tipos e chaves ficam fixos depois de inferidos (`ops.data_catalog`); valor que não cabe no tipo vira nulo na Silver, fica intacto na Bronze e dispara aviso de teste.
-- **Schema drift tratado:** colunas novas são adicionadas sozinhas e registradas em `ops.schema_changes`.
-- **Quarentena:** linha com chave nula vai para `ops.rejected_rows` (com payload) em vez de quebrar a carga.
-- **Concorrência segura:** lock consultivo por fonte; `max_active_runs=1` na DAG.
-- **Contratos de dados:** tabelas da Gold consumidas pelo BI têm nome e tipo de coluna travados (`contract.enforced`).
-- **LGPD:** dados fora do Git (`.gitignore` + hook), CPF pseudonimizado com SHA-256 + salt, BI sem acesso à Bronze/Silver.
-- **ELT e ETL:** transformações opcionais antes de gravar (filtrar, mascarar, hash, descartar colunas, função Python própria).
-- **Exclusões na origem:** detectadas por snapshot ou por consulta de chaves, com exclusão lógica ou física e trava contra exclusão em massa.
-- **Histórico SCD tipo 2:** `dbt snapshot` de lojas e produtos, com `dim_*_historico` na Gold.
-- **Formatos:** CSV/TXT/TSV, JSON, JSONL, Parquet, Excel (todas as abas), XML, largura fixa, Avro, ORC e SQLite; compactados em gzip, bz2, xz, zstd ou zip; leitura em streaming. Arquivo não tabular (PDF, imagem, .xls antigo, Access, dump SQL) é ignorado com o motivo e a orientação.
-- **Bancos e APIs em escala:** extração SQL paralela por faixa de chave; REST, GraphQL e OAuth2 client credentials.
-- **Observabilidade:** alertas em Slack, Teams, webhook ou e-mail; checagem de volume que bloqueia carga anômala.
-- **Resiliência:** backup diário verificado com role somente leitura; réplica de leitura em streaming (`--profile ha`).
-
-## Documentação
-
-- [Arquitetura e decisões](docs/arquitetura.md) · [ADRs](docs/adr/)
-- [Adicionar fonte](docs/ADDING_A_SOURCE.md) · [Runbook de operação](docs/RUNBOOK.md)
-- [Segurança e LGPD](SECURITY.md) · [Como contribuir](CONTRIBUTING.md) · [Changelog](CHANGELOG.md)
+| `bronze` | arquivos como vieram, tudo texto, com arquivo e lote de origem | `dh_ingestor` | `dh_transformer` |
+| `ops` | execuções, manifesto de arquivos, publicações | `dh_ingestor` | `dh_transformer` |
+| `silver` | modelos tipados e intermediários | `dh_transformer` | — |
+| `gold_candidate` | versão em construção | `dh_transformer` | — |
+| `gold` | versão publicada | troca de schema | `dh_bi_reader` |
+| `gold_previous` | versão anterior, para rollback | troca de schema | — |
 
 ## Stack
 
-Python 3.12 · pandas 3 / PyArrow · SQLAlchemy 2 · psycopg 3 · PostgreSQL 16 ·
-dbt-core 1.12 + dbt-postgres 1.11 · Apache Airflow 3.3 (LocalExecutor) ·
-Docker Compose · GitHub Actions · Ruff · SQLFluff · pre-commit · gitleaks.
+PostgreSQL 16 · Python 3.12 · dbt-core 1.12 · Airflow 3.3 · Docker Compose · Streamlit · GitHub
+Actions. Decisões em [docs/estrategia.md](docs/estrategia.md) e
+[docs/arquitetura.md](docs/arquitetura.md).

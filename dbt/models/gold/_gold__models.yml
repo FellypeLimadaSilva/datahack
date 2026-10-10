@@ -170,6 +170,10 @@ models:
       - dh_unique_combination:
           arguments:
             combination_of_columns: [rede]
+    columns:
+      - { name: de_100_desistem, description: "Desistem" }
+      - { name: de_100_concluem, description: "Concluem" }
+      - { name: de_100_concluem_proficientes, description: "Concluem proficientes (estimativa)" }
 
   - name: b1_desertos_municipio
     description: "B1. Desertos de ensino superior: vagas presenciais de graduação por 100 jovens de 18 a 24 anos."

@@ -1,0 +1,8 @@
+fonte,ultimo_status,ultima_carga_sucesso_local,ultima_carga_sucesso_utc,linhas_ultima_execucao,linhas_rejeitadas_ultima_execucao,ultima_transformacao_local,fuso_horario
+censo_cursos,success,2026-10-10 00:06:32.930826,2026-10-10 00:06:32.930826-04:00,0,0,2026-10-10 08:55:31.070784,America/Cuiaba
+censo_ies,success,2026-10-10 00:06:33.052137,2026-10-10 00:06:33.052137-04:00,0,0,2026-10-10 08:55:31.070784,America/Cuiaba
+cpc,success,2026-10-10 00:06:33.198784,2026-10-10 00:06:33.198784-04:00,0,0,2026-10-10 08:55:31.070784,America/Cuiaba
+enade_licenciaturas,success,2026-10-10 00:06:33.261892,2026-10-10 00:06:33.261892-04:00,0,0,2026-10-10 08:55:31.070784,America/Cuiaba
+ibge_populacao_idade_mt,failed,,,0,0,2026-10-10 08:55:31.070784,America/Cuiaba
+igc,success,2026-10-10 00:06:33.231698,2026-10-10 00:06:33.231698-04:00,0,0,2026-10-10 08:55:31.070784,America/Cuiaba
+trajetoria,success,2026-10-10 00:06:33.157431,2026-10-10 00:06:33.157431-04:00,0,0,2026-10-10 08:55:31.070784,America/Cuiaba
