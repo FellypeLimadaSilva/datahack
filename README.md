@@ -62,7 +62,7 @@ Sem Docker: [docs/LAB_SETUP.md](docs/LAB_SETUP.md#plano-sem-docker). Com Airflow
 | Dado original | Perdido depois da transformação | Guardado na Bronze, como veio do INEP |
 | Erro de tipo (ex.: "1.234,5", "SC", célula vazia) | A carga quebra ou o valor some sem rastro | A carga nunca quebra; a Silver mede o que não converteu e o teste bloqueia |
 | Auditoria de um número | Difícil: o intermediário não existe | Cada linha da Gold vem de uma linha da Bronze com arquivo e lote de origem |
-| Testes de qualidade | Fora do fluxo | No mesmo banco, antes de publicar (82 testes do dbt) |
+| Testes de qualidade | Fora do fluxo | No mesmo banco, antes de publicar (87 testes do dbt) |
 | Idempotência | Depende do script | Arquivo carregado uma vez (SHA-256); Silver e Gold sempre reconstruídas da Bronze |
 
 A única coisa feita antes de gravar é o **recorte de Mato Grosso** nos dois arquivos nacionais
@@ -103,9 +103,28 @@ As taxas da Trajetória usam o mesmo método do INEP (ingressantes menos falecid
 População, numerador, denominador, período e agregação de cada indicador estão em
 `dbt/models/gold/_gold__models.yml` e em `outputs/_indicadores.json`.
 
-Primeiros números (coorte 2020, presencial, MT, acompanhada até 2024): 28.985 ingressantes em 621
-cursos; de cada 100, 21,7 concluíram, 56,5 desistiram e 21,7 seguiam matriculados. A maior perda é
-no primeiro ano (23,2 de cada 100).
+## Principais resultados (versão publicada)
+
+| Pergunta | Resultado |
+|---|---|
+| P1 | Coorte 2015, presencial: 41.918 ingressantes em 515 cursos; até 2024, de cada 100, 38,8 concluíram, 59,9 desistiram e 1,3 seguiam matriculados. A maior perda é no 2º ano (16,7 de cada 100). Coorte 2020: maior perda no 1º ano (23,2 de cada 100) |
+| P3 | Evasão anual de 2024: privada EAD 33,9%, privada presencial 18,8%, pública presencial 4,7% |
+| P4 | Qualidade quase não se associa à desistência (CPC r = −0,01; Enade r = −0,30); rede privada é o fator mais associado (r = +0,46) |
+| P5 | Licenciaturas: de cada 100, 53,7 desistem, 31,4 concluem e cerca de 18,6 concluem proficientes (estimativa: conclusão × 59,3% de proficientes no Enade, 1.014 participantes) |
+| B1 | 101 dos 141 municípios não têm vaga presencial de graduação; 90.017 dos 397.671 jovens de 18 a 24 anos moram neles. MT tem 20,6 vagas presenciais por 100 jovens |
+| B2 | Cursos com mais FIES/ProUni desistem mais (53,5% no quartil mais alto, 31,5% no mais baixo) |
+| Fator social | Cotas (r = −0,49) e apoio social (r = −0,20) aparecem com menos desistência; turno noturno (+0,37) e FIES/ProUni (+0,34), com mais. Escola pública no ensino médio não mostra padrão (+0,02) |
+
+Todas as relações são associações entre cursos, não causa: o INEP não informa o motivo da
+desistência nem dados por aluno.
+
+### Ressalvas da fonte (conferidas em `scripts/diagnostico.sql`)
+
+| Onde | O que acontece | Como tratamos |
+|---|---|---|
+| B1 | Vaga ofertada não é aluno: São José dos Quatro Marcos declara 6.279 vagas (uma faculdade com 937 vagas em Pedagogia e 0 ingressantes), mas teve 258 ingressantes | A tabela traz também ingressantes por 100 jovens (Quatro Marcos: 16,95, perto de Cuiabá com 16,53) |
+| P3 | O pico da rede pública em 2023 (15%) vem de UNEMAT (6.230 desvinculados) e UFMT (4.768) registrando desligamentos de uma vez; em 2024 volta a 4,7% | Apresentado como registro concentrado, não como evasão daquele ano |
+| B2 | A série anual de FIES e ProUni oscila conforme a declaração das faculdades (ex.: 642, 447, 1.539, 499 matrículas FIES numa mesma IES) | A conclusão usa o quartil de financiamento, que é estável |
 
 ## Pastas e arquivos
 
@@ -140,16 +159,16 @@ no primeiro ano (23,2 de cada 100).
 | `dbt_project.yml`, `profiles.yml` | Configuração do projeto, variáveis do desafio (ano do curso 4, CPC 2021–2023, mínimo de 10) e conexão |
 | `models/_core__sources.yml` | Declara as tabelas da Bronze e de `ops` que o dbt lê |
 | `models/silver/staging/stg_*.sql` | Uma por fonte: tipos, códigos como texto, versão vigente de cada ano/coorte/edição |
-| `models/silver/intermediate/int_*.sql` | Acumulados da Trajetória, Censo por curso, uma edição de CPC por curso |
-| `models/gold/p*_*.sql`, `b*_*.sql` | Uma tabela por pergunta (P1 a P5, B1, B2) |
-| `models/gold/controle_atualizacao.sql` | Última carga de cada fonte, para o "atualizado em" |
+| `models/silver/intermediate/int_*.sql` | Acumulados da Trajetória, Censo por curso, uma edição de CPC por curso, perfil social do curso |
+| `models/gold/p*_*.sql`, `b*_*.sql`, `s1_*.sql` | Uma tabela por pergunta (P1 a P5, B1, B2) e o fator social |
+| `models/gold/controle_atualizacao.sql` | Última carga de cada fonte, arquivos e linhas disponíveis, para o "atualizado em" |
 | `models/**/_*.yml` | Descrição, grão, métricas e testes de cada modelo |
 | `macros/casting.sql` | Conversão segura de texto para número e data (vírgula decimal, vazio) |
 | `macros/governance.sql` | Máscara de células pequenas, cálculo de taxa, rede, modalidade, versão por partição |
-| `macros/tests.sql` | Testes próprios: grão único, células pequenas, balanço do fluxo, soma e contagem iguais |
+| `macros/tests.sql` | Testes próprios: grão único, células pequenas, balanço do fluxo, soma e contagem iguais, taxas iguais às do INEP |
 | `macros/generate_schema_name.sql` | Faz o dbt usar os schemas `silver` e `gold_candidate` sem prefixo |
 | **`airflow/dags/`** | `medallion_pipeline.py` (uma tarefa por fonte e depois `publicar`) e `warehouse_maintenance.py` (ANALYZE e limpeza semanal) |
-| **`dashboard/`** | `app.py` (Streamlit), `layout.json` (blocos, gráficos e filtros), `requirements.txt` |
+| **`dashboard/`** | `app.py` (Streamlit), `layout.json` (blocos, gráficos, filtros, filtros de valor único e títulos de eixo), `requirements.txt` |
 | **`outputs/`** | Tabelas publicadas (CSV e Parquet), `_manifest.json` (versão e fontes) e `_indicadores.json` (como cada número é calculado) |
 | **`infra/`** | |
 | `infra/postgres/bootstrap.sql`, `initdb/` | Cria roles, schemas e permissões na primeira subida do banco |
@@ -160,11 +179,11 @@ no primeiro ano (23,2 de cada 100).
 | `scripts/dh.ps1` | Todos os comandos no Windows (`doctor`, `up-lite`, `pipeline`, `dashboard`...) |
 | `scripts/init_env.py` | Gera o `.env` com senhas aleatórias e cria as pastas de dados |
 | `scripts/generate_inep_fixtures.py` | Arquivos falsos no layout do INEP, usados só pelos testes e pelo CI |
+| `scripts/diagnostico.sql` | Conferência das ressalvas da fonte (B1, P3, B2) direto na Silver |
 | **`tests/`** | `unit/` (leitura de arquivos, catálogo, regras de exportação), `integration/` (banco real, incluindo o ponta a ponta `test_rota_diploma.py`), `fixtures/` |
 | **`.github/workflows/ci.yml`** | CI: lint, testes no PostgreSQL, pipeline com arquivos de teste, permissões, backup e restauração, Airflow e imagem Docker |
 | **`docs/`** | `estrategia.md` (Fase 1), `arquitetura.md` (Fases 2 e 3), `LAB_SETUP.md` (montar no laboratório), `RUNBOOK.md` (operação e erros), `ADDING_A_SOURCE.md` (nova base), `adr/` (decisões) |
 | **`prompts/`** | Conversas com IA (obrigatório no evento) e o índice `README.md` |
-| **`sql/`** | Consultas de exploração da equipe |
 
 ## Comandos
 
@@ -189,8 +208,27 @@ no primeiro ano (23,2 de cada 100).
 | `gold` | versão publicada | troca de schema | `dh_bi_reader` |
 | `gold_previous` | versão anterior, para rollback | troca de schema | — |
 
+As três Gold funcionam como estoque, vitrine e vitrine anterior: o dbt monta e testa em
+`gold_candidate`; se tudo passa, numa única transação `gold` vira `gold_previous` e
+`gold_candidate` vira `gold`. Se algo falha, nada muda. `ops` é a trilha de auditoria: cada
+execução, cada arquivo (com SHA-256) e cada publicação aprovada ou rejeitada, com o motivo.
+
+## Conectar uma ferramenta de BI
+
+Só a Gold publicada, com o usuário `dh_bi_reader` (somente leitura) e a senha
+`WAREHOUSE_BI_PASSWORD` do `.env`. O banco aceita conexão apenas do próprio computador.
+
+| Ferramenta | Host | Porta | Banco | Schema |
+|---|---|---|---|---|
+| pgAdmin, DBeaver | `127.0.0.1` | `5433` | `datahack` | `gold` |
+| Superset em Docker, na rede do banco (`docker network connect datahack_warehouse <container>`) | `warehouse` | `5432` | `datahack` | `gold` |
+| Superset em Docker, fora da rede do banco | `host.docker.internal` | `5433` | `datahack` | `gold` |
+
+Conferência: `select count(*) from gold.b1_desertos_municipio` deve dar 141. De outro computador,
+use `outputs/` (as mesmas tabelas em CSV e Parquet).
+
 ## Stack
 
 PostgreSQL 16 · Python 3.12 · dbt-core 1.12 · Airflow 3.3 · Docker Compose · Streamlit · GitHub
-Actions. Decisões em [docs/estrategia.md](docs/estrategia.md) e
+Actions. BI opcional (Superset, pgAdmin) lendo a Gold com o usuário somente leitura. Decisões em [docs/estrategia.md](docs/estrategia.md) e
 [docs/arquitetura.md](docs/arquitetura.md).

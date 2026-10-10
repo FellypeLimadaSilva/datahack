@@ -26,7 +26,7 @@ Medido nos arquivos reais (Censo 2021 + 2023 e Trajetória coorte 2020):
 |---|---|---|---|
 | Censo cursos, 2 anos | 1.116.396 linhas · 973 MB · 110 s | 29.300 linhas · 26 MB · 48 s | 37x menos disco, 2,3x mais rápido |
 | Trajetória, 1 coorte | 174.240 linhas · 82 MB · 35 s | 3.105 linhas · 1,8 MB · 32 s | 46x menos disco |
-| Silver + Gold + 82 testes (dbt) | — | 15 s | |
+| Silver + Gold + 87 testes (dbt) | — | 15 s | |
 
 Por quê: o desafio é sobre MT; o Brasil inteiro (4 anos de Censo + 6 coortes) passaria de 3 GB e
 10+ minutos por carga nas máquinas do laboratório, sem uso nas perguntas. Ficam nacionais (pequenos):

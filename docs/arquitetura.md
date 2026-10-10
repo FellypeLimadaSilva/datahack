@@ -34,7 +34,7 @@ flowchart LR
     A[arquivos INEP<br/>API IBGE] -->|ingestão por fonte<br/>1 transação por arquivo| B[(bronze)]
     B --> G1{portão 1<br/>fontes obrigatórias<br/>linhas e colunas essenciais}
     G1 -->|falhou| R[ops.publications<br/>rejected]
-    G1 -->|ok| D[dbt build<br/>silver + gold_candidate<br/>82 testes]
+    G1 -->|ok| D[dbt build<br/>silver + gold_candidate<br/>87 testes]
     D --> G2{portão 2<br/>erro, falha ou<br/>modelo pulado?}
     G2 -->|sim| R
     G2 -->|não| P[troca atômica<br/>gold -> gold_previous<br/>gold_candidate -> gold]
@@ -78,15 +78,15 @@ troca de schema: consultas em andamento terminam na versão antiga e as novas j�
 | | `int_censo_curso_ano` | ano × curso | soma dos municípios, só graduação |
 | | `int_cpc_curso` | curso | uma edição de CPC (a mais recente) |
 | | `int_curso_desistencia` | curso | coortes somadas + CPC, sem máscara |
+| | `int_curso_perfil_social` | curso × fator | parcela de escola pública, cotas, apoio social, noturno, FIES/ProUni, PPI no Censo |
 | Gold | `p1_trajetoria_coorte` | modalidade × coorte × ano | P1 |
 | | `p2_desistencia_curso`, `p2_desistencia_area` | curso × coorte; área × coorte × ano do curso | P2 |
 | | `p3_rede_modalidade_ano` | ano × rede × modalidade | P3 |
-| | `p4_qualidade_curso`, `p4_qualidade_faixa`, `p4_fatores` | curso; faixa × rede; fator | P4 |
+| | `p4_qualidade_curso`, `p4_qualidade_faixa`, `p4_fatores` | curso; faixa × rede; fator | P4 (faixas 1–5, "Sem conceito (SC)" e "Não avaliado") |
 | | `p5_licenciaturas_curso`, `p5_funil_licenciaturas` | curso; rede | P5 |
-| | `b1_desertos_municipio` | município | B1 |
+| | `b1_desertos_municipio` | município | B1: vagas e ingressantes presenciais por 100 jovens |
 | | `b2_financiamento_ano`, `b2_financiamento_desistencia` | ano × modalidade; quartil | B2 |
 | | `s1_fator_social_desistencia` | fator social × quartil | P4/B2: o que mais explica |
-| Silver | `int_curso_perfil_social` | curso × fator | parcela de escola pública, cotas, apoio social, noturno, FIES/ProUni, PPI no Censo |
 
 Cada mart documenta em `meta` a população, o numerador, o denominador, o período, a agregação e o
 grão (`dbt/models/gold/_gold__models.yml`). Esses metadados vão para `outputs/_indicadores.json` e
@@ -103,6 +103,9 @@ Definições que mudam o resultado e estão fixadas em `dbt_project.yml`:
 | `min_base_ranking` | 30 | rankings e correlações só com cursos de 30 ou mais ingressantes |
 
 Taxas da Trajetória = acumulado ÷ (ingressantes − falecidos acumulados), o mesmo método do INEP; o teste `dh_matches_inep_rates` confere cada linha contra TDA, TCA e TAP do arquivo (diferença máxima medida: 0,000000005 ponto percentual).
+
+Contagens do Censo que vêm vazias em um curso (por exemplo ProUni parcial) contam como zero na
+soma, para o curso não sumir do total.
 
 Evasão anual do Censo (P3) = desvinculados ÷ (matrículas + trancados + desvinculados + transferidos
 + falecidos). Transferido para outro curso da mesma IES não conta como evasão.

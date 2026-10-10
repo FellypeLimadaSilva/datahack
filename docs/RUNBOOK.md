@@ -43,6 +43,12 @@ select * from ops.schema_changes order by detected_at desc;
 | `bronze.enade_licenciaturas sem coluna de curso ou de proficiência` | Layout do Enade 2025 diferente do previsto | Veja os nomes em `bronze.enade_licenciaturas` e ajuste os padrões em `stg_enade_licenciaturas.sql` |
 | `carga full sem linhas` | API do IBGE fora do ar ou sem internet | Rode depois; a versão anterior foi mantida |
 | `could not resize shared memory segment` | `/dev/shm` pequeno | Já tratado com `shm_size: 1g` |
+| `password authentication failed for user "dh_bi_reader"` (pgAdmin, Superset) | Senha copiada com o nome da variável ou espaço | `((Get-Content .env \| Select-String '^WAREHOUSE_BI_PASSWORD=').Line -split '=', 2)[1].Trim() \| Set-Clipboard` e cole; host `127.0.0.1`, porta `5433` |
+| Superset mostra "Metadados" nos cards e filtros | É a tradução de "No data": o dataset aponta para outro banco ou schema | Em Datasets, Database `datahack` e Schema `gold`; depois Refresh dashboard. Conferência: B1 = 101 municípios sem oferta |
+| Números do Superset diferentes dos de `outputs/` | Superset importou outra carga | Reimporte da `main` (`FORCE_REIMPORT=1` no deploy); B1 = 141 municípios, 20,57 vagas por 100 jovens |
+| `localhost:8501` recusa conexão | Dashboard ainda instalando ou interrompido com Ctrl+C | Rode `dashboard` e espere "You can now view your Streamlit app" (1 a 2 minutos na primeira vez) |
+| Consulta do `diagnostico.sql` volta vazia no PowerShell | `Get-Content` troca a codificação dos acentos | O arquivo usa só códigos e ASCII nos filtros; mantenha assim em novas consultas |
+| `dbt debug` falha com `git [ERROR]` na imagem CLI | A imagem não tem git | Use `dbt debug --connection` |
 
 ## Backup e restauração
 
