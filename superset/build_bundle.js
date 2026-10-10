@@ -474,6 +474,18 @@ FILTERS.forEach(f => {
   f.tabs.forEach(t => { if (!tabs.some(x => x.id === t)) throw new Error(`filtro ${f.key}: aba ${t} não existe`); });
   (f.cascade || []).forEach(p => { if (!FILTERS.some(x => x.key === p)) throw new Error(`filtro ${f.key}: pai ${p} não existe`); });
 });
+// O Superset manda o filtro a todo gráfico "em escopo"; se o dataset do gráfico não tem a coluna, a consulta ignora o filtro
+// em silêncio (e o selo do gráfico ainda diz que foi aplicado). Por isso o escopo exclui quem não tem a coluna.
+const semColuna = f => charts.filter(c => !ds(c.ds).cols.some(x => x.n === f.col)).map(c => c.id);
+const excluidos = f => [...new Set([...(f.exclude ? f.exclude() : []), ...semColuna(f)])];
+// Cobertura: em cada aba declarada, o filtro precisa alcançar ao menos um gráfico (senão aparece na barra sem fazer nada).
+FILTERS.forEach(f => {
+  const fora = new Set(excluidos(f));
+  f.tabs.forEach(t => {
+    const ids = tabs.find(x => x.id === t).rows.flat().map(itemId).filter(x => typeof x === 'number');
+    if (!ids.some(id => !fora.has(id))) throw new Error(`filtro ${f.key}: não alcança nenhum gráfico da aba ${t}; tire a aba de 'tabs'`);
+  });
+});
 function nativeFilters() {
   return FILTERS.map(f => {
     const val = f.def, range = f.type === 'range';
@@ -483,7 +495,7 @@ function nativeFilters() {
         : { enableEmptyFilter: !!f.required, defaultToFirstItem: !!f.first, multiSelect: f.multi !== false, searchAllOptions: !!f.search, inverseSelection: false, sortAscending: !f.sortDesc },
       targets: [{ datasetUuid: ds(f.ds).uuid, column: { name: f.col } }],
       defaultDataMask: val ? { extraFormData: { filters: [{ col: f.col, op: 'IN', val }] }, filterState: { value: val }, ownState: {} } : { extraFormData: {}, filterState: {}, ownState: {} },
-      cascadeParentIds: (f.cascade || []).map(fid), scope: { rootPath: f.tabs.map(tabId), excluded: f.exclude ? f.exclude() : [] },
+      cascadeParentIds: (f.cascade || []).map(fid), scope: { rootPath: f.tabs.map(tabId), excluded: excluidos(f) },
     };
   });
 }

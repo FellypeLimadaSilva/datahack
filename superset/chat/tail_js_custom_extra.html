@@ -122,3 +122,37 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', sync); else sync();
 })();
 </script>
+<script>
+/* Barra de filtros do dashboard (Superset 4.1.2), duas correções de uso:
+   1) Aplicar sozinho: o Superset só filtra depois do botão Apply; aqui ele é clicado ~0,6 s depois da última mudança.
+   2) "Clear all" esvaziava Exibir em / Coorte / Ano do curso (obrigatórios) e desativava o Apply, deixando o painel parado.
+      Agora o botão vira "Restaurar padrão" e recarrega o dashboard sem o estado salvo, voltando aos valores iniciais. */
+(function () {
+  var TICK_MS = 250, STABLE_MS = 600, COOLDOWN_MS = 1500, MAX_TENTATIVAS = 3;
+  var since = 0, lastClick = 0, tentativas = 0;
+
+  function onDashboard() { return /^\/superset\/dashboard\/[^/]+/.test(location.pathname); }
+
+  var css = document.createElement('style');
+  css.textContent = '.filter-clear-all-button{font-size:0 !important}.filter-clear-all-button::after{content:"Restaurar padrão";font-size:12px;text-transform:none}';
+  (document.head || document.documentElement).appendChild(css);
+
+  document.addEventListener('click', function (e) {
+    var t = e.target && e.target.closest && e.target.closest('.filter-clear-all-button');
+    if (!t || !onDashboard()) return;
+    e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+    var u = new URL(location.href);
+    u.searchParams.delete('native_filters_key'); u.searchParams.delete('native_filters');
+    location.assign(u.toString());
+  }, true);
+
+  setInterval(function () {
+    var b = onDashboard() && document.querySelector('.filter-apply-button');
+    var now = Date.now();
+    if (!b || b.disabled) { since = 0; tentativas = 0; return; }       // nada pendente (ou obrigatório vazio)
+    if (now - lastClick < COOLDOWN_MS || tentativas >= MAX_TENTATIVAS) return;
+    if (!since) { since = now; return; }
+    if (now - since >= STABLE_MS) { lastClick = now; since = 0; tentativas++; b.click(); }
+  }, TICK_MS);
+})();
+</script>
