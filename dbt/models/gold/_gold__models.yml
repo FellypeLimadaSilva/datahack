@@ -249,7 +249,9 @@ models:
       - { name: ultimo_status, data_type: text }
       - { name: ultima_carga_sucesso_local, data_type: timestamp }
       - { name: ultima_carga_sucesso_utc, data_type: timestamptz }
-      - { name: linhas_ultima_execucao, data_type: bigint }
+      - { name: linhas_ultima_execucao, data_type: bigint, description: "Linhas novas na última execução; zero quando o arquivo já estava carregado" }
       - { name: linhas_rejeitadas_ultima_execucao, data_type: bigint }
+      - { name: nu_arquivos_carregados, data_type: bigint, description: "Arquivos já carregados na Bronze" }
+      - { name: linhas_disponiveis, data_type: bigint, description: "Linhas na Bronze vindas desta fonte; zero na última execução só quer dizer que nenhum arquivo novo chegou" }
       - { name: ultima_transformacao_local, data_type: timestamp }
       - { name: fuso_horario, data_type: text }
