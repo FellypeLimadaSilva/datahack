@@ -1,5 +1,5 @@
 select
-    coalesce(cpc_faixa, 'Sem CPC')::text as cpc_faixa,
+    (case when cpc_faixa is null then 'Não avaliado' when cpc_faixa = 'SC' then 'Sem conceito (SC)' else cpc_faixa end)::text as cpc_faixa,
     rede::text,
     count(*)::bigint as nu_cursos,
     {{ dh_mask_count('sum(qt_ingressante)') }}::bigint as qt_ingressante,

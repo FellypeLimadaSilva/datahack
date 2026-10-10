@@ -7,7 +7,7 @@ with censo as (
         sum(qt_mat_reserva_vaga) as qt_mat_reserva_vaga,
         sum(qt_mat_apoio_social) as qt_mat_apoio_social,
         sum(qt_mat_noturno) as qt_mat_noturno,
-        sum(qt_mat_fies + qt_mat_prouni) as qt_mat_financiada,
+        sum(coalesce(qt_mat_fies, 0) + coalesce(qt_mat_prouni, 0)) as qt_mat_financiada,
         sum(qt_mat_ppi) as qt_mat_ppi,
         sum(qt_mat_cor_declarada) as qt_mat_cor_declarada
     from {{ ref('int_censo_curso_ano') }}

@@ -200,7 +200,7 @@ models:
     meta:
       pergunta: B1
       populacao: Os 141 municípios de MT
-      numerador: Vagas presenciais de graduação ofertadas no município (último Censo carregado)
+      numerador: Vagas presenciais de graduação ofertadas no município (último Censo carregado); ingressantes presenciais como conferência, porque vaga ofertada não é aluno
       denominador: População de 18 a 24 anos (Censo IBGE 2022)
       periodo: Censo da Educação Superior mais recente; população 2022
       agregacao: Soma dos cursos do município
@@ -218,8 +218,9 @@ models:
       numerador: Ingressantes ou matrículas com FIES; com ProUni (integral + parcial)
       denominador: Ingressantes ou matrículas
       periodo: Censo 2021 a 2024
-      agregacao: Soma
+      agregacao: Soma; ProUni integral e parcial somados tratando vazio como zero
       grao: ano x modalidade
+      ressalva: A série anual oscila conforme a declaração das IES ao Censo; para a conclusão use o quartil de financiamento
       celulas_pequenas: *regra_celula
     data_tests:
       - dh_no_small_cells

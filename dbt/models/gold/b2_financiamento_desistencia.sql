@@ -1,7 +1,7 @@
 with financiamento as (
     select
         co_curso,
-        sum(qt_mat_fies + qt_mat_prouni)::numeric / nullif(sum(qt_mat), 0) as share_financiado
+        sum(coalesce(qt_mat_fies, 0) + coalesce(qt_mat_prouni, 0))::numeric / nullif(sum(qt_mat), 0) as share_financiado
     from {{ ref('int_censo_curso_ano') }}
     where tp_rede = 2
     group by co_curso

@@ -79,12 +79,13 @@ def block_filters(block: dict[str, Any], df: pd.DataFrame) -> pd.DataFrame:
     if not compatible:
         return df
     defaults = block.get("padrao", {})
+    single = set(block.get("unico", []))
     columns = st.columns(len(compatible))
     for column, holder in zip(compatible, columns, strict=True):
         values = sorted(df[column].dropna().unique().tolist())
         if not values:
             continue
-        options = ["Todos", *values]
+        options = values if column in single else ["Todos", *values]
         wanted = defaults.get(column)
         if wanted == "min":
             wanted = values[0]
@@ -111,6 +112,7 @@ def series_column(block: dict[str, Any], df: pd.DataFrame) -> str | None:
 def chart(block: dict[str, Any], df: pd.DataFrame, indicators: dict[str, Any]) -> None:
     table = block["tabela"]
     x, ys = block["x"], block.get("y", [])
+    x_title = block.get("x_titulo", x.replace("_", " "))
     kind = block["tipo"]
     tooltip = [c for c in df.columns if not c.startswith("_")]
     if kind == "ranking":
@@ -132,7 +134,7 @@ def chart(block: dict[str, Any], df: pd.DataFrame, indicators: dict[str, Any]) -
         encode["color"] = alt.Color(f"{color}:N", title=None)
     if kind == "linha":
         mark = base.mark_line(point=True).encode(
-            x=alt.X(f"{x}:O", title=x.replace("_", " ")),
+            x=alt.X(f"{x}:O", title=x_title),
             y=alt.Y(f"{y}:Q", title=title),
             **{k: v for k, v in encode.items() if v is not None},
         )
@@ -151,7 +153,7 @@ def chart(block: dict[str, Any], df: pd.DataFrame, indicators: dict[str, Any]) -
                 alt.datum[highlight], alt.value("#d1495b"), alt.value("#4c78a8")
             )
         mark = base.mark_bar().encode(
-            x=alt.X(f"{x}:O", title=x.replace("_", " ")),
+            x=alt.X(f"{x}:O", title=x_title),
             y=alt.Y(f"{y}:Q", title=title),
             **{k: v for k, v in encode.items() if v is not None},
         )
@@ -167,12 +169,17 @@ def ranking(block: dict[str, Any], df: pd.DataFrame) -> None:
     metric = block["y"][0]
     columns = [c for c in block.get("colunas", df.columns) if c in df.columns]
     n = int(block.get("n", 10))
+    tie = block.get("desempate")
     ordered = df.sort_values(metric, ascending=False)
+    if tie and tie in df.columns:
+        lowest = df.sort_values([metric, tie], ascending=[True, False]).head(n)
+    else:
+        lowest = ordered.tail(n).iloc[::-1]
     top, bottom = st.columns(2)
-    top.caption("Maiores")
+    top.caption(block.get("titulo_maiores", "Maiores"))
     top.dataframe(ordered.head(n)[columns], hide_index=True, width="stretch")
-    bottom.caption("Menores")
-    bottom.dataframe(ordered.tail(n).iloc[::-1][columns], hide_index=True, width="stretch")
+    bottom.caption(block.get("titulo_menores", "Menores"))
+    bottom.dataframe(lowest[columns], hide_index=True, width="stretch")
 
 
 def funnel(block: dict[str, Any], df: pd.DataFrame, indicators: dict[str, Any]) -> None:
@@ -199,8 +206,17 @@ def funnel(block: dict[str, Any], df: pd.DataFrame, indicators: dict[str, Any]) 
             tooltip=["etapa", "de_cada_100"],
         )
     )
-    text = bars.mark_text(align="left", dx=4).encode(text=alt.Text("de_cada_100:Q", format=".1f"))
+    text = bars.mark_text(align="left", dx=4, color="#9aa0a6").encode(
+        text=alt.Text("de_cada_100:Q", format=".1f")
+    )
     st.altair_chart(bars + text, width="stretch")
+    notes = [
+        f"{label(c, indicators, block['tabela'])}: {row.get(c):.1f}"
+        for c in block.get("nota", [])
+        if pd.notna(row.get(c))
+    ]
+    if notes:
+        st.caption(" · ".join(notes))
     if len(available) < len(steps):
         st.caption("Proficiência do Enade 2025 ainda não carregada: etapa omitida.")
 
