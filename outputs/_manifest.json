@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-10-10T18:05:29+00:00",
+  "generated_at": "2026-10-10T18:46:10+00:00",
   "platform_version": "2.0.0",
-  "version": "20261010T180514Z-4de890",
+  "version": "20261010T184555Z-035aee",
   "sources": {
     "censo_cursos": {
       "rows": 62674,
@@ -131,7 +131,7 @@
     }
   },
   "dbt": {
-    "invocation_id": "b3b2f889-7fbb-4e1f-8bf2-b63be2a5c987",
+    "invocation_id": "bed256aa-5eb4-4fc9-a2ff-e6a589843377",
     "counts": {
       "success": 27,
       "pass": 87
@@ -629,13 +629,13 @@
       "files": [
         {
           "file": "p4_qualidade_faixa.csv",
-          "bytes": 466,
-          "sha256": "5bb893efd6d7093603204e4074d4c84f083f23f1c85b255905f2ebb7d20a1b49"
+          "bytes": 508,
+          "sha256": "0f6c84aec1f2fd88b12d2cb9918b2968aad4b90bba58e71ad44d3c1cb6957e48"
         },
         {
           "file": "p4_qualidade_faixa.parquet",
-          "bytes": 2410,
-          "sha256": "7410420940ed2e2dee918a020b6ed2c82883ed8b2875296039a753b4e2b2c3b1"
+          "bytes": 2456,
+          "sha256": "effd80270d8d23d374c753f335029825906dfefc6462a0e217d6c3173a40a27c"
         }
       ]
     },
@@ -860,6 +860,14 @@
           "type": "numeric"
         },
         {
+          "name": "qt_ingressante_presencial",
+          "type": "bigint"
+        },
+        {
+          "name": "ingressantes_por_100_jovens",
+          "type": "numeric"
+        },
+        {
           "name": "is_deserto",
           "type": "boolean"
         }
@@ -867,13 +875,13 @@
       "files": [
         {
           "file": "b1_desertos_municipio.csv",
-          "bytes": 7479,
-          "sha256": "dc1c88015ad4a151ad75ce784422d6f75591d2b7aa6039b53016a73f3392888f"
+          "bytes": 8596,
+          "sha256": "ef4684036222bbde862cbbd5868060f7de7e0dfcd9107126691890e41b80a748"
         },
         {
           "file": "b1_desertos_municipio.parquet",
-          "bytes": 5916,
-          "sha256": "0453f6107ad6d3a5fed8d8fd47bb520304a42b57d05a9edc3c347a9d50643d31"
+          "bytes": 7168,
+          "sha256": "949a9462875690834cd3929438b902b0bd03aba3349af0be9830f15e0a636cfc"
         }
       ]
     },
@@ -1106,12 +1114,12 @@
         {
           "file": "controle_atualizacao.csv",
           "bytes": 1055,
-          "sha256": "9f3243bf6dbb025602dc91f0cf5e3fd7f47604336a01a3d6f89795475d69c004"
+          "sha256": "aa97ea9ca6c4457caa240a45a3dac037d5a3f180870d95f5b38644e8f8e614c9"
         },
         {
           "file": "controle_atualizacao.parquet",
-          "bytes": 3175,
-          "sha256": "46751ffec4682552d2cbe7fbf7c91f8f1a30217c70af007bb68e13ab05a5e01f"
+          "bytes": 3179,
+          "sha256": "a5a46079825c289643b499f15e80ae38522893fbec6dec3ee3c377855ba6b81d"
         }
       ]
     }

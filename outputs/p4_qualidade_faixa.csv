@@ -8,7 +8,7 @@ cpc_faixa,rede,nu_cursos,qt_ingressante,qt_desistencia_marco,taxa_desistencia_ma
 4,Pública,62,6908,1726,25.00
 5,Privada,9,1193,664,55.70
 5,Pública,2,212,45,21.23
-SC,Privada,29,1931,1030,53.34
-SC,Pública,1,57,,10.53
-Sem CPC,Privada,157,7341,3580,48.79
-Sem CPC,Pública,36,2277,710,31.18
+Não avaliado,Privada,157,7341,3580,48.79
+Não avaliado,Pública,36,2277,710,31.18
+Sem conceito (SC),Privada,29,1931,1030,53.34
+Sem conceito (SC),Pública,1,57,,10.53
