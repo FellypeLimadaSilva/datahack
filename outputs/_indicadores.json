@@ -67,11 +67,19 @@
         "meta": {}
       },
       "linhas_ultima_execucao": {
-        "descricao": "",
+        "descricao": "Linhas novas na última execução; zero quando o arquivo já estava carregado",
         "meta": {}
       },
       "linhas_rejeitadas_ultima_execucao": {
         "descricao": "",
+        "meta": {}
+      },
+      "nu_arquivos_carregados": {
+        "descricao": "Arquivos já carregados na Bronze",
+        "meta": {}
+      },
+      "linhas_disponiveis": {
+        "descricao": "Linhas na Bronze vindas desta fonte; zero na última execução só quer dizer que nenhum arquivo novo chegou",
         "meta": {}
       },
       "ultima_transformacao_local": {

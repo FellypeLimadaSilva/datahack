@@ -1,8 +1,8 @@
-fonte,ultimo_status,ultima_carga_sucesso_local,ultima_carga_sucesso_utc,linhas_ultima_execucao,linhas_rejeitadas_ultima_execucao,ultima_transformacao_local,fuso_horario
-censo_cursos,success,2026-10-10 14:45:58.006029,2026-10-10 18:45:58.006029+00:00,0,0,2026-10-10 14:46:03.350788,America/Cuiaba
-censo_ies,success,2026-10-10 14:46:00.345992,2026-10-10 18:46:00.345992+00:00,0,0,2026-10-10 14:46:03.350788,America/Cuiaba
-cpc,success,2026-10-10 14:46:01.032500,2026-10-10 18:46:01.032500+00:00,0,0,2026-10-10 14:46:03.350788,America/Cuiaba
-enade_licenciaturas,success,2026-10-10 14:46:01.123747,2026-10-10 18:46:01.123747+00:00,0,0,2026-10-10 14:46:03.350788,America/Cuiaba
-ibge_populacao_idade_mt,success,2026-10-10 14:46:01.567740,2026-10-10 18:46:01.567740+00:00,987,0,2026-10-10 14:46:03.350788,America/Cuiaba
-igc,success,2026-10-10 14:46:01.092955,2026-10-10 18:46:01.092955+00:00,0,0,2026-10-10 14:46:03.350788,America/Cuiaba
-trajetoria,success,2026-10-10 14:46:00.958137,2026-10-10 18:46:00.958137+00:00,0,0,2026-10-10 14:46:03.350788,America/Cuiaba
+fonte,ultimo_status,ultima_carga_sucesso_local,ultima_carga_sucesso_utc,linhas_ultima_execucao,linhas_rejeitadas_ultima_execucao,nu_arquivos_carregados,linhas_disponiveis,ultima_transformacao_local,fuso_horario
+censo_cursos,success,2026-10-10 15:47:35.527783,2026-10-10 19:47:35.527783+00:00,0,0,4,62674,2026-10-10 15:47:42.215128,America/Cuiaba
+censo_ies,success,2026-10-10 15:47:38.547061,2026-10-10 19:47:38.547061+00:00,0,0,4,10310,2026-10-10 15:47:42.215128,America/Cuiaba
+cpc,success,2026-10-10 15:47:39.600627,2026-10-10 19:47:39.600627+00:00,0,0,3,27700,2026-10-10 15:47:42.215128,America/Cuiaba
+enade_licenciaturas,success,2026-10-10 15:47:39.736282,2026-10-10 19:47:39.736282+00:00,0,0,1,4948,2026-10-10 15:47:42.215128,America/Cuiaba
+ibge_populacao_idade_mt,success,2026-10-10 15:47:40.200432,2026-10-10 19:47:40.200432+00:00,987,0,0,987,2026-10-10 15:47:42.215128,America/Cuiaba
+igc,success,2026-10-10 15:47:39.706754,2026-10-10 19:47:39.706754+00:00,0,0,3,6136,2026-10-10 15:47:42.215128,America/Cuiaba
+trajetoria,success,2026-10-10 15:47:39.512796,2026-10-10 19:47:39.512796+00:00,0,0,2,8255,2026-10-10 15:47:42.215128,America/Cuiaba
