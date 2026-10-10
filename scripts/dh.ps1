@@ -158,6 +158,26 @@ switch ($Command) {
         docker load -i $ImagesTar; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     }
     "db-bootstrap-native" { Invoke-NativeBootstrap }
+    "import-downloads" {
+        $from = if ($Rest) { $Rest[0] } else { Join-Path $HOME "Downloads" }
+        $rules = @(
+            @{ Pattern = "microdados_censo_da_educacao_superior_*.zip"; Dest = "data/landing/inep/censo" },
+            @{ Pattern = "indicadores_trajetoria_es_*.zip"; Dest = "data/landing/inep/trajetoria" },
+            @{ Pattern = "cpc_*.xlsx"; Dest = "data/landing/inep/qualidade" },
+            @{ Pattern = "igc_*.xlsx"; Dest = "data/landing/inep/qualidade" },
+            @{ Pattern = "conceito_enade_licenciaturas*.xlsx"; Dest = "data/landing/inep/qualidade" }
+        )
+        foreach ($rule in $rules) {
+            New-Item -ItemType Directory -Force $rule.Dest | Out-Null
+            $found = @(Get-ChildItem -Path $from -Filter $rule.Pattern -File -ErrorAction SilentlyContinue |
+                Where-Object { $_.Name -notmatch "\(\d+\)" })
+            foreach ($file in $found) {
+                Copy-Item $file.FullName -Destination $rule.Dest -Force
+                Write-Host ("[copiado] {0} -> {1}" -f $file.Name, $rule.Dest)
+            }
+            if (-not $found) { Write-Host ("[faltando] {0}" -f $rule.Pattern) }
+        }
+    }
     "ingest"       { if ($Rest) { Invoke-Cli python -m datahack_ingest run @Rest } else { Invoke-Cli python -m datahack_ingest run --all --continue-on-error } }
     "gate"         { Invoke-Cli python -m datahack_ingest gate }
     "dbt-build"    { if ($Rest) { Invoke-Cli dbt build --project-dir dbt --select @Rest } else { Invoke-Cli dbt build --project-dir dbt } }
@@ -197,6 +217,7 @@ Uso: .\scripts\dh.ps1 <comando> [args]      (sem Docker: `$env:DH_RUNNER = "nati
   smoke                       testa CLI, banco e dbt
   images-save | images-load   leva as imagens num pendrive (images/datahack-images.tar)
   db-bootstrap-native         prepara um PostgreSQL instalado sem Docker
+  import-downloads [pasta]    copia os arquivos do INEP de Downloads para data\landing\inep
   pipeline                    ingestao + portao + dbt em gold_candidate + publicacao + outputs/
   ingest [fontes...]          so a ingestao na Bronze
   gate                        mostra se as fontes obrigatorias estao completas

@@ -1,4 +1,4 @@
-# ADR 0006 — Recorte de escopo na ingestão, ELT como padrão
+# ADR 0005 — Recorte de escopo na ingestão, ELT como padrão
 
 - **Status:** aceito · **Data:** 2026-10-10
 

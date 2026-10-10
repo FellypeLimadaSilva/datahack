@@ -1,4 +1,4 @@
-# ADR 0007 — Portão de qualidade e publicação atômica da Gold
+# ADR 0006 — Portão de qualidade e publicação atômica da Gold
 
 **Status:** aceito (2026-10-10)
 
