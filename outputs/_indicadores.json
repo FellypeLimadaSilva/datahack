@@ -1,32 +1,17 @@
 {
-  "p2_desistencia_area": {
-    "descricao": "P2. Desistência acumulada por área CINE, coorte e ano do curso, para comparar coortes no mesmo ano do curso.",
+  "b1_desertos_municipio": {
+    "descricao": "B1. Desertos de ensino superior: vagas presenciais de graduação por 100 jovens de 18 a 24 anos.",
     "meta": {
-      "pergunta": "P2",
-      "populacao": "Ingressantes de MT por área geral CINE",
-      "numerador": "Desistentes acumulados até o ano do curso",
-      "denominador": "Ingressantes",
-      "periodo": "Coortes 2015 a 2020",
-      "agregacao": "Soma dos cursos da área",
-      "grao": "área x modalidade x coorte x ano do curso",
-      "celulas_pequenas": "Linhas com base abaixo de 10 alunos não são publicadas; contagens qt_* entre 1 e 9 saem vazias. Taxas são calculadas antes da máscara, sempre como soma do numerador sobre soma do denominador."
-    },
-    "colunas": {}
-  },
-  "p4_qualidade_curso": {
-    "descricao": "P4. Curso, CPC e desistência no 4º ano: base do gráfico de dispersão.",
-    "meta": {
-      "pergunta": "P4",
-      "populacao": "Cursos de MT com coorte observada até o ano do curso de comparação",
-      "numerador": "Desistentes acumulados até o 4º ano, coortes somadas",
-      "denominador": "Ingressantes das mesmas coortes",
-      "periodo": "Coortes 2015 a 2020; CPC mais recente entre 2021 e 2023",
-      "agregacao": "Soma das coortes do curso",
-      "grao": "curso",
-      "celulas_pequenas": "Linhas com base abaixo de 10 alunos não são publicadas; contagens qt_* entre 1 e 9 saem vazias. Taxas são calculadas antes da máscara, sempre como soma do numerador sobre soma do denominador."
+      "pergunta": "B1",
+      "populacao": "Os 141 municípios de MT",
+      "numerador": "Vagas presenciais de graduação ofertadas no município (último Censo carregado)",
+      "denominador": "População de 18 a 24 anos (Censo IBGE 2022)",
+      "periodo": "Censo da Educação Superior mais recente; população 2022",
+      "agregacao": "Soma dos cursos do município",
+      "grao": "município"
     },
     "colunas": {
-      "co_curso": {
+      "co_municipio": {
         "descricao": "",
         "meta": {}
       }
@@ -46,43 +31,54 @@
     },
     "colunas": {}
   },
-  "b1_desertos_municipio": {
-    "descricao": "B1. Desertos de ensino superior: vagas presenciais de graduação por 100 jovens de 18 a 24 anos.",
+  "b2_financiamento_desistencia": {
+    "descricao": "B2. Cursos com mais financiados evadem menos? Desistência no 4º ano por quartil de financiamento.",
     "meta": {
-      "pergunta": "B1",
-      "populacao": "Os 141 municípios de MT",
-      "numerador": "Vagas presenciais de graduação ofertadas no município (último Censo carregado)",
-      "denominador": "População de 18 a 24 anos (Censo IBGE 2022)",
-      "periodo": "Censo da Educação Superior mais recente; população 2022",
-      "agregacao": "Soma dos cursos do município",
-      "grao": "município"
-    },
-    "colunas": {
-      "co_municipio": {
-        "descricao": "",
-        "meta": {}
-      }
-    }
-  },
-  "p3_rede_modalidade_ano": {
-    "descricao": "P3. Evasão anual e matrículas por rede e modalidade, 2021 a 2024 (Censo).",
-    "meta": {
-      "pergunta": "P3",
-      "populacao": "Vínculos de graduação em cursos ofertados em MT no ano",
-      "numerador": "Vínculos desvinculados no ano (QT_SIT_DESVINCULADO)",
-      "denominador": "Matrículas + trancadas + desvinculados + transferidos + falecidos",
-      "periodo": "Censo 2021 a 2024",
-      "agregacao": "Soma de municípios e cursos",
-      "grao": "ano x rede x modalidade",
+      "pergunta": "B2",
+      "populacao": "Cursos privados de MT com 30 ou mais ingressantes na Trajetória",
+      "numerador": "Desistentes até o 4º ano",
+      "denominador": "Ingressantes",
+      "periodo": "Coortes 2015 a 2020; financiamento médio do Censo 2021 a 2024",
+      "agregacao": "Soma dos cursos do quartil",
+      "grao": "quartil de financiamento",
       "celulas_pequenas": "Linhas com base abaixo de 10 alunos não são publicadas; contagens qt_* entre 1 e 9 saem vazias. Taxas são calculadas antes da máscara, sempre como soma do numerador sobre soma do denominador."
     },
+    "colunas": {}
+  },
+  "controle_atualizacao": {
+    "descricao": "Última carga por fonte, base do \"Última atualização\" no dashboard.",
+    "meta": {},
     "colunas": {
-      "taxa_evasao_anual": {
-        "descricao": "Proxy de evasão anual: desvinculados sobre vínculos do ano.",
+      "fonte": {
+        "descricao": "",
         "meta": {}
       },
-      "variacao_evasao_pp": {
-        "descricao": "Diferença em pontos percentuais para o ano anterior; destaca ano atípico.",
+      "ultimo_status": {
+        "descricao": "",
+        "meta": {}
+      },
+      "ultima_carga_sucesso_local": {
+        "descricao": "",
+        "meta": {}
+      },
+      "ultima_carga_sucesso_utc": {
+        "descricao": "",
+        "meta": {}
+      },
+      "linhas_ultima_execucao": {
+        "descricao": "",
+        "meta": {}
+      },
+      "linhas_rejeitadas_ultima_execucao": {
+        "descricao": "",
+        "meta": {}
+      },
+      "ultima_transformacao_local": {
+        "descricao": "",
+        "meta": {}
+      },
+      "fuso_horario": {
+        "descricao": "",
         "meta": {}
       }
     }
@@ -130,16 +126,16 @@
       }
     }
   },
-  "b2_financiamento_desistencia": {
-    "descricao": "B2. Cursos com mais financiados evadem menos? Desistência no 4º ano por quartil de financiamento.",
+  "p2_desistencia_area": {
+    "descricao": "P2. Desistência acumulada por área CINE, coorte e ano do curso, para comparar coortes no mesmo ano do curso.",
     "meta": {
-      "pergunta": "B2",
-      "populacao": "Cursos privados de MT com 30 ou mais ingressantes na Trajetória",
-      "numerador": "Desistentes até o 4º ano",
+      "pergunta": "P2",
+      "populacao": "Ingressantes de MT por área geral CINE",
+      "numerador": "Desistentes acumulados até o ano do curso",
       "denominador": "Ingressantes",
-      "periodo": "Coortes 2015 a 2020; financiamento médio do Censo 2021 a 2024",
-      "agregacao": "Soma dos cursos do quartil",
-      "grao": "quartil de financiamento",
+      "periodo": "Coortes 2015 a 2020",
+      "agregacao": "Soma dos cursos da área",
+      "grao": "área x modalidade x coorte x ano do curso",
       "celulas_pequenas": "Linhas com base abaixo de 10 alunos não são publicadas; contagens qt_* entre 1 e 9 saem vazias. Taxas são calculadas antes da máscara, sempre como soma do numerador sobre soma do denominador."
     },
     "colunas": {}
@@ -158,40 +154,25 @@
     },
     "colunas": {}
   },
-  "controle_atualizacao": {
-    "descricao": "Última carga por fonte, base do \"Última atualização\" no dashboard.",
-    "meta": {},
+  "p3_rede_modalidade_ano": {
+    "descricao": "P3. Evasão anual e matrículas por rede e modalidade, 2021 a 2024 (Censo).",
+    "meta": {
+      "pergunta": "P3",
+      "populacao": "Vínculos de graduação em cursos ofertados em MT no ano",
+      "numerador": "Vínculos desvinculados no ano (QT_SIT_DESVINCULADO)",
+      "denominador": "Matrículas + trancadas + desvinculados + transferidos + falecidos",
+      "periodo": "Censo 2021 a 2024",
+      "agregacao": "Soma de municípios e cursos",
+      "grao": "ano x rede x modalidade",
+      "celulas_pequenas": "Linhas com base abaixo de 10 alunos não são publicadas; contagens qt_* entre 1 e 9 saem vazias. Taxas são calculadas antes da máscara, sempre como soma do numerador sobre soma do denominador."
+    },
     "colunas": {
-      "fonte": {
-        "descricao": "",
+      "taxa_evasao_anual": {
+        "descricao": "Proxy de evasão anual: desvinculados sobre vínculos do ano.",
         "meta": {}
       },
-      "ultimo_status": {
-        "descricao": "",
-        "meta": {}
-      },
-      "ultima_carga_sucesso_local": {
-        "descricao": "",
-        "meta": {}
-      },
-      "ultima_carga_sucesso_utc": {
-        "descricao": "",
-        "meta": {}
-      },
-      "linhas_ultima_execucao": {
-        "descricao": "",
-        "meta": {}
-      },
-      "linhas_rejeitadas_ultima_execucao": {
-        "descricao": "",
-        "meta": {}
-      },
-      "ultima_transformacao_local": {
-        "descricao": "",
-        "meta": {}
-      },
-      "fuso_horario": {
-        "descricao": "",
+      "variacao_evasao_pp": {
+        "descricao": "Diferença em pontos percentuais para o ano anterior; destaca ano atípico.",
         "meta": {}
       }
     }
@@ -209,14 +190,14 @@
     },
     "colunas": {}
   },
-  "p5_licenciaturas_curso": {
-    "descricao": "P5. Licenciaturas de MT: desistência e proficiência no Enade 2025 por curso.",
+  "p4_qualidade_curso": {
+    "descricao": "P4. Curso, CPC e desistência no 4º ano: base do gráfico de dispersão.",
     "meta": {
-      "pergunta": "P5",
-      "populacao": "Cursos de licenciatura de MT na Trajetória",
-      "numerador": "Desistentes e concluintes; concluintes proficientes no Enade",
-      "denominador": "Ingressantes; participantes do Enade",
-      "periodo": "Coortes 2015 a 2020; Enade 2025",
+      "pergunta": "P4",
+      "populacao": "Cursos de MT com coorte observada até o ano do curso de comparação",
+      "numerador": "Desistentes acumulados até o 4º ano, coortes somadas",
+      "denominador": "Ingressantes das mesmas coortes",
+      "periodo": "Coortes 2015 a 2020; CPC mais recente entre 2021 e 2023",
       "agregacao": "Soma das coortes do curso",
       "grao": "curso",
       "celulas_pequenas": "Linhas com base abaixo de 10 alunos não são publicadas; contagens qt_* entre 1 e 9 saem vazias. Taxas são calculadas antes da máscara, sempre como soma do numerador sobre soma do denominador."
@@ -254,6 +235,38 @@
       "grao": "rede (com linha Total)",
       "celulas_pequenas": "Linhas com base abaixo de 10 alunos não são publicadas; contagens qt_* entre 1 e 9 saem vazias. Taxas são calculadas antes da máscara, sempre como soma do numerador sobre soma do denominador."
     },
-    "colunas": {}
+    "colunas": {
+      "de_100_desistem": {
+        "descricao": "Desistem",
+        "meta": {}
+      },
+      "de_100_concluem": {
+        "descricao": "Concluem",
+        "meta": {}
+      },
+      "de_100_concluem_proficientes": {
+        "descricao": "Concluem proficientes (estimativa)",
+        "meta": {}
+      }
+    }
+  },
+  "p5_licenciaturas_curso": {
+    "descricao": "P5. Licenciaturas de MT: desistência e proficiência no Enade 2025 por curso.",
+    "meta": {
+      "pergunta": "P5",
+      "populacao": "Cursos de licenciatura de MT na Trajetória",
+      "numerador": "Desistentes e concluintes; concluintes proficientes no Enade",
+      "denominador": "Ingressantes; participantes do Enade",
+      "periodo": "Coortes 2015 a 2020; Enade 2025",
+      "agregacao": "Soma das coortes do curso",
+      "grao": "curso",
+      "celulas_pequenas": "Linhas com base abaixo de 10 alunos não são publicadas; contagens qt_* entre 1 e 9 saem vazias. Taxas são calculadas antes da máscara, sempre como soma do numerador sobre soma do denominador."
+    },
+    "colunas": {
+      "co_curso": {
+        "descricao": "",
+        "meta": {}
+      }
+    }
   }
 }

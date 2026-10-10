@@ -1,49 +1,149 @@
 no_cine_area_geral,modalidade,nu_ano_ingresso,nu_ano_curso,nu_cursos,qt_ingressante,qt_desistencia_acum,taxa_desistencia_acum,taxa_conclusao_acum
+"Agricultura, silvicultura, pesca e veterinária",Presencial,2015,1,42,3381,171,5.06,0.12
+"Agricultura, silvicultura, pesca e veterinária",Presencial,2015,2,42,3381,602,17.81,0.35
+"Agricultura, silvicultura, pesca e veterinária",Presencial,2015,3,42,3381,831,24.58,1.45
+"Agricultura, silvicultura, pesca e veterinária",Presencial,2015,4,42,3381,1156,34.19,3.16
+"Agricultura, silvicultura, pesca e veterinária",Presencial,2015,5,42,3381,1497,44.28,14.79
+"Agricultura, silvicultura, pesca e veterinária",Presencial,2015,6,42,3381,1592,47.09,28.96
+"Agricultura, silvicultura, pesca e veterinária",Presencial,2015,7,42,3381,1661,49.13,34.61
+"Agricultura, silvicultura, pesca e veterinária",Presencial,2015,8,42,3381,1696,50.16,38.92
+"Agricultura, silvicultura, pesca e veterinária",Presencial,2015,9,42,3381,1877,55.52,40.22
+"Agricultura, silvicultura, pesca e veterinária",Presencial,2015,10,42,3381,1895,56.05,41.14
 "Agricultura, silvicultura, pesca e veterinária",Presencial,2020,1,51,2809,510,18.16,0.25
 "Agricultura, silvicultura, pesca e veterinária",Presencial,2020,2,51,2809,722,25.70,1.42
 "Agricultura, silvicultura, pesca e veterinária",Presencial,2020,3,51,2809,903,32.15,2.60
 "Agricultura, silvicultura, pesca e veterinária",Presencial,2020,4,51,2809,1097,39.05,3.49
 "Agricultura, silvicultura, pesca e veterinária",Presencial,2020,5,51,2809,1347,47.95,18.08
+Artes e humanidades,Presencial,2015,1,6,268,,2.99,1.87
+Artes e humanidades,Presencial,2015,2,6,268,65,24.25,16.79
+Artes e humanidades,Presencial,2015,3,6,268,100,37.31,23.51
+Artes e humanidades,Presencial,2015,4,6,268,123,45.90,33.21
+Artes e humanidades,Presencial,2015,5,6,268,150,55.97,36.94
+Artes e humanidades,Presencial,2015,6,6,268,156,58.21,38.43
+Artes e humanidades,Presencial,2015,7,6,268,160,59.70,38.43
+Artes e humanidades,Presencial,2015,8,6,268,160,59.70,38.43
+Artes e humanidades,Presencial,2015,9,6,268,164,61.19,38.43
+Artes e humanidades,Presencial,2015,10,6,268,165,61.57,38.43
 Artes e humanidades,Presencial,2020,1,6,136,19,13.97,0.00
 Artes e humanidades,Presencial,2020,2,6,136,35,25.74,11.03
 Artes e humanidades,Presencial,2020,3,6,136,64,47.06,12.50
 Artes e humanidades,Presencial,2020,4,6,136,68,50.00,17.65
 Artes e humanidades,Presencial,2020,5,6,136,72,52.94,19.12
+"Ciências naturais, matemática e estatística",Presencial,2015,1,10,387,16,4.13,0.26
+"Ciências naturais, matemática e estatística",Presencial,2015,2,10,387,65,16.80,1.03
+"Ciências naturais, matemática e estatística",Presencial,2015,3,10,387,91,23.51,2.07
+"Ciências naturais, matemática e estatística",Presencial,2015,4,10,387,172,44.44,4.91
+"Ciências naturais, matemática e estatística",Presencial,2015,5,10,387,216,55.81,17.57
+"Ciências naturais, matemática e estatística",Presencial,2015,6,10,387,224,57.88,22.22
+"Ciências naturais, matemática e estatística",Presencial,2015,7,10,387,225,58.14,26.36
+"Ciências naturais, matemática e estatística",Presencial,2015,8,10,387,231,59.69,28.42
+"Ciências naturais, matemática e estatística",Presencial,2015,9,10,387,252,65.12,29.20
+"Ciências naturais, matemática e estatística",Presencial,2015,10,10,387,256,66.15,29.72
 "Ciências naturais, matemática e estatística",Presencial,2020,1,8,323,22,6.81,0.00
 "Ciências naturais, matemática e estatística",Presencial,2020,2,8,323,35,10.84,0.31
 "Ciências naturais, matemática e estatística",Presencial,2020,3,8,323,38,11.76,0.62
 "Ciências naturais, matemática e estatística",Presencial,2020,4,8,323,54,16.72,1.86
 "Ciências naturais, matemática e estatística",Presencial,2020,5,8,323,87,26.93,13.62
+"Ciências sociais, comunicação e informação",Presencial,2015,1,24,1987,119,5.99,0.05
+"Ciências sociais, comunicação e informação",Presencial,2015,2,24,1987,436,21.94,0.35
+"Ciências sociais, comunicação e informação",Presencial,2015,3,24,1987,546,27.48,0.96
+"Ciências sociais, comunicação e informação",Presencial,2015,4,24,1987,735,36.99,4.28
+"Ciências sociais, comunicação e informação",Presencial,2015,5,24,1987,995,50.08,17.97
+"Ciências sociais, comunicação e informação",Presencial,2015,6,24,1987,1065,53.60,31.35
+"Ciências sociais, comunicação e informação",Presencial,2015,7,24,1987,1126,56.67,34.78
+"Ciências sociais, comunicação e informação",Presencial,2015,8,24,1987,1150,57.88,35.83
+"Ciências sociais, comunicação e informação",Presencial,2015,9,24,1987,1222,61.50,36.19
+"Ciências sociais, comunicação e informação",Presencial,2015,10,24,1987,1234,62.10,36.24
 "Ciências sociais, comunicação e informação",Presencial,2020,1,38,2102,433,20.60,0.19
 "Ciências sociais, comunicação e informação",Presencial,2020,2,38,2102,627,29.83,0.95
 "Ciências sociais, comunicação e informação",Presencial,2020,3,38,2102,815,38.77,2.33
 "Ciências sociais, comunicação e informação",Presencial,2020,4,38,2102,982,46.72,4.38
 "Ciências sociais, comunicação e informação",Presencial,2020,5,38,2102,1094,52.05,24.79
+Computação e Tecnologias da Informação e Comunicação (TIC),Presencial,2015,1,38,1525,133,8.72,0.66
+Computação e Tecnologias da Informação e Comunicação (TIC),Presencial,2015,2,38,1525,477,31.28,1.44
+Computação e Tecnologias da Informação e Comunicação (TIC),Presencial,2015,3,38,1525,618,40.52,9.44
+Computação e Tecnologias da Informação e Comunicação (TIC),Presencial,2015,4,38,1525,792,51.93,16.07
+Computação e Tecnologias da Informação e Comunicação (TIC),Presencial,2015,5,38,1525,940,61.64,21.90
+Computação e Tecnologias da Informação e Comunicação (TIC),Presencial,2015,6,38,1525,980,64.26,23.61
+Computação e Tecnologias da Informação e Comunicação (TIC),Presencial,2015,7,38,1525,1005,65.90,24.46
+Computação e Tecnologias da Informação e Comunicação (TIC),Presencial,2015,8,38,1525,1013,66.43,26.49
+Computação e Tecnologias da Informação e Comunicação (TIC),Presencial,2015,9,38,1525,1062,69.64,26.69
+Computação e Tecnologias da Informação e Comunicação (TIC),Presencial,2015,10,38,1525,1064,69.77,27.61
 Computação e Tecnologias da Informação e Comunicação (TIC),Presencial,2020,1,34,1048,188,17.94,0.67
 Computação e Tecnologias da Informação e Comunicação (TIC),Presencial,2020,2,34,1048,301,28.72,1.24
 Computação e Tecnologias da Informação e Comunicação (TIC),Presencial,2020,3,34,1048,360,34.35,5.82
 Computação e Tecnologias da Informação e Comunicação (TIC),Presencial,2020,4,34,1048,464,44.27,9.35
 Computação e Tecnologias da Informação e Comunicação (TIC),Presencial,2020,5,34,1048,604,57.63,14.89
+Educação,Presencial,2015,1,99,5041,279,5.53,0.52
+Educação,Presencial,2015,2,99,5041,1092,21.66,1.13
+Educação,Presencial,2015,3,99,5041,1515,30.05,7.34
+Educação,Presencial,2015,4,99,5041,2003,39.73,23.23
+Educação,Presencial,2015,5,99,5041,2480,49.20,33.90
+Educação,Presencial,2015,6,99,5041,2546,50.51,36.30
+Educação,Presencial,2015,7,99,5041,2585,51.28,37.95
+Educação,Presencial,2015,8,99,5041,2625,52.07,39.60
+Educação,Presencial,2015,9,99,5041,2861,56.75,40.13
+Educação,Presencial,2015,10,99,5041,2877,57.07,40.73
 Educação,Presencial,2020,1,92,2887,286,9.91,0.10
 Educação,Presencial,2020,2,92,2887,460,15.93,0.66
 Educação,Presencial,2020,3,92,2887,621,21.51,1.39
 Educação,Presencial,2020,4,92,2887,1073,37.17,8.69
 Educação,Presencial,2020,5,92,2887,1381,47.84,15.21
+"Engenharia, produção e construção",Presencial,2015,1,67,6710,483,7.20,0.07
+"Engenharia, produção e construção",Presencial,2015,2,67,6710,1638,24.41,0.54
+"Engenharia, produção e construção",Presencial,2015,3,67,6710,2355,35.10,1.10
+"Engenharia, produção e construção",Presencial,2015,4,67,6710,2937,43.77,2.80
+"Engenharia, produção e construção",Presencial,2015,5,67,6710,3792,56.51,10.58
+"Engenharia, produção e construção",Presencial,2015,6,67,6710,4163,62.04,23.99
+"Engenharia, produção e construção",Presencial,2015,7,67,6710,4326,64.47,27.85
+"Engenharia, produção e construção",Presencial,2015,8,67,6710,4400,65.57,29.37
+"Engenharia, produção e construção",Presencial,2015,9,67,6710,4553,67.85,29.99
+"Engenharia, produção e construção",Presencial,2015,10,67,6710,4581,68.27,30.30
 "Engenharia, produção e construção",Presencial,2020,1,91,3290,849,25.81,1.40
 "Engenharia, produção e construção",Presencial,2020,2,91,3290,1162,35.32,5.56
 "Engenharia, produção e construção",Presencial,2020,3,91,3290,1435,43.62,7.23
 "Engenharia, produção e construção",Presencial,2020,4,91,3290,1682,51.12,8.63
 "Engenharia, produção e construção",Presencial,2020,5,91,3290,1937,58.88,17.02
+"Negócios, administração e direito",Presencial,2015,1,130,14607,1050,7.19,1.16
+"Negócios, administração e direito",Presencial,2015,2,130,14607,3577,24.49,3.77
+"Negócios, administração e direito",Presencial,2015,3,130,14607,5221,35.74,6.85
+"Negócios, administração e direito",Presencial,2015,4,130,14607,6089,41.69,15.03
+"Negócios, administração e direito",Presencial,2015,5,130,14607,7648,52.36,26.99
+"Negócios, administração e direito",Presencial,2015,6,130,14607,8195,56.10,36.94
+"Negócios, administração e direito",Presencial,2015,7,130,14607,8427,57.69,38.37
+"Negócios, administração e direito",Presencial,2015,8,130,14607,8526,58.37,39.11
+"Negócios, administração e direito",Presencial,2015,9,130,14607,8666,59.33,39.30
+"Negócios, administração e direito",Presencial,2015,10,130,14607,8698,59.55,39.51
 "Negócios, administração e direito",Presencial,2020,1,156,9223,2397,25.99,1.28
 "Negócios, administração e direito",Presencial,2020,2,156,9223,3491,37.85,4.26
 "Negócios, administração e direito",Presencial,2020,3,156,9223,4467,48.43,7.34
 "Negócios, administração e direito",Presencial,2020,4,156,9223,5148,55.82,12.51
 "Negócios, administração e direito",Presencial,2020,5,156,9223,5762,62.47,24.05
+Saúde e bem-estar,Presencial,2015,1,86,7022,528,7.52,0.68
+Saúde e bem-estar,Presencial,2015,2,86,7022,1651,23.51,1.87
+Saúde e bem-estar,Presencial,2015,3,86,7022,2165,30.83,3.89
+Saúde e bem-estar,Presencial,2015,4,86,7022,2584,36.80,12.72
+Saúde e bem-estar,Presencial,2015,5,86,7022,3325,47.35,25.62
+Saúde e bem-estar,Presencial,2015,6,86,7022,3491,49.72,39.65
+Saúde e bem-estar,Presencial,2015,7,86,7022,3612,51.44,44.30
+Saúde e bem-estar,Presencial,2015,8,86,7022,3664,52.18,45.20
+Saúde e bem-estar,Presencial,2015,9,86,7022,3769,53.67,45.41
+Saúde e bem-estar,Presencial,2015,10,86,7022,3782,53.86,45.56
 Saúde e bem-estar,Presencial,2020,1,128,6454,1743,27.01,0.60
 Saúde e bem-estar,Presencial,2020,2,128,6454,2333,36.15,2.59
 Saúde e bem-estar,Presencial,2020,3,128,6454,2856,44.25,4.49
 Saúde e bem-estar,Presencial,2020,4,128,6454,3323,51.49,11.82
 Saúde e bem-estar,Presencial,2020,5,128,6454,3574,55.38,25.92
+Serviços,Presencial,2015,1,13,990,84,8.48,1.11
+Serviços,Presencial,2015,2,13,990,253,25.56,11.52
+Serviços,Presencial,2015,3,13,990,329,33.23,30.00
+Serviços,Presencial,2015,4,13,990,373,37.68,39.39
+Serviços,Presencial,2015,5,13,990,516,52.12,43.33
+Serviços,Presencial,2015,6,13,990,530,53.54,43.64
+Serviços,Presencial,2015,7,13,990,537,54.24,43.74
+Serviços,Presencial,2015,8,13,990,537,54.24,44.95
+Serviços,Presencial,2015,9,13,990,540,54.55,45.05
+Serviços,Presencial,2015,10,13,990,540,54.55,45.15
 Serviços,Presencial,2020,1,17,713,278,38.99,0.42
 Serviços,Presencial,2020,2,17,713,339,47.55,3.79
 Serviços,Presencial,2020,3,17,713,428,60.03,15.43

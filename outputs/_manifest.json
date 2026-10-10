@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-10-10T12:55:43+00:00",
-  "platform_version": "0.4.0",
-  "version": "20261010T125528Z",
+  "generated_at": "2026-10-10T14:20:51+00:00",
+  "platform_version": "2.0.0",
+  "version": "20261010T142037Z-e7c03b",
   "sources": {
     "censo_cursos": {
-      "rows": 29300,
+      "rows": 62674,
       "required": true,
       "files": [
         {
@@ -13,14 +13,24 @@
           "rows": 12278
         },
         {
+          "file": "microdados_censo_da_educacao_superior_2022.zip",
+          "sha256": "f30830c26956a3575c3786634e51c9a643faa3907f5f895c8c326386ff1df6e8",
+          "rows": 15059
+        },
+        {
           "file": "microdados_censo_da_educacao_superior_2023.zip",
           "sha256": "a7a3b905777a7ddbaf287c242bf6ed55c056f17350d042a4199fb1e10cf3b2c5",
           "rows": 17022
+        },
+        {
+          "file": "microdados_censo_da_educacao_superior_2024.zip",
+          "sha256": "e8e11899efe2b348a7e80e3a3c610c3bdd1ced3362ccdf2c9f9abe9bf8988386",
+          "rows": 18315
         }
       ]
     },
     "censo_ies": {
-      "rows": 5154,
+      "rows": 10310,
       "required": true,
       "files": [
         {
@@ -29,16 +39,31 @@
           "rows": 2574
         },
         {
+          "file": "microdados_censo_da_educacao_superior_2022.zip",
+          "sha256": "f30830c26956a3575c3786634e51c9a643faa3907f5f895c8c326386ff1df6e8",
+          "rows": 2595
+        },
+        {
           "file": "microdados_censo_da_educacao_superior_2023.zip",
           "sha256": "a7a3b905777a7ddbaf287c242bf6ed55c056f17350d042a4199fb1e10cf3b2c5",
           "rows": 2580
+        },
+        {
+          "file": "microdados_censo_da_educacao_superior_2024.zip",
+          "sha256": "e8e11899efe2b348a7e80e3a3c610c3bdd1ced3362ccdf2c9f9abe9bf8988386",
+          "rows": 2561
         }
       ]
     },
     "trajetoria": {
-      "rows": 3105,
+      "rows": 8255,
       "required": true,
       "files": [
+        {
+          "file": "indicadores_trajetoria_es_2015_2024.zip",
+          "sha256": "14e6ff92cc9e904c89499b457bc243ee86675638bcbbe57e9f6f7a220ce2f798",
+          "rows": 5150
+        },
         {
           "file": "indicadores_trajetoria_es_2020_2024.zip",
           "sha256": "dbdc6793f74f8623ac7d5e1e3202d58e3b63e11d040b84f6be533c0bf97c1d04",
@@ -68,19 +93,45 @@
       ]
     },
     "igc": {
-      "rows": 2101,
-      "required": true,
+      "rows": 6136,
+      "required": false,
       "files": [
+        {
+          "file": "IGC_2021.xlsx",
+          "sha256": "651e0a0d0ed2b387118249ecc78454932c618d9ec2381c39ed5e04cdaa14040e",
+          "rows": 2012
+        },
         {
           "file": "IGC_2023.xlsx",
           "sha256": "92cd8f702e0e92f6d616e7b4bbf879e1c24b749392b05bc7ad149e00d80b4003",
           "rows": 2101
+        },
+        {
+          "file": "igc_2022.xlsx",
+          "sha256": "6273731e9991bc71f048fa4557594ea7894a0820efdfa700f306f28d25befdda",
+          "rows": 2023
         }
       ]
+    },
+    "enade_licenciaturas": {
+      "rows": 4948,
+      "required": false,
+      "files": [
+        {
+          "file": "conceito_enade_licenciaturas.xlsx",
+          "sha256": "12e73c0603d388711f914dae9d8e3ea15b46aa56fde2a11b4634baa9e8417911",
+          "rows": 4948
+        }
+      ]
+    },
+    "ibge_populacao_idade_mt": {
+      "rows": 987,
+      "required": false,
+      "files": []
     }
   },
   "dbt": {
-    "invocation_id": "354a16bb-6a5f-47d3-9af6-148ae6a55123",
+    "invocation_id": "9597bc9b-678b-4563-8557-3a1d1c3331d3",
     "counts": {
       "success": 25,
       "pass": 82
@@ -92,7 +143,7 @@
   "tables": [
     {
       "table": "gold.p1_trajetoria_coorte",
-      "rows": 5,
+      "rows": 15,
       "suppressed_rows": 0,
       "base_columns": [
         "qt_ingressante"
@@ -175,19 +226,19 @@
       "files": [
         {
           "file": "p1_trajetoria_coorte.csv",
-          "bytes": 791,
-          "sha256": "874819d6c82c4e0365e4261e60f3ed700e0710050487e9170d4f7d088ab79496"
+          "bytes": 1745,
+          "sha256": "f19f672680849d2aee1f5ac0a9a80279a27c3f4fe209949fc71a8e030446c605"
         },
         {
           "file": "p1_trajetoria_coorte.parquet",
-          "bytes": 6509,
-          "sha256": "6c571bc9736e5b370c0a0084e598af69a21bff38505c13389376b585adcb7796"
+          "bytes": 7226,
+          "sha256": "b1d47cebdab60bef4233ad701b39b69b130cd08f463d3750d333962129f1249d"
         }
       ]
     },
     {
       "table": "gold.p2_desistencia_curso",
-      "rows": 574,
+      "rows": 1074,
       "suppressed_rows": 0,
       "base_columns": [
         "qt_ingressante"
@@ -270,19 +321,19 @@
       "files": [
         {
           "file": "p2_desistencia_curso.csv",
-          "bytes": 112789,
-          "sha256": "900ba346dddfabf0c48b1c863dcd17e00e28b4156aa5e07233e0e80e3c10c99e"
+          "bytes": 212023,
+          "sha256": "eb9b20e1fdbb01482b4b9a5f638bcff7d24aafb8be6d81bc7cbe69f32469943b"
         },
         {
           "file": "p2_desistencia_curso.parquet",
-          "bytes": 22463,
-          "sha256": "872839c07b1ae5b25631e598b298cf6f92e107530458ac967962b1d8df756e55"
+          "bytes": 32719,
+          "sha256": "27117f85b5334203d53a3cc06aeabe57e3084c5e75171e7657cfeb2dfb4a0af2"
         }
       ]
     },
     {
       "table": "gold.p2_desistencia_area",
-      "rows": 50,
+      "rows": 150,
       "suppressed_rows": 0,
       "base_columns": [
         "qt_ingressante"
@@ -329,19 +380,19 @@
       "files": [
         {
           "file": "p2_desistencia_area.csv",
-          "bytes": 3970,
-          "sha256": "c7a5ce4ccfebfa12606569cce5aeceea85a59cd5e7d5e18e940db27cb2ec4f1c"
+          "bytes": 11695,
+          "sha256": "b501048cefdb1933181055cecdac4156262ab02853fc834ea7b25ac0f30ad735"
         },
         {
           "file": "p2_desistencia_area.parquet",
-          "bytes": 4543,
-          "sha256": "881d85482994ed12ac40ed3ccd0f4f7aa928a2e48ad3e7aa9d90da55a00989b1"
+          "bytes": 5873,
+          "sha256": "3b30eb09fb68d0c76d13af1bf04c1bdd7bdf45cb9f9cfe4d616455195c276e02"
         }
       ]
     },
     {
       "table": "gold.p3_rede_modalidade_ano",
-      "rows": 8,
+      "rows": 16,
       "suppressed_rows": 0,
       "base_columns": [
         "qt_vinculo"
@@ -416,19 +467,19 @@
       "files": [
         {
           "file": "p3_rede_modalidade_ano.csv",
-          "bytes": 891,
-          "sha256": "2bab6c9c20a95da6734e894820d88a3550aa04556af1b5946642aa0036e3afcd"
+          "bytes": 1591,
+          "sha256": "a7d98b1c0cef728d0f596388885b8d81820b9c6ba4c356440ac7ff4ae5d1ac1b"
         },
         {
           "file": "p3_rede_modalidade_ano.parquet",
-          "bytes": 5873,
-          "sha256": "4d042515aca833392237ccecd616e4cea7dbedceadcb0e63790bb786fde0f41e"
+          "bytes": 6470,
+          "sha256": "c4f28eb9e2bbf973ff3f93635f4bd7825e223a5488aebaa8734d464b74efacb2"
         }
       ]
     },
     {
       "table": "gold.p4_qualidade_curso",
-      "rows": 574,
+      "rows": 670,
       "suppressed_rows": 0,
       "base_columns": [
         "qt_ingressante"
@@ -531,13 +582,13 @@
       "files": [
         {
           "file": "p4_qualidade_curso.csv",
-          "bytes": 116798,
-          "sha256": "1253643eef986f0fb9cbbbc03d5e8abce563e0bda11f6c75b2ae7a7b690e8e61"
+          "bytes": 134113,
+          "sha256": "38024cbeb3c336176d3ae21dd51629fa046657626688285387421b5c72dc6010"
         },
         {
           "file": "p4_qualidade_curso.parquet",
-          "bytes": 35856,
-          "sha256": "6245891a3f287a2def600a30c6ad29b8011b870b05f7fc827bdc5ce29fbd2559"
+          "bytes": 38969,
+          "sha256": "972c7d657e4f4b42edb9d6a8c3b2e30a9c105f44309870b421a637886fa82e75"
         }
       ]
     },
@@ -578,13 +629,13 @@
       "files": [
         {
           "file": "p4_qualidade_faixa.csv",
-          "bytes": 457,
-          "sha256": "58be231bf4274dd792b763caa65777c40b032fb6f83411565df7761b17d7d429"
+          "bytes": 466,
+          "sha256": "3b82735d7aadb453e72374e10d3f305073e22baf4f6c7bab798bf9dc92be0cd3"
         },
         {
           "file": "p4_qualidade_faixa.parquet",
-          "bytes": 2411,
-          "sha256": "51d3aff9b26074f8e7a28d03a30d4dc6dc97be1fb4c96592031ff2eeb611fe4b"
+          "bytes": 2421,
+          "sha256": "d362780df81e0b6ecdccca1c75e259ab28faabc8c2090d62d0deeefd0d684ad1"
         }
       ]
     },
@@ -613,19 +664,19 @@
       "files": [
         {
           "file": "p4_fatores.csv",
-          "bytes": 247,
-          "sha256": "a9c92c4c2736fe6bc9bc3f7ed6547b7eafc7073c9043ae05fb09c487e7e457fd"
+          "bytes": 245,
+          "sha256": "128929aca668865408f5bb57fd2bbf36bb01f8911ace0dee8639b5016ae46743"
         },
         {
           "file": "p4_fatores.parquet",
-          "bytes": 1376,
-          "sha256": "6d46975bfcefae66206283761f983cf8d228af9d6cc212cc474cd189b19b83c1"
+          "bytes": 1382,
+          "sha256": "27b56e04448ef76c34b40716387805d73d37cdd55442281b9ce528b19d9314ef"
         }
       ]
     },
     {
       "table": "gold.p5_licenciaturas_curso",
-      "rows": 87,
+      "rows": 105,
       "suppressed_rows": 0,
       "base_columns": [
         "qt_ingressante"
@@ -685,6 +736,10 @@
           "type": "bigint"
         },
         {
+          "name": "qt_proficiente_enade",
+          "type": "bigint"
+        },
+        {
           "name": "pct_proficiente",
           "type": "numeric"
         },
@@ -700,13 +755,13 @@
       "files": [
         {
           "file": "p5_licenciaturas_curso.csv",
-          "bytes": 12328,
-          "sha256": "b4fd59c659965b1853abbf5579107bd54053f95b7c371b8f78f320e48a943012"
+          "bytes": 16116,
+          "sha256": "a768bd935cdaa14a63f996c69dc8c931111b256b4e33a693aaa209fbb7186315"
         },
         {
           "file": "p5_licenciaturas_curso.parquet",
-          "bytes": 7707,
-          "sha256": "27509fcec9f59bc5fed5b7af2cd428c5d6daf386ca34c2705a5f8dd6b6baf221"
+          "bytes": 9800,
+          "sha256": "a005b9b38af88c89e8a9512694ade88a254b4f62cf7d13eb298d2ccf78e6cb95"
         }
       ]
     },
@@ -759,19 +814,19 @@
       "files": [
         {
           "file": "p5_funil_licenciaturas.csv",
-          "bytes": 242,
-          "sha256": "670a627572177c04a178631d1c2f26bc90aa9a29b57eadbe3b049e62709ac5b7"
+          "bytes": 286,
+          "sha256": "a97fdca90e1bb3acc6f9bb7796d4d1775e49d22347dbc596639e9941af5fb951"
         },
         {
           "file": "p5_funil_licenciaturas.parquet",
-          "bytes": 2970,
-          "sha256": "e8cd5bb0267797a06630de5ecf282089a7575c1f22477c6118d8cf72684bd0a4"
+          "bytes": 3319,
+          "sha256": "2d11a1263e10d8baf711c3dde9e41fa91481bfdfe160031fcc67aa9ac30d7385"
         }
       ]
     },
     {
       "table": "gold.b1_desertos_municipio",
-      "rows": 0,
+      "rows": 141,
       "suppressed_rows": 0,
       "base_columns": [],
       "min_cell": null,
@@ -812,19 +867,19 @@
       "files": [
         {
           "file": "b1_desertos_municipio.csv",
-          "bytes": 133,
-          "sha256": "a98a04505c93705c0e278466dbe93da59c0a5309a5a2135f5bbfc01232c12adc"
+          "bytes": 7479,
+          "sha256": "dc1c88015ad4a151ad75ce784422d6f75591d2b7aa6039b53016a73f3392888f"
         },
         {
           "file": "b1_desertos_municipio.parquet",
-          "bytes": 1067,
-          "sha256": "6237d306851549d5e68ea1cd219c92d4a8affd60d794a72346a1ebcfd7e77a36"
+          "bytes": 5916,
+          "sha256": "0453f6107ad6d3a5fed8d8fd47bb520304a42b57d05a9edc3c347a9d50643d31"
         }
       ]
     },
     {
       "table": "gold.b2_financiamento_ano",
-      "rows": 4,
+      "rows": 8,
       "suppressed_rows": 0,
       "base_columns": [
         "qt_matricula"
@@ -887,13 +942,13 @@
       "files": [
         {
           "file": "b2_financiamento_ano.csv",
-          "bytes": 480,
-          "sha256": "ff42e2c8eba5748aed419f4b68fb42be4a35afc9b1c50970d82611f2c6003cab"
+          "bytes": 736,
+          "sha256": "be605065a8e970aa2068f28595bd2b1bbc47dc0804b534910a8372830e6ec446"
         },
         {
           "file": "b2_financiamento_ano.parquet",
-          "bytes": 4789,
-          "sha256": "492f0a92ddde26a3602dad1fac31f5876277b555a1e906c18265f70ef08cfe40"
+          "bytes": 5022,
+          "sha256": "b046e97754892f8f7383406fb97bab80252301ce7417016f112196ca97210811"
         }
       ]
     },
@@ -938,13 +993,13 @@
       "files": [
         {
           "file": "b2_financiamento_desistencia.csv",
-          "bytes": 258,
-          "sha256": "02cda798144d9ebad4e7039496ae5d5a4509e94a90c4a226d156823880aa06b2"
+          "bytes": 262,
+          "sha256": "7ec23dbed08f8fdf1c00bc0890d12f988bedf1f770f77c953fc073a8e2bd416b"
         },
         {
           "file": "b2_financiamento_desistencia.parquet",
           "bytes": 2733,
-          "sha256": "0582249e60d5c6f23519468fc2b62ccf48a5fe28b18bb9ad1456ce09bceb665d"
+          "sha256": "541cdebb714644dee0a996d249bdbfd2a250742fc91ac7ed94e01fb38659d6fb"
         }
       ]
     },
@@ -991,13 +1046,13 @@
       "files": [
         {
           "file": "controle_atualizacao.csv",
-          "bytes": 994,
-          "sha256": "90631428b060c02ba0a49072695d83fbe1123d4b487b701c24fd66af19fd65c9"
+          "bytes": 1055,
+          "sha256": "44a41a1798a41e2a828bb734152c5e9a38a31988294edafccf6bf6342d6d44fc"
         },
         {
           "file": "controle_atualizacao.parquet",
-          "bytes": 3167,
-          "sha256": "5b757659656b9091c61ac82596da3a84892694a57cb080f21c805dc5e7d0162a"
+          "bytes": 3175,
+          "sha256": "26dc53a66596c22605acf39d5655a26169ff6c66f01eae89710c859ec6b88875"
         }
       ]
     }
