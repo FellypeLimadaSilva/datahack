@@ -14,7 +14,23 @@ e em quais cursos a rota se perde?
 
 ## 2. Fontes e onde colocar cada uma
 
-Baixe pelos links de `fontes_dados.html` e organize em `data/landing/inbox/` (fora do Git):
+### Links oficiais (confira com `fontes_dados.html` do evento)
+
+| Fonte | Download |
+|---|---|
+| Trajetória (2020–2024) | https://download.inep.gov.br/informacoes_estatisticas/indicadores_educacionais/indicadores_trajetoria_es_2020_2024.zip |
+| Trajetória (página) | https://www.gov.br/inep/pt-br/acesso-a-informacao/dados-abertos/indicadores-educacionais/indicadores-de-trajetoria-da-educacao-superior |
+| Censo 2021 | https://download.inep.gov.br/microdados/microdados_censo_da_educacao_superior_2021.zip |
+| Censo 2022 | https://download.inep.gov.br/microdados/microdados_censo_da_educacao_superior_2022.zip |
+| Censo 2023 | https://download.inep.gov.br/microdados/microdados_censo_da_educacao_superior_2023.zip |
+| Censo 2024 | https://download.inep.gov.br/microdados/microdados_censo_da_educacao_superior_2024.zip |
+| CPC 2021 / 2022 / 2023 | https://download.inep.gov.br/educacao_superior/indicadores/resultados/2021/CPC_2021.xlsx · https://download.inep.gov.br/educacao_superior/indicadores/resultados/2022/cpc_2022.xlsx · https://download.inep.gov.br/educacao_superior/indicadores/resultados/2023/CPC_2023.xlsx |
+| IGC 2021 / 2022 / 2023 | https://download.inep.gov.br/educacao_superior/indicadores/resultados/2021/IGC_2021.xlsx · https://download.inep.gov.br/educacao_superior/indicadores/resultados/2022/igc_2022.xlsx · https://download.inep.gov.br/educacao_superior/indicadores/resultados/2023/IGC_2023.xlsx |
+| IDD 2021 / 2022 / 2023 | https://download.inep.gov.br/educacao_superior/indicadores/resultados/2021/IDD_2021.xlsx · https://download.inep.gov.br/educacao_superior/indicadores/resultados/2022/idd_2022.xlsx · https://download.inep.gov.br/educacao_superior/indicadores/resultados/2023/IDD_2023.xlsx |
+| Conceito Enade Licenciaturas 2025 | https://download.inep.gov.br/educacao_superior/indicadores/resultados/2025/conceito_enade_licenciaturas.xlsx |
+| IBGE SIDRA 9514 | https://sidra.ibge.gov.br/tabela/9514 (consulta) · https://servicodados.ibge.gov.br/api/docs/agregados?versao=3 (API) |
+
+Organize em `data/landing/inbox/` (fora do Git):
 
 | Fonte | Formato | Onde colocar | O que a plataforma faz | Atenção |
 |---|---|---|---|---|
