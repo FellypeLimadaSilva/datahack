@@ -10,7 +10,13 @@ superset fab create-admin --username admin --firstname Rota --lastname Diploma \
   --email admin@example.com --password "$SUPERSET_ADMIN_PASSWORD" || true
 superset init
 if [ -f /bundle/rota_do_diploma.zip ]; then
-  echo ">> conectando à fonte de dados ($DATA_SOURCE) e importando o dashboard (se ainda não existir)"
-  python /app/reimport.py --if-missing || echo ">> IMPORTACAO FALHOU (veja acima)"
+  if [ "$FORCE_REIMPORT" = "1" ]; then
+    # recria dashboard, gráficos e datasets a partir do pacote (use após mudar o zip; depois remova a variável)
+    echo ">> FORCE_REIMPORT=1: reimportando o dashboard do zero (fonte: $DATA_SOURCE)"
+    python /app/reimport.py --force || echo ">> IMPORTACAO FALHOU (veja acima)"
+  else
+    echo ">> conectando à fonte de dados ($DATA_SOURCE) e importando o dashboard (se ainda não existir)"
+    python /app/reimport.py --if-missing || echo ">> IMPORTACAO FALHOU (veja acima)"
+  fi
 fi
 exec gunicorn -w "${GUNICORN_WORKERS:-2}" --threads 4 --timeout 180 -b 0.0.0.0:8088 "superset.app:create_app()"
