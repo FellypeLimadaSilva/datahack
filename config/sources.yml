@@ -107,14 +107,17 @@ sources:
 
   - name: ibge_populacao_idade_mt
     kind: api
-    enabled: false
     description: >-
-      IBGE SIDRA tabela 9514 (população por idade), municípios de MT. Monte a URL no construtor de
-      consultas do SIDRA e confira variável, período e classificações antes de habilitar.
+      IBGE SIDRA tabela 9514 (Censo 2022): população residente de 18 a 24 anos por idade simples,
+      municípios de MT (141 municípios x 7 idades = 987 linhas). Sexo e forma de declaração = Total.
     owner: equipe
+    tags: [ibge, contexto, b1]
     load_strategy: full
     transforms:
       - { op: filter, column: nc, operator: ne, value: "Nível Territorial (Código)" }
+      - op: rename
+        mapping: { d1_c: co_municipio, d1_n: no_municipio, d3_c: nu_ano, d5_c: co_idade, d5_n: idade, v: qt_populacao }
+      - { op: select_columns, columns: [co_municipio, no_municipio, nu_ano, co_idade, idade, qt_populacao] }
     api:
-      url: https://apisidra.ibge.gov.br/values/t/9514/n6/in%20n3%2051/v/93/p/2022/c287/all
+      url: https://apisidra.ibge.gov.br/values/t/9514/n6/in%20n3%2051/v/93/p/2022/c2/6794/c287/6575,6576,6577,6578,6579,6580,6581/c286/113635
       timeout_seconds: 120

@@ -67,6 +67,7 @@ jobs:
       DBT_TARGET: dev
       DH_LOG_FORMAT: json
       DH_INBOX_SETTLE_SECONDS: "0"
+      DH_CATALOG: tests/fixtures/catalog_offline.yml
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -173,6 +174,7 @@ jobs:
     env:
       DH_EXAMPLES: "false"
       DH_INBOX_SETTLE_SECONDS: "0"
+      RUN: docker compose run --rm -e DH_CATALOG=/dev/null cli
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -184,16 +186,16 @@ jobs:
       - name: Postgres saudável e schema ops
         run: |
           docker compose up -d --wait warehouse
-          docker compose run --rm cli python -m datahack_ingest init
-          docker compose run --rm cli dbt debug --project-dir dbt
+          $RUN python -m datahack_ingest init
+          $RUN dbt debug --project-dir dbt
       - name: Pipeline completo com arquivos bagunçados
         run: |
-          docker compose run --rm cli python scripts/generate_messy_data.py --out data/landing/inbox --rows 5000
-          docker compose run --rm cli python -m datahack_ingest run --all --continue-on-error
-          docker compose run --rm cli python -m datahack_ingest run --all
-          docker compose run --rm cli python -m datahack_ingest generate-models
-          docker compose run --rm cli dbt build --project-dir dbt
-          docker compose run --rm cli python -m datahack_ingest export
+          $RUN python scripts/generate_messy_data.py --out data/landing/inbox --rows 5000
+          $RUN python -m datahack_ingest run --all --continue-on-error
+          $RUN python -m datahack_ingest run --all
+          $RUN python -m datahack_ingest generate-models
+          $RUN dbt build --project-dir dbt
+          $RUN python -m datahack_ingest export
           test -s outputs/_manifest.json && cat outputs/_manifest.json
       - name: Logs em caso de falha
         if: failure()

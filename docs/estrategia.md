@@ -38,7 +38,7 @@ Organize em `data/landing/inbox/` (fora do Git):
 | Censo da Educação Superior 2021–2024 | zip com CSV `;` latin-1 | `.zip` soltos na raiz de `inbox/` | Separa cursos e IES em tabelas próprias, junta os 4 anos, ignora dicionário e leia-me | Curso × ano; 2024 é o maior arquivo |
 | CPC 2021–2023 e Enade 2025 | `.xlsx` soltos | `inbox/cpc/`, `inbox/enade/` | Uma tabela por pasta | Nomes de coluna podem mudar entre anos: confira a união |
 | IGC 2021–2023 | `.xlsx` | `inbox/igc/` | Uma tabela | Granularidade: instituição |
-| IBGE SIDRA (tabela 9514) | JSON da API | fonte `kind: api` em `config/sources.yml` | Ingestão com retry e paginação | Opcional (bônus B1) |
+| IBGE SIDRA (tabela 9514) | JSON da API | nada a baixar: fonte `ibge_populacao_idade_mt` já configurada em `config/sources.yml` | Busca na API os 141 municípios de MT x idades de 18 a 24 anos (987 linhas), com `co_municipio` como texto | Bônus B1: somar as 7 idades por município e cruzar com vagas presenciais do Censo |
 
 Recorte de Mato Grosso já na ingestão (ETL), para economizar disco e tempo: `inbox/_sources.yml`
 
