@@ -37,6 +37,10 @@ function Invoke-Cli {
 function Get-Python {
     $py = Get-Command python -ErrorAction SilentlyContinue
     if (-not $py) { $py = Get-Command py -ErrorAction SilentlyContinue }
+    # o atalho da Microsoft Store existe como "python" mas nao executa: confirma que roda de verdade
+    if ($py) {
+        try { & $py.Source -c "" 2>&1 | Out-Null; if ($LASTEXITCODE -ne 0) { return $null } } catch { return $null }
+    }
     return $py
 }
 
@@ -199,6 +203,29 @@ switch ($Command) {
             throw "Instale o Python 3.12 e rode: pip install -r dashboard/requirements.txt"
         }
     }
+    "app" {
+        # sistema inteiro num so comando: banco + dashboard + chat com IA, tudo em http://localhost:8088
+        & $PSCommandPath up-lite
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        foreach ($step in "superset", "chatbot", "gateway") {
+            & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "..\$step\up.ps1")
+            if ($LASTEXITCODE -ne 0) { Write-Host "Falhou em $step."; exit $LASTEXITCODE }
+        }
+    }
+    "carregar-gold" {
+        # maquina sem os arquivos do INEP: carrega no banco local a gold que outro dev publicou em outputs\ (apos git pull)
+        Import-DotEnv
+        docker compose run --rm -e WAREHOUSE_ADMIN_USER -e WAREHOUSE_ADMIN_PASSWORD -e WAREHOUSE_BI_USER cli python scripts/load_outputs_local.py | Out-Host
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    }
+    "planilhas" {
+        # PLANO B sem banco: dashboard (e chat, se ja existia) lendo planilhas de superset\planilhas (ou outputs\), em http://localhost:8088
+        & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "..\superset\up.ps1") -Planilhas
+        if ($LASTEXITCODE -ne 0) { Write-Host "Falhou ao subir o Plano B."; exit $LASTEXITCODE }
+        if (Test-Path (Join-Path $PSScriptRoot "..\gateway\up.ps1")) {
+            & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "..\gateway\up.ps1")
+        }
+    }
     "psql"         { docker compose exec warehouse bash -c 'psql -U $POSTGRES_USER -d $POSTGRES_DB' }
     "backup"       { docker compose run --rm -e BACKUP_ONCE=true warehouse-backup }
     "db-bootstrap" { docker compose exec warehouse bash /docker-entrypoint-initdb.d/10-bootstrap.sh }
@@ -213,6 +240,8 @@ switch ($Command) {
 Uso: .\scripts\dh.ps1 <comando> [args]      (sem Docker: `$env:DH_RUNNER = "native")
   doctor                      verifica Docker, WSL, disco, portas e fim de linha
   env                         cria ou completa o .env
+  app                         sobe TUDO (banco + dashboard + chat com IA) num so endereco: http://localhost:8088
+  planilhas                   PLANO B sem banco: o mesmo dashboard lendo planilhas (csv, xlsx, ods...) de superset\planilhas
   up-lite                     sobe so o Postgres e a imagem CLI (recomendado no laboratorio)
   up | build | down | ps | logs [servico]   plataforma completa com Airflow
   smoke                       testa CLI, banco e dbt
@@ -220,6 +249,7 @@ Uso: .\scripts\dh.ps1 <comando> [args]      (sem Docker: `$env:DH_RUNNER = "nati
   db-bootstrap-native         prepara um PostgreSQL instalado sem Docker
   import-downloads [pasta]    copia os arquivos do INEP de Downloads para data\landing\inep
   pipeline                    ingestao + portao + dbt em gold_candidate + publicacao + outputs/
+  carregar-gold               sem os arquivos do INEP: carrega no banco local a gold de outputs\ (depois do git pull)
   ingest [fontes...]          so a ingestao na Bronze
   gate                        mostra se as fontes obrigatorias estao completas
   dbt-build [seletor]         dbt build no schema candidato (nao publica)

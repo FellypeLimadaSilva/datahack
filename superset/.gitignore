@@ -1,0 +1,7 @@
+# pacote desempacotado (o zip é o que vale); regenerado por build_bundle.js
+bundle/dashboard_export_*/
+
+# Plano B: as planilhas que a equipe solta aqui não vão para o Git (só a documentação)
+planilhas/*
+!planilhas/LEIA-ME.md
+!planilhas/CONTRATO.md

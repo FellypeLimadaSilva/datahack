@@ -1,0 +1,16 @@
+# PLANO B do chat: lê o SQLite montado a partir das planilhas (volume do Superset do Plano B) em vez do warehouse.
+# É um override: sempre junto do docker-compose.yml (o superset\up.ps1 -Planilhas faz isso sozinho).
+#   docker compose -f docker-compose.yml -f docker-compose.planilhas.yml up -d --build
+# O volume abaixo é criado por ../superset/docker-compose.planilhas.yml; suba o Superset do Plano B antes.
+services:
+  chatbot:
+    environment:
+      DATA_SOURCE: planilhas
+      PLANILHAS_DB: /dados/planilhas.db
+    volumes:
+      - planilhas-db:/dados:ro
+    networks: !override [default]      # não precisa da rede do warehouse
+volumes:
+  planilhas-db:
+    external: true
+    name: rota-superset-planilhas_superset-home

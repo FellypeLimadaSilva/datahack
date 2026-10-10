@@ -1,0 +1,32 @@
+# PLANO B · Superset da Rota do Diploma SEM banco de dados: lê planilhas (csv, xlsx, xls, ods, parquet, json...).
+#   powershell -File up.ps1 -Planilhas
+# Não depende do warehouse nem de rede externa: uma só container, metadados em SQLite, dados num SQLite
+# que o docker/planilhas.py monta a partir de ./planilhas (e, na falta, de ../outputs). Superset: http://localhost:8088
+name: rota-superset-planilhas
+services:
+  superset:
+    build: .
+    ports: ["${SUPERSET_PORT:-8088}:8088"]
+    environment:
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY:?rode up.ps1 -Planilhas (gera o superset/.env)}
+      SUPERSET_ADMIN_PASSWORD: ${SUPERSET_ADMIN_PASSWORD:?rode up.ps1 -Planilhas (gera o superset/.env)}
+      SUPERSET_DB_URI: sqlite:////app/superset_home/superset.db
+      DATA_SOURCE: planilhas
+      PLANILHAS_DIR: /planilhas
+      FALLBACK_DIR: /outputs
+      PLANILHAS_DB: /app/superset_home/planilhas.db
+      PLANILHAS_WATCH_SECONDS: ${PLANILHAS_WATCH_SECONDS:-5}
+      GUNICORN_WORKERS: "1"
+    volumes:
+      - superset-home:/app/superset_home
+      - ./superset_config.py:/app/pythonpath/superset_config.py:ro
+      - ./docker/init.sh:/app/init.sh:ro
+      - ./docker/reimport.py:/app/reimport.py:ro
+      - ./docker/planilhas.py:/app/planilhas.py:ro
+      - ./bundle:/bundle:ro
+      - ./planilhas:/planilhas
+      - ../outputs:/outputs:ro
+      - ./chat/tail_js_custom_extra.html:/app/superset/templates/tail_js_custom_extra.html:ro
+    command: ["sh", "/app/init.sh"]
+volumes:
+  superset-home:

@@ -1,0 +1,55 @@
+name: Sincronizar com o repositório do evento
+
+# Traz para este repositório (que a Railway publica) o que a equipe empurrar no repo do evento.
+# Variáveis opcionais do repositório (Settings > Variables): EVENT_REPO e EVENT_BRANCH.
+# Secret opcional SYNC_TOKEN (PAT com escopos repo + workflow): sem ele o merge que alterar .github/workflows é recusado.
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: sync-evento
+  cancel-in-progress: false
+
+env:
+  EVENT_REPO: ${{ vars.EVENT_REPO || 'https://github.com/FellypeLimadaSilva/datahack.git' }}
+  EVENT_BRANCH: ${{ vars.EVENT_BRANCH || 'develop' }}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.SYNC_TOKEN || github.token }}
+
+      - name: Buscar o repositório do evento
+        run: git fetch --no-tags "$EVENT_REPO" "$EVENT_BRANCH"
+
+      - name: Mesclar na branch publicada
+        id: merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "sync-evento[bot]"
+          git config user.email "sync-evento@users.noreply.github.com"
+          if git merge-base --is-ancestor FETCH_HEAD HEAD; then
+            echo "Nada novo em $EVENT_BRANCH."; echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if ! git merge --no-edit -m "chore(sync): traz $EVENT_BRANCH do repositório do evento" FETCH_HEAD; then
+            git merge --abort || true
+            gh issue create --title "Sincronização com o evento falhou (conflito)" \
+              --body "O merge de \`$EVENT_BRANCH\` do repositório do evento conflitou com esta branch. Resolva localmente: \`git fetch $EVENT_REPO $EVENT_BRANCH && git merge FETCH_HEAD\`, depois dê push." || true
+            exit 1
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Publicar (dispara o deploy na Railway)
+        if: steps.merge.outputs.changed == 'true'
+        run: git push origin HEAD

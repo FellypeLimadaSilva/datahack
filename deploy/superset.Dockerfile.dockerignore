@@ -1,0 +1,10 @@
+*
+!superset/superset_config.py
+!superset/docker/init.sh
+!superset/docker/reimport.py
+!superset/bundle/rota_do_diploma.zip
+!superset/chat/tail_js_custom_extra.html
+!deploy/superset
+!outputs/*.parquet
+!outputs/_manifest.json
+**/__pycache__

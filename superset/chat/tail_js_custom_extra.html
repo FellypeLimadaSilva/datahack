@@ -1,0 +1,158 @@
+<script>
+/* Botão flutuante do assistente (chat com IA) — só nas páginas de dashboard.
+   O chat é outro serviço, mas sai pelo MESMO endereço do dashboard (/assistente/, via gateway) e abre num iframe;
+   aqui só passamos o contexto da tela. Se o chat não estiver no ar, o botão não aparece. */
+(function () {
+  var CHAT_BASE = location.origin + '/assistente';
+  var CHAT_URL = CHAT_BASE + '/widget';
+  var CHAT_ORIGIN = location.origin;
+  var chatUp = null;   // null = ainda não sei; true/false depois do /healthz
+  var btn, panel, frame, timer, ready = false, lastKey = null, filterNames = null, filtersText = '';
+
+  function onDashboard() { return /^\/superset\/dashboard\/[^/]+/.test(location.pathname); }
+  function idOrSlug() { var m = location.pathname.match(/^\/superset\/dashboard\/([^/]+)/); return m ? m[1] : null; }
+
+  function build() {
+    if (btn) return;
+    var css = document.createElement('style');
+    css.textContent =
+      '#dh-chat-btn{position:fixed;right:20px;bottom:20px;z-index:1000;border:0;border-radius:28px;padding:12px 18px;background:#0066CC;color:#fff;font:600 14px system-ui,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.25);cursor:pointer}' +
+      '#dh-chat-btn:hover,#dh-chat-btn:focus-visible{background:#1A2B5E;outline:2px solid #fff;outline-offset:-4px}' +
+      '#dh-chat-panel{position:fixed;right:20px;bottom:76px;z-index:1000;width:420px;height:min(620px,calc(100vh - 100px));border:1px solid #D3DEEC;border-radius:14px;overflow:hidden;box-shadow:0 8px 28px rgba(0,0,0,.28);background:#fff;display:none}' +
+      '#dh-chat-panel iframe{width:100%;height:100%;border:0}' +
+      '#dh-chat-panel.big{width:min(920px,calc(100vw - 40px));height:calc(100vh - 100px)}' +
+      '@media (max-width:480px){ #dh-chat-panel{right:0;left:0;bottom:0;width:auto;height:75vh;border-radius:14px 14px 0 0} #dh-chat-btn{right:12px;bottom:12px} }';
+    document.head.appendChild(css);
+    btn = document.createElement('button');
+    btn.id = 'dh-chat-btn'; btn.type = 'button';
+    btn.setAttribute('aria-label', 'Abrir o assistente do dashboard'); btn.setAttribute('aria-expanded', 'false');
+    btn.textContent = '💬 Pergunte aos dados';
+    btn.onclick = toggle;
+    panel = document.createElement('div');
+    panel.id = 'dh-chat-panel'; panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Assistente do dashboard');
+    document.body.appendChild(panel); document.body.appendChild(btn);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && isOpen()) toggle(); });
+    window.addEventListener('message', function (e) {
+      if (e.origin !== CHAT_ORIGIN || !e.data) return;
+      if (e.data.type === 'chat-ready') { ready = true; sendContext(true); }
+      if (e.data.type === 'chat-resize') { panel.classList.toggle('big', e.data.size === 'large'); }
+    });
+  }
+
+  function isOpen() { return panel && panel.style.display === 'block'; }
+
+  function toggle() {
+    var open = !isOpen();
+    if (open && !frame) {
+      frame = document.createElement('iframe'); frame.src = CHAT_URL; frame.title = 'Chat com IA do dashboard';
+      panel.appendChild(frame);
+    }
+    panel.style.display = open ? 'block' : 'none';
+    btn.setAttribute('aria-expanded', String(open));
+    clearInterval(timer);
+    if (open) { sendContext(true); timer = setInterval(sendContext, 2000); }
+  }
+
+  function activeTab() {
+    var el = document.querySelector('.dashboard-component-tabs .ant-tabs-tab-active') || document.querySelector('.ant-tabs-tab-active');
+    return el ? el.textContent.trim() : '';
+  }
+
+  function loadFilterNames(slug) {
+    if (filterNames) return Promise.resolve(filterNames);
+    return fetch('/api/v1/dashboard/' + encodeURIComponent(slug), { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        var map = {};
+        try {
+          var meta = JSON.parse(j.result.json_metadata || '{}');
+          (meta.native_filter_configuration || []).forEach(function (f) { map[f.id] = f.name; });
+        } catch (e) { /* sem metadados: segue só com a aba */ }
+        filterNames = map; return map;
+      }).catch(function () { filterNames = {}; return filterNames; });
+  }
+
+  function refreshFilters() {
+    var key = new URLSearchParams(location.search).get('native_filters_key') || '';
+    if (key === lastKey) return;
+    lastKey = key;
+    if (!key) { filtersText = ''; return; }
+    var slug = idOrSlug();
+    Promise.all([
+      loadFilterNames(slug),
+      fetch('/api/v1/dashboard/' + encodeURIComponent(slug) + '/filter_state/' + encodeURIComponent(key), { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
+    ]).then(function (res) {
+      var names = res[0], st = res[1], parts = [];
+      try {
+        var mask = JSON.parse(st.value);
+        Object.keys(mask).forEach(function (id) {
+          var v = mask[id] && mask[id].filterState && mask[id].filterState.value;
+          if (v && v.length) parts.push((names[id] || id) + ' = ' + [].concat(v).join(', '));
+        });
+      } catch (e) { /* sem acesso ao estado dos filtros */ }
+      filtersText = parts.join('; ');
+    });
+  }
+
+  function sendContext(force) {
+    if (!frame || !frame.contentWindow) return;
+    refreshFilters();
+    var msg = { type: 'dash-context', aba: activeTab(), filtros: filtersText };
+    var sig = msg.aba + '|' + msg.filtros;
+    if (force !== true && sig === sendContext.last) return;
+    sendContext.last = sig;
+    frame.contentWindow.postMessage(msg, CHAT_ORIGIN);
+  }
+
+  function sync() {
+    if (onDashboard() && chatUp === null) {
+      chatUp = false;
+      fetch(CHAT_BASE + '/healthz', { credentials: 'omit' }).then(function (r) { chatUp = r.ok; sync(); }).catch(function () { /* chat fora do ar: sem botão */ });
+    }
+    if (onDashboard() && chatUp) { build(); btn.style.display = ''; }
+    else if (btn) { btn.style.display = 'none'; panel.style.display = 'none'; clearInterval(timer); }
+  }
+
+  ['pushState', 'replaceState'].forEach(function (fn) {
+    var orig = history[fn];
+    history[fn] = function () { var r = orig.apply(this, arguments); setTimeout(sync, 0); return r; };
+  });
+  window.addEventListener('popstate', sync);
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', sync); else sync();
+})();
+</script>
+<script>
+/* Barra de filtros do dashboard (Superset 4.1.2), duas correções de uso:
+   1) Aplicar sozinho: o Superset só filtra depois do botão Apply; aqui ele é clicado ~0,6 s depois da última mudança.
+   2) "Clear all" esvaziava Exibir em / Coorte / Ano do curso (obrigatórios) e desativava o Apply, deixando o painel parado.
+      Agora o botão vira "Restaurar padrão" e recarrega o dashboard sem o estado salvo, voltando aos valores iniciais. */
+(function () {
+  var TICK_MS = 250, STABLE_MS = 600, COOLDOWN_MS = 1500, MAX_TENTATIVAS = 3;
+  var since = 0, lastClick = 0, tentativas = 0;
+
+  function onDashboard() { return /^\/superset\/dashboard\/[^/]+/.test(location.pathname); }
+
+  var css = document.createElement('style');
+  css.textContent = '.filter-clear-all-button{font-size:0 !important}.filter-clear-all-button::after{content:"Restaurar padrão";font-size:12px;text-transform:none}';
+  (document.head || document.documentElement).appendChild(css);
+
+  document.addEventListener('click', function (e) {
+    var t = e.target && e.target.closest && e.target.closest('.filter-clear-all-button');
+    if (!t || !onDashboard()) return;
+    e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+    var u = new URL(location.href);
+    u.searchParams.delete('native_filters_key'); u.searchParams.delete('native_filters');
+    location.assign(u.toString());
+  }, true);
+
+  setInterval(function () {
+    var b = onDashboard() && document.querySelector('.filter-apply-button');
+    var now = Date.now();
+    if (!b || b.disabled) { since = 0; tentativas = 0; return; }       // nada pendente (ou obrigatório vazio)
+    if (now - lastClick < COOLDOWN_MS || tentativas >= MAX_TENTATIVAS) return;
+    if (!since) { since = now; return; }
+    if (now - since >= STABLE_MS) { lastClick = now; since = 0; tentativas++; b.click(); }
+  }, TICK_MS);
+})();
+</script>
