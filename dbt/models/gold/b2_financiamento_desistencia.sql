@@ -12,6 +12,7 @@ cursos as (
         d.co_curso,
         d.qt_ingressante,
         d.qt_desistencia_marco,
+        d.qt_base_marco,
         f.share_financiado,
         ntile(4) over (order by f.share_financiado) as quartil
     from {{ ref('int_curso_desistencia') }} as d
@@ -29,7 +30,7 @@ select
     count(*)::bigint as nu_cursos,
     {{ dh_mask_count('sum(qt_ingressante)') }}::bigint as qt_ingressante,
     {{ dh_mask_count('sum(qt_desistencia_marco)') }}::bigint as qt_desistencia_marco,
-    {{ dh_rate('sum(qt_desistencia_marco)', 'sum(qt_ingressante)') }}::numeric as taxa_desistencia_marco
+    {{ dh_rate('sum(qt_desistencia_marco)', 'sum(qt_base_marco)') }}::numeric as taxa_desistencia_marco
 from cursos
 group by quartil
 having sum(qt_ingressante) >= {{ var('min_cell') }}

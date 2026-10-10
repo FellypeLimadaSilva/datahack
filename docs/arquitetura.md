@@ -85,6 +85,8 @@ troca de schema: consultas em andamento terminam na versão antiga e as novas j�
 | | `p5_licenciaturas_curso`, `p5_funil_licenciaturas` | curso; rede | P5 |
 | | `b1_desertos_municipio` | município | B1 |
 | | `b2_financiamento_ano`, `b2_financiamento_desistencia` | ano × modalidade; quartil | B2 |
+| | `s1_fator_social_desistencia` | fator social × quartil | P4/B2: o que mais explica |
+| Silver | `int_curso_perfil_social` | curso × fator | parcela de escola pública, cotas, apoio social, noturno, FIES/ProUni, PPI no Censo |
 
 Cada mart documenta em `meta` a população, o numerador, o denominador, o período, a agregação e o
 grão (`dbt/models/gold/_gold__models.yml`). Esses metadados vão para `outputs/_indicadores.json` e
@@ -99,6 +101,8 @@ Definições que mudam o resultado e estão fixadas em `dbt_project.yml`:
 | `cpc_edicoes` | 2021, 2022, 2023 | edição de qualidade usada: a mais recente do curso nesse intervalo |
 | `min_cell` | 10 | regra de células pequenas |
 | `min_base_ranking` | 30 | rankings e correlações só com cursos de 30 ou mais ingressantes |
+
+Taxas da Trajetória = acumulado ÷ (ingressantes − falecidos acumulados), o mesmo método do INEP; o teste `dh_matches_inep_rates` confere cada linha contra TDA, TCA e TAP do arquivo (diferença máxima medida: 0,000000005 ponto percentual).
 
 Evasão anual do Censo (P3) = desvinculados ÷ (matrículas + trancados + desvinculados + transferidos
 + falecidos). Transferido para outro curso da mesma IES não conta como evasão.

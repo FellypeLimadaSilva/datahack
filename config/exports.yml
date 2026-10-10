@@ -19,4 +19,5 @@ tables:
   - { name: b1_desertos_municipio, suppress: false }
   - { name: b2_financiamento_ano, min_cell_column: qt_matricula }
   - { name: b2_financiamento_desistencia, min_cell_column: qt_ingressante }
+  - { name: s1_fator_social_desistencia, min_cell_column: qt_ingressante }
   - { name: controle_atualizacao, suppress: false }

@@ -13,6 +13,8 @@ with trajetoria as (
         max(nu_ano_ingresso) as nu_ultima_coorte,
         sum(qt_ingressante) as qt_ingressante,
         sum(qt_desistencia_marco) as qt_desistencia_marco,
+        sum(qt_base_marco) as qt_base_marco,
+        sum(qt_base_final) as qt_base_final,
         sum(qt_concluinte_final) as qt_concluinte_final,
         sum(qt_desistencia_final) as qt_desistencia_final
     from {{ ref('int_trajetoria_marco') }}
@@ -22,7 +24,7 @@ with trajetoria as (
 
 select
     t.*,
-    round((100.0 * t.qt_desistencia_marco / nullif(t.qt_ingressante, 0))::numeric, 2)
+    round((100.0 * t.qt_desistencia_marco / nullif(t.qt_base_marco, 0))::numeric, 2)
         as taxa_desistencia_marco,
     c.nu_edicao_cpc,
     c.cpc_faixa,

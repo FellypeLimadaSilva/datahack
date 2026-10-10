@@ -43,6 +43,17 @@
     select a.s as modelo, b.s as referencia from a cross join b where a.s <> b.s
 {% endtest %}
 
+{% test dh_matches_inep_rates(model, tolerance=0.01) %}
+    select *
+    from {{ model }}
+    where qt_base_acum > 0
+      and (
+          abs(100.0 * qt_desistencia_acum / qt_base_acum - tda) > {{ tolerance }}
+          or abs(100.0 * qt_concluinte_acum / qt_base_acum - tca) > {{ tolerance }}
+          or abs(100.0 * qt_permanencia / qt_base_acum - tap) > {{ tolerance }}
+      )
+{% endtest %}
+
 {% test dh_flow_balance(model) %}
     select *
     from {{ model }}

@@ -5,6 +5,7 @@ models:
     description: Trajetória com desistência, conclusão e óbito acumulados por curso e coorte.
     data_tests:
       - dh_flow_balance
+      - dh_matches_inep_rates
       - dh_row_count_equal:
           arguments:
             compare_model: ref('stg_trajetoria')
@@ -21,6 +22,20 @@ models:
             compare_model: ref('stg_censo_cursos')
             compare_column: qt_mat
             compare_filter: tp_nivel_academico = 1
+
+  - name: int_curso_perfil_social
+    description: >
+      Perfil social de cada curso no Censo (matrículas de 2021 a 2024 somadas): parcela vinda de
+      escola pública, com reserva de vagas, apoio social, turno noturno, FIES ou ProUni e
+      pretos, pardos e indígenas (sobre quem declarou cor). Grão curso x fator.
+    data_tests:
+      - dh_unique_combination:
+          arguments:
+            combination_of_columns: [co_curso, fator]
+    columns:
+      - name: share
+        data_tests:
+          - dh_between: { arguments: { min_value: 0, max_value: 1 } }
 
   - name: int_cpc_curso
     description: >
