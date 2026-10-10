@@ -61,6 +61,7 @@ jobs:
       WAREHOUSE_DB: datahack
       WAREHOUSE_INGEST_PASSWORD: ci_ingest_pw
       WAREHOUSE_DBT_PASSWORD: ci_dbt_pw
+      WAREHOUSE_BI_PASSWORD: ci_bi_pw
       DBT_PII_SALT: ci_salt
       DBT_PROFILES_DIR: ${{ github.workspace }}/dbt
       DBT_TARGET: dev
@@ -99,6 +100,8 @@ jobs:
       - name: dbt build (exemplos + automáticas + testes de dados)
         working-directory: dbt
         run: dbt build
+      - name: Exportação para outputs/ (supressão de células < 10)
+        run: python -m datahack_ingest export --out /tmp/outputs && cat /tmp/outputs/_manifest.json
       - name: dbt build sem os exemplos (componentes opcionais)
         working-directory: dbt
         env: { DH_EXAMPLES: "false" }
@@ -163,6 +166,39 @@ jobs:
           print("DAGs OK:", sorted(bag.dag_ids))
           EOF
 
+  lab:
+    name: Fluxo do laboratório em Docker (up-lite + pipeline + export)
+    runs-on: ubuntu-latest
+    needs: lint
+    env:
+      DH_EXAMPLES: "false"
+      DH_INBOX_SETTLE_SECONDS: "0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ env.PYTHON_VERSION }}" }
+      - name: .env e imagem CLI
+        run: |
+          python scripts/init_env.py
+          docker compose build cli
+      - name: Postgres saudável e schema ops
+        run: |
+          docker compose up -d --wait warehouse
+          docker compose run --rm cli python -m datahack_ingest init
+          docker compose run --rm cli dbt debug --project-dir dbt
+      - name: Pipeline completo com arquivos bagunçados
+        run: |
+          docker compose run --rm cli python scripts/generate_messy_data.py --out data/landing/inbox --rows 5000
+          docker compose run --rm cli python -m datahack_ingest run --all --continue-on-error
+          docker compose run --rm cli python -m datahack_ingest run --all
+          docker compose run --rm cli python -m datahack_ingest generate-models
+          docker compose run --rm cli dbt build --project-dir dbt
+          docker compose run --rm cli python -m datahack_ingest export
+          test -s outputs/_manifest.json && cat outputs/_manifest.json
+      - name: Logs em caso de falha
+        if: failure()
+        run: docker compose logs --tail=200 warehouse
+
   image:
     name: Build da imagem (Airflow + ingest + dbt)
     runs-on: ubuntu-latest
@@ -181,6 +217,9 @@ jobs:
           cache-to: type=gha,mode=max
       - name: Smoke test da imagem
         run: |
+          docker build -f infra/cli/Dockerfile -t datahack/cli:ci .
+          docker run --rm datahack/cli:ci python -m datahack_ingest --version
+          docker run --rm datahack/cli:ci dbt --version
           docker run --rm --entrypoint python datahack/runtime:ci -m datahack_ingest --version
           docker run --rm --entrypoint dbt datahack/runtime:ci --version
           docker run --rm --entrypoint airflow datahack/runtime:ci version

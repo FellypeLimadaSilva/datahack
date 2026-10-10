@@ -19,3 +19,7 @@ airflow/logs
 docs
 *.pbix
 *.pbit
+outputs
+dashboard
+prompts
+images

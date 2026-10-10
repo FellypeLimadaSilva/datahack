@@ -34,8 +34,10 @@ x-airflow-env: &airflow-env
   WAREHOUSE_DB: ${WAREHOUSE_DB:-datahack}
   WAREHOUSE_INGEST_PASSWORD: ${WAREHOUSE_INGEST_PASSWORD:?}
   WAREHOUSE_DBT_PASSWORD: ${WAREHOUSE_DBT_PASSWORD:?}
+  WAREHOUSE_BI_PASSWORD: ${WAREHOUSE_BI_PASSWORD:?}
   DBT_PII_SALT: ${DBT_PII_SALT:?}
   DBT_TARGET: prod
+  DH_OUTPUTS: /opt/datahack/outputs
   DH_ALERT_MIN_SEVERITY: ${DH_ALERT_MIN_SEVERITY:-warning}
   DH_ALERT_SLACK_WEBHOOK_URL: ${DH_ALERT_SLACK_WEBHOOK_URL:-}
   DH_ALERT_TEAMS_WEBHOOK_URL: ${DH_ALERT_TEAMS_WEBHOOK_URL:-}
@@ -64,6 +66,7 @@ x-airflow-common: &airflow-common
     - ./config:/opt/datahack/config:ro
     - ./dbt:/opt/datahack/dbt
     - ./data:/opt/datahack/data
+    - ./outputs:/opt/datahack/outputs
   networks: [backend, warehouse]
   restart: unless-stopped
   depends_on: &airflow-depends
@@ -254,8 +257,12 @@ services:
 
   cli:
     <<: *airflow-common
+    build:
+      context: .
+      dockerfile: infra/cli/Dockerfile
+    image: datahack/cli:${DATAHACK_IMAGE_TAG:-local}
     profiles: [cli]
-    entrypoint: ["/usr/bin/dumb-init", "--"]
+    entrypoint: ["/usr/bin/tini", "--"]
     command: ["python", "-m", "datahack_ingest", "--help"]
     working_dir: /opt/datahack
     restart: "no"
@@ -265,6 +272,7 @@ services:
       - ./config:/opt/datahack/config:ro
       - ./dbt:/opt/datahack/dbt
       - ./data:/opt/datahack/data
+      - ./outputs:/opt/datahack/outputs
       - ./scripts:/opt/datahack/scripts:ro
     depends_on:
       warehouse:

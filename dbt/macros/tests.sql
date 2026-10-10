@@ -17,3 +17,24 @@
     ) x
     where ratio > {{ max_ratio }}
 {% endtest %}
+
+{% test dh_join_coverage(model, column_name, to, field, min_ratio=0.95) %}
+    with chaves as (
+        select distinct {{ column_name }} as chave
+        from {{ model }}
+        where {{ column_name }} is not null
+    ),
+
+    cobertura as (
+        select
+            count(*) as total,
+            count(*) filter (
+                where exists (select 1 from {{ to }} as t where t.{{ field }} = chaves.chave)
+            ) as encontradas
+        from chaves
+    )
+
+    select total, encontradas, encontradas::numeric / nullif(total, 0) as taxa
+    from cobertura
+    where encontradas::numeric / nullif(total, 0) < {{ min_ratio }}
+{% endtest %}

@@ -2,6 +2,24 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versionamento: [SemVer](https://semver.org/lang/pt-BR/).
 
+## [0.4.0] — 2026-10-09
+
+### Adicionado
+- `dh-ingest export`: Gold para `outputs/` em CSV e Parquet, ordenado e determinístico, com remoção de
+  grupos abaixo de `min_cell` (padrão 10), trava de tamanho e `_manifest.json` com hash por arquivo;
+  task `export_outputs` na DAG; `config/exports.yml`.
+- Cabeçalho automático (`skip_rows: auto`) para CSV e Excel, descarte de linhas de nota
+  (`drop_note_rows`), `sheet_name: auto`, `recursive`, `zip_members`.
+- Inbox: arquivos soltos agrupados por nome sem ano; zip solto separado por arquivo de dados;
+  dicionários e leia-me ignorados; `inbox/_sources.yml` para ajustar arquivos soltos.
+- Códigos `co_`, `cd_`, `tp_`, `id_` mantidos como texto; teste `dh_join_coverage`, macros
+  `dh_join_rate` e `dh_min_cell`.
+- Imagem CLI leve (`infra/cli/Dockerfile`), `dh.ps1 up-lite`, `doctor`, `smoke`, `images-save`,
+  `images-load`, modo sem Docker (`DH_RUNNER=native`, `db-bootstrap-native`) e `docs/LAB_SETUP.md`.
+- Estrutura do evento: `prompts/`, `outputs/`, `dashboard/` (Streamlit lendo `outputs/`), `sql/`,
+  `requirements.txt`, `docs/estrategia.md`; `docs/ARCHITECTURE.md` passa a `docs/arquitetura.md`.
+- CI: job do fluxo do laboratório em Docker (up-lite, pipeline e exportação) e build da imagem CLI.
+
 ## [0.3.0] — 2026-10-09
 
 ### Adicionado

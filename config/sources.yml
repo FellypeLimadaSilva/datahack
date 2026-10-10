@@ -104,3 +104,17 @@ sources:
     load_strategy: append
     chunk_size: 250000
     file: { path: "eventos/*.jsonl.zst", format: jsonl, flatten_max_level: 2 }
+
+  - name: ibge_populacao_idade_mt
+    kind: api
+    enabled: false
+    description: >-
+      IBGE SIDRA tabela 9514 (população por idade), municípios de MT. Monte a URL no construtor de
+      consultas do SIDRA e confira variável, período e classificações antes de habilitar.
+    owner: equipe
+    load_strategy: full
+    transforms:
+      - { op: filter, column: nc, operator: ne, value: "Nível Territorial (Código)" }
+    api:
+      url: https://apisidra.ibge.gov.br/values/t/9514/n6/in%20n3%2051/v/93/p/2022/c287/all
+      timeout_seconds: 120

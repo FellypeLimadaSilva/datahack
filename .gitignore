@@ -68,3 +68,8 @@ desktop.ini
 !data/landing/inbox/
 !data/landing/inbox/.gitkeep
 dbt/models/auto/
+
+!outputs/
+!outputs/**
+outputs/.tmp_*
+images/

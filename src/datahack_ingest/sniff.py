@@ -33,31 +33,53 @@ def detect_encoding(sample: bytes) -> str:
 
 def decode_sample(sample: bytes, encoding: str) -> str:
     text = sample.decode(encoding, errors="replace")
-    return text.lstrip("﻿")
+    return text.lstrip("\ufeff")
 
 
-def detect_delimiter(text: str, quotechar: str = '"') -> str:
+def _sample_records(text: str, delimiter: str, quotechar: str) -> list[list[str]]:
     lines = text.splitlines(keepends=True)
     if len(lines) > 1 and not text.endswith(("\n", "\r")):
         lines = lines[:-1]
     body = "".join(lines[: _SNIFF_RECORDS * 4])
+    reader = csv.reader(io.StringIO(body), delimiter=delimiter, quotechar=quotechar)
+    try:
+        return [r for _, r in zip(range(_SNIFF_RECORDS), reader, strict=False)]
+    except csv.Error:
+        return []
+
+
+def detect_delimiter(text: str, quotechar: str = '"') -> str:
     best, best_score = ",", (0.0, 0)
     for delimiter in DELIMITERS:
-        reader = csv.reader(io.StringIO(body), delimiter=delimiter, quotechar=quotechar)
-        try:
-            records = [r for _, r in zip(range(_SNIFF_RECORDS), reader, strict=False) if r]
-        except csv.Error:
+        records = [r for r in _sample_records(text, delimiter, quotechar) if r]
+        widths = [len(r) for r in records if len(r) >= 2]
+        if not widths:
             continue
-        if not records:
-            continue
-        width = len(records[0])
-        if width < 2:
-            continue
+        width = Counter(widths).most_common(1)[0][0]
         consistent = sum(1 for r in records if len(r) == width) / len(records)
         score = (round(consistent, 2), width)
         if score > best_score:
             best, best_score = delimiter, score
     return best
+
+
+def _filled(value: object) -> bool:
+    return value is not None and str(value).strip() != ""
+
+
+def detect_header_row(rows: list[list[object]] | list[tuple[object, ...]]) -> int:
+    counts = [sum(1 for v in r if _filled(v)) for r in rows]
+    if not counts or max(counts) < 2:
+        return 0
+    threshold = max(2, int(max(counts) * 0.6 + 0.999))
+    for i, count in enumerate(counts):
+        if count >= threshold:
+            return i
+    return 0
+
+
+def detect_csv_header_row(text: str, delimiter: str, quotechar: str = '"') -> int:
+    return detect_header_row(_sample_records(text, delimiter, quotechar))
 
 
 def infer_xml_record_tag(f: IO[bytes], max_events: int = 50_000) -> str | None:

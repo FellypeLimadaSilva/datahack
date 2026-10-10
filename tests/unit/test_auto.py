@@ -204,7 +204,7 @@ def test_inbox_discovery_end_to_end(tmp_path):
         "posicional",
         "estoque_geral_produtos",
         "estoque_geral_movimentos",
-        "lote",
+        "a",
         "erp_pedidos",
         "unica",
     }
@@ -212,8 +212,8 @@ def test_inbox_discovery_end_to_end(tmp_path):
     assert by_name["clientes"].file.include == ["*.csv", "*.csv.gz"]
     assert by_name["clientes"].file.sep == "auto"
     assert by_name["posicional"].file.format == "fixed_width"
-    assert by_name["lote"].file.format == "xml"
-    assert by_name["lote"].file.zip_member_pattern == "*.xml"
+    assert by_name["a"].file.format == "xml"
+    assert by_name["a"].file.zip_members == ["x/a.xml"]
     assert by_name["erp_pedidos"].kind == "sql"
     assert all(resolved.origin(n) == "inbox" for n in by_name)
     reasons = {i["path"].rsplit("/", 1)[-1]: i["reason"] for i in resolved.ignored}
@@ -298,6 +298,9 @@ def _stats(values: list[str | None]) -> ColumnStats:
         ("codigo", ["001", "002"], ("text", None)),
         ("chave_nfe", ["5" * 44, "4" * 44], ("text", None)),
         ("codigo_produto", ["10", "20"], ("text", None)),
+        ("co_curso", ["12345", "678"], ("text", None)),
+        ("tp_rede", ["1", "2"], ("text", None)),
+        ("qt_ingressante", ["10", "200"], ("bigint", None)),
         ("valor", ["R$ 1.234,56", "7,00", "10"], ("numeric", ",")),
         ("preco", ["10.5", "3"], ("numeric", ".")),
         ("milhar", ["1.234", "2.000"], ("numeric", ".")),
@@ -408,3 +411,85 @@ def test_singular(word, expected):
 )
 def test_key_candidates_only_own_identifiers(table, columns, expected):
     assert key_candidates(table, columns) == expected
+
+
+def _inep_workbook(path, ano: int, notes: bool = True) -> None:
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Planilha1"
+    for line in ("Ministério da Educação", "INEP", "", "Indicadores de Trajetória", "", "", "", ""):
+        ws.append([line or None])
+    ws.append(["CO_IES", "CO_CURSO", "NU_ANO_INGRESSO", "QT_INGRESSANTE", "TDA", None, None])
+    ws.append(["0001", "0012345", ano, 120, 35.5])
+    ws.append(["0002", "0099999", ano, 8, 12.0])
+    if notes:
+        ws.append([None])
+        ws.append(["Fonte: Inep, Censo da Educação Superior."])
+    wb.save(path)
+
+
+def test_xlsx_header_on_row_9_and_footer_notes(tmp_path):
+    _inep_workbook(tmp_path / "trajetoria_2015.xlsx", 2015)
+    df = _read(
+        tmp_path,
+        {
+            "path": "trajetoria_2015.xlsx",
+            "format": "xlsx",
+            "skip_rows": "auto",
+            "drop_note_rows": True,
+            "sheet_name": "auto",
+        },
+    )
+    assert list(df.columns) == ["co_ies", "co_curso", "nu_ano_ingresso", "qt_ingressante", "tda"]
+    assert df["co_curso"].tolist() == ["0012345", "0099999"]
+    assert len(df) == 2
+
+
+def test_csv_with_title_lines(tmp_path):
+    raw = (
+        "Relatório gerado em 01/10/2026\n\n"
+        "CO_CURSO;QT_MAT;NO_CURSO\n001;10;Direito\n002;20;Medicina\n"
+    )
+    (tmp_path / "a.csv").write_bytes(raw.encode("cp1252"))
+    df = _read(tmp_path, {"path": "a.csv", "format": "csv", "sep": "auto", "skip_rows": "auto"})
+    assert list(df.columns) == ["co_curso", "qt_mat", "no_curso"]
+    assert len(df) == 2
+
+
+def test_family_groups_years_and_splits_zip_tables(tmp_path):
+    inbox = tmp_path / "landing" / "inbox"
+    inbox.mkdir(parents=True)
+    for ano in (2021, 2022):
+        _inep_workbook(inbox / f"CPC_{ano}.xlsx", ano)
+    for ano in (2023, 2024):
+        with zipfile.ZipFile(inbox / f"microdados_censo_{ano}.zip", "w") as zf:
+            zf.writestr(
+                f"m{ano}/dados/MICRODADOS_CADASTRO_CURSOS_{ano}.CSV", "CO_CURSO;QT_MAT\n1;2\n"
+            )
+            zf.writestr(f"m{ano}/dados/MICRODADOS_ED_SUP_IES_{ano}.CSV", "CO_IES;NO_IES\n1;X\n")
+            zf.writestr(f"m{ano}/Anexos/dicionário_dados_{ano}.xlsx", b"x")
+            zf.writestr(f"m{ano}/leia-me/leia-me.pdf", b"%PDF")
+    (inbox / "dicionario_trajetoria.xlsx").write_bytes(b"x")
+    (inbox / "_sources.yml").write_text(
+        "microdados_cadastro_cursos:\n"
+        "  transforms:\n"
+        "    - { op: filter, column: qt_mat, operator: eq, value: '2' }\n",
+        encoding="utf-8",
+    )
+
+    resolved = resolve_catalog(_settings(tmp_path))
+    by_name = {s.name: s for s in resolved.catalog.sources}
+    assert set(by_name) == {"cpc", "microdados_cadastro_cursos", "microdados_ed_sup_ies"}
+    assert by_name["cpc"].file.include == ["CPC_2021.xlsx", "CPC_2022.xlsx"]
+    assert by_name["cpc"].file.sheet_name == "auto"
+    cursos = by_name["microdados_cadastro_cursos"].file
+    assert cursos.include == ["microdados_censo_2023.zip", "microdados_censo_2024.zip"]
+    assert len(cursos.zip_members) == 2 and cursos.recursive is False
+    assert by_name["microdados_cadastro_cursos"].transforms[0].column == "qt_mat"
+    reasons = " ".join(i["reason"] for i in resolved.ignored)
+    assert "documentação" in reasons
+
+    landing = tmp_path / "landing"
+    assert sorted(_read(landing, cursos.model_dump())["co_curso"]) == ["1", "1"]
+    cpc = _read(landing, by_name["cpc"].file.model_dump())
+    assert sorted(cpc["nu_ano_ingresso"]) == ["2021", "2021", "2022", "2022"]

@@ -7,17 +7,27 @@ Copie para `data/landing/inbox/` e rode `dh.ps1 pipeline` (ou a DAG). Nada a dec
 | O que você coloca | Vira |
 |---|---|
 | `inbox/vendas/` com vários arquivos | uma fonte `vendas` (todos os arquivos, inclusive subpastas e compactados) |
-| `inbox/Clientes 2026.csv` | uma fonte `clientes_2026` |
+| `inbox/Clientes 2026.csv` | uma fonte `clientes` (o ano sai do nome) |
+| `inbox/CPC_2021.xlsx`, `inbox/CPC_2022.xlsx` | uma fonte `cpc` com os dois anos |
 | `inbox/Estoque.xlsx` com 3 abas | três fontes `estoque_<aba>` |
 | `inbox/legado.db` (SQLite) | uma fonte por tabela, `legado_<tabela>` |
-| `inbox/lote.zip` | uma fonte por formato encontrado dentro do zip |
-| PDF, imagem, `.xls`, Access, dump SQL | ignorado, com motivo em `dh.ps1 discover` |
+| `inbox/censo_2023.zip`, `inbox/censo_2024.zip` | uma fonte por arquivo de dados dentro dos zips (cursos, IES), juntando os anos |
+| PDF, imagem, `.xls`, Access, dump SQL, dicionário, leia-me | ignorado, com motivo em `dh.ps1 discover` |
 
 Detectado sozinho: formato pela extensão, compactação, separador (`,` `;` TAB `|`), encoding
-(UTF-8, UTF-8 com BOM, UTF-16, Windows-1252), elemento de registro do XML e lista de registros do
-JSON. Arquivo modificado há menos de `DH_INBOX_SETTLE_SECONDS` espera a próxima execução.
+(UTF-8, UTF-8 com BOM, UTF-16, Windows-1252), linha do cabeçalho (títulos acima da tabela, como nas
+planilhas do INEP), linhas de nota no rodapé do Excel, primeira aba visível, elemento de registro do
+XML e lista de registros do JSON. Arquivo modificado há menos de `DH_INBOX_SETTLE_SECONDS` espera a próxima execução.
 Arquivos de uma pasta são lidos em ordem alfabética: nomeie séries com data (`2026_01`, `2026_02`)
 para a versão mais nova vencer na deduplicação.
+
+Para arquivos soltos, use `inbox/_sources.yml`, com o nome da fonte como chave:
+
+```yaml
+microdados_cadastro_cursos:
+  transforms:
+    - { op: filter, column: sg_uf, operator: eq, value: MT }
+```
 
 Ajuste fino por pasta com `_source.yml` (os mesmos campos do catálogo, exceto `kind`):
 
@@ -39,7 +49,7 @@ Para ver o resultado: `dh.ps1 discover`, depois `dh.ps1 models` e a tabela `gold
 | Decisão | Regra |
 |---|---|
 | Tipo | `bigint`, `numeric` (ponto ou vírgula, aceita `R$`), `date` (ISO, dd/mm/aaaa, mm/dd/aaaa), `timestamp`/`timestamptz`, `boolean` (sim/não, true/false), `jsonb`, senão `text`; exige 98% dos valores válidos na amostra (`DH_AUTO_TYPE_THRESHOLD`) |
-| Código continua texto | zeros à esquerda, 15+ dígitos, ou nome como `cpf`, `cnpj`, `cep`, `codigo`, `chave`, `matricula` |
+| Código continua texto | zeros à esquerda, 15+ dígitos, nome como `cpf`, `cnpj`, `cep`, `codigo`, `chave`, `matricula`, ou prefixo `co_`, `cd_`, `tp_`, `id_` (padrão INEP) |
 | Chave | `primary_key` declarada; senão `id`, `codigo`, `uuid`, `<tabela>_id`, `cod_<tabela>`, desde que única e não nula em cada arquivo; senão deduplica pelo hash da linha |
 | PII pseudonimizada | nome (`cpf`, `email`, `telefone`, `rg`, `cartao`, `pis`, `cns`...), conteúdo (CPF com dígito verificador válido, e-mail, telefone formatado) ou `pii_columns`; vira `<coluna>_hash` |
 | Dado pessoal sinalizado | `nome_cliente`, `endereco`, `nascimento`, `cep`...: mantido, marcado como `pessoal` no catálogo |

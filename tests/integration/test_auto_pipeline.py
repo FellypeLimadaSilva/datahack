@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import sys
 import uuid
+import zipfile
 from pathlib import Path
 
 import psycopg
@@ -14,6 +15,7 @@ import pytest
 from psycopg import sql
 
 from datahack_ingest.discovery import resolve_catalog
+from datahack_ingest.export import ExportConfig, Exporter
 from datahack_ingest.modelgen import ModelGenerator
 from datahack_ingest.runner import run_source
 from datahack_ingest.state import StateStore
@@ -52,12 +54,17 @@ def auto_env(settings, tmp_path):
         pytest.skip("dbt não instalado")
     if not _dbt_conninfo(settings):
         pytest.skip("WAREHOUSE_DBT_PASSWORD ausente")
-    prefix = f"t{uuid.uuid4().hex[:6]}_"
+    prefix = "t" + "".join(chr(97 + b % 26) for b in uuid.uuid4().bytes[:6]) + "_"
     inbox = tmp_path / "landing" / "inbox"
     _messy_module().main(["--out", str(inbox), "--rows", "3000"])
     for entry in list(inbox.iterdir()):
         if not entry.name.startswith((".", "~$")):
             entry.rename(entry.with_name(prefix + entry.name))
+    zipped = inbox / f"{prefix}export_erp"
+    zipped.mkdir()
+    (inbox / f"{prefix}export_erp.zip").rename(zipped / "export_erp.zip")
+    for archive in inbox.glob(f"{prefix}microdados_censo_*.zip"):
+        _prefix_members(archive, prefix)
     project = tmp_path / "dbt"
     shutil.copytree(
         ROOT / "dbt",
@@ -77,6 +84,15 @@ def auto_env(settings, tmp_path):
     )
     yield s, inbox, prefix, project
     _cleanup(s, prefix)
+
+
+def _prefix_members(archive: Path, prefix: str) -> None:
+    with zipfile.ZipFile(archive) as src:
+        members = [(i.filename, src.read(i)) for i in src.infolist() if not i.is_dir()]
+    with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as dst:
+        for name, data in members:
+            head, _, tail = name.rpartition("/")
+            dst.writestr(f"{head}/{prefix}{tail}" if head else prefix + tail, data)
 
 
 def _cleanup(s, prefix: str) -> None:
@@ -118,7 +134,7 @@ def _cleanup(s, prefix: str) -> None:
             )
 
 
-def _cycle(s, prefix: str):
+def _cycle(s, prefix: str, extra: tuple[str, ...] = ()):
     resolved = resolve_catalog(s)
     results = [run_source(src, s) for src in resolved.catalog.enabled()]
     assert all(r.status == "success" for r in results)
@@ -132,7 +148,15 @@ def _cycle(s, prefix: str):
         "DBT_TARGET": os.environ.get("DBT_TARGET", "dev"),
     }
     proc = subprocess.run(
-        [DBT, "build", "--select", "tag:auto", "--target-path", str(s.dbt_project_dir / "target")],
+        [
+            DBT,
+            "build",
+            "--select",
+            "tag:auto",
+            *extra,
+            "--target-path",
+            str(s.dbt_project_dir / "target"),
+        ],
         cwd=s.dbt_project_dir,
         env=env,
         capture_output=True,
@@ -167,6 +191,9 @@ def test_any_file_reaches_gold_automatically(auto_env):
         "legado_contas_a_pagar",
         "reservadas",
         "transacoes",
+        "trajetoria",
+        "microdados_cadastro_cursos",
+        "microdados_ed_sup_ies",
     }
     types = {k: {c.output_name: c.inferred_type for c in v.columns} for k, v in specs.items()}
     assert types["clientes"]["data_nascimento"] == "date"
@@ -180,6 +207,11 @@ def test_any_file_reaches_gold_automatically(auto_env):
     assert specs["clientes"].key_columns == ["codigo"]
     assert specs["eventos"].dedup == "row_hash"
     assert specs["transacoes"].materialization == "incremental"
+    assert types["trajetoria"]["co_curso"] == "text"
+    assert types["trajetoria"]["qt_ingressante"] == "bigint"
+    assert types["trajetoria"]["tda"] == "numeric"
+    assert types["microdados_cadastro_cursos"]["co_curso"] == "text"
+    assert types["microdados_cadastro_cursos"]["qt_mat"] == "bigint"
     assert "ERROR=0" in out
 
     gold = f"gold.{prefix}"
@@ -205,3 +237,39 @@ def test_any_file_reaches_gold_automatically(auto_env):
         s, f"SELECT renda_mensal, score FROM silver.{prefix}clientes WHERE codigo = '001'"
     ) == [(None, 870)]
     assert _query(s, f"SELECT count(*) FROM {gold}clientes") == [(60,)]
+
+
+def test_inep_flow_to_outputs_with_small_cell_suppression(auto_env):
+    s, _, prefix, project = auto_env
+    bi_password = os.environ.get("WAREHOUSE_BI_PASSWORD")
+    if not bi_password:
+        pytest.skip("WAREHOUSE_BI_PASSWORD ausente")
+    mart = f"{prefix}mart_coorte"
+    (project / "models" / "gold" / f"{mart}.sql").write_text(
+        "select co_curso, nu_ano_ingresso, max(qt_ingressante) as qt_ingressante,\n"
+        "       max(qt_desistencia) as qt_desistencia\n"
+        f"from {{{{ ref('auto_silver__{prefix}trajetoria') }}}}\n"
+        "group by co_curso, nu_ano_ingresso\n",
+        encoding="utf-8",
+    )
+    _cycle(s, prefix, (mart,))
+    assert _query(s, f"SELECT count(*) FROM silver.{prefix}trajetoria") == [(114,)]
+    assert _query(s, f"SELECT count(*) FROM silver.{prefix}microdados_cadastro_cursos") == [(12,)]
+    coverage = _query(
+        s,
+        f"SELECT count(DISTINCT t.co_curso), count(DISTINCT c.co_curso) "
+        f"FROM silver.{prefix}trajetoria t "
+        f"LEFT JOIN silver.{prefix}microdados_cadastro_cursos c USING (co_curso)",
+    )
+    assert coverage == [(6, 6)]
+
+    out = s.dbt_project_dir.parent / "outputs"
+    settings_bi = dataclasses.replace(s, export_password=bi_password)
+    config = ExportConfig.model_validate({"tables": [{"name": mart}]})
+    manifest = Exporter(settings_bi.export_conninfo(), out, config).run()
+    table = manifest["tables"][0]
+    total = _query(s, f"SELECT count(*) FROM gold.{mart}")[0][0]
+    assert table["base_columns"] == ["qt_ingressante"]
+    assert table["rows"] + table["suppressed_rows"] == total
+    lines = (out / f"{mart}.csv").read_text(encoding="utf-8").splitlines()[1:]
+    assert lines and all(int(line.split(",")[2]) >= 10 for line in lines)

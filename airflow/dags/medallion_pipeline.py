@@ -57,7 +57,7 @@ default_args = {
 
 @dag(
     dag_id="medallion_pipeline",
-    description="Medalhão: inbox + catálogo -> Bronze -> Silver/Gold automáticas -> dbt build.",
+    description="Medalhão: inbox + catálogo -> Bronze -> Silver/Gold -> dbt build -> outputs/.",
     schedule=SCHEDULE,
     start_date=pendulum.datetime(2026, 1, 1, tz=LOCAL_TZ),
     catchup=False,
@@ -161,8 +161,16 @@ def medallion_pipeline():
         on_failure_callback=notify_failure,
     )
 
+    export_outputs = BashOperator(
+        task_id="export_outputs",
+        cwd=DH_HOME,
+        bash_command=f"{shlex.quote(PYTHON)} -m datahack_ingest export",
+        retries=min(TASK_RETRIES, 1),
+        on_failure_callback=notify_failure,
+    )
+
     ingested = ingest.expand(source=list_sources())
-    ingested >> generate_models >> dbt_build
+    ingested >> generate_models >> dbt_build >> export_outputs
     ingested >> ingestion_gate
 
 

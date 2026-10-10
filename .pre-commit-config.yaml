@@ -36,6 +36,7 @@ repos:
         entry: arquivos de dados não podem ser versionados (LGPD) — use data/landing (ignorado)
         language: fail
         files: '\.(parquet|xlsx|xls|pbix|pbit|dump|backup)$'
+        exclude: '^outputs/'
       - id: forbid-env
         name: bloquear .env
         entry: o .env contém segredos e não pode ser versionado

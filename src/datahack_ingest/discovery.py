@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import posixpath
+import re
 import sqlite3
 import time
 import zipfile
@@ -75,6 +76,11 @@ HINTS = {
     ".dbf": "DBF não suportado: converta para .csv",
 }
 SIDECAR = "_source.yml"
+ROOT_OVERRIDES = "_sources.yml"
+DOC_NAME = re.compile(
+    r"dicion|leia[\s_-]?me|readme|manual|layout|nota[\s_-]?t[eé]cnica|questionari|instruc"
+)
+YEAR = re.compile(r"(?<![0-9])(19|20)[0-9]{2}(?![0-9])")
 GLOB_CHARS = set("*?[]{}")
 AUTO_FLATTEN_LEVEL = 2
 
@@ -118,6 +124,18 @@ def classify(name: str) -> tuple[str | None, str | None]:
     if ext in NOT_TABULAR:
         return None, "não é dado tabular"
     return None, f"extensão não reconhecida ({ext or 'sem extensão'})"
+
+
+def is_documentation(name: str) -> bool:
+    return bool(DOC_NAME.search(posixpath.basename(name).lower()))
+
+
+def family(name: str) -> str:
+    stem = _split_ext(posixpath.basename(name.rstrip("/")))[0]
+    stripped = YEAR.sub(" ", stem)
+    if not re.search(r"[A-Za-z]", stripped):
+        stripped = stem
+    return normalize_identifier(stripped)
 
 
 def _suffix_pattern(name: str) -> str:
@@ -179,6 +197,7 @@ class InboxScanner:
         root = self.fs._strip_protocol(self.root)
         if not self.fs.exists(root):
             return
+        loose: list[tuple[str, str]] = []
         for entry in sorted(self.fs.ls(root, detail=True), key=lambda e: e["name"]):
             path = entry["name"]
             base = posixpath.basename(path.rstrip("/"))
@@ -187,13 +206,50 @@ class InboxScanner:
             if GLOB_CHARS & set(base):
                 self._ignore(path, "nome com * ? [ ] { }: renomeie o arquivo ou a pasta")
                 continue
-            try:
-                if entry["type"] == "directory":
-                    self._folder(path, base)
-                else:
-                    self._loose(path, base)
-            except Exception as exc:
-                self.errors.append({"path": path, "reason": f"{type(exc).__name__}: {exc}"})
+            if entry["type"] == "directory":
+                self._guard(path, self._folder, path, base)
+            else:
+                loose.append((path, base))
+        first = len(self.specs)
+        self._loose(loose)
+        self._apply_root_overrides(root, first)
+
+    def _apply_root_overrides(self, root: str, first: int) -> None:
+        candidate = posixpath.join(root, ROOT_OVERRIDES)
+        if not self.fs.exists(candidate):
+            return
+        with self.fs.open(candidate, "r", encoding="utf-8") as fh:
+            data = yaml.safe_load(fh) or {}
+        if not isinstance(data, dict) or not all(isinstance(v, dict) for v in data.values()):
+            self.errors.append(
+                {
+                    "path": candidate,
+                    "reason": "deve mapear nome da fonte para campos a sobrescrever",
+                }
+            )
+            return
+        loose = {spec["name"]: i for i, spec in enumerate(self.specs) if i >= first}
+        for name, override in data.items():
+            if name not in loose:
+                self.errors.append(
+                    {
+                        "path": candidate,
+                        "reason": f"fonte {name!r} não encontrada entre os arquivos soltos",
+                    }
+                )
+                continue
+            if {"kind", "name"} & set(override):
+                self.errors.append(
+                    {"path": candidate, "reason": f"{name}: kind e name não podem mudar"}
+                )
+                continue
+            self.specs[loose[name]] = _deep_merge(self.specs[loose[name]], override)
+
+    def _guard(self, path: str, fn, *args) -> None:
+        try:
+            fn(*args)
+        except Exception as exc:
+            self.errors.append({"path": path, "reason": f"{type(exc).__name__}: {exc}"})
 
     def _ignore(self, path: str, reason: str) -> None:
         self.ignored.append({"path": path, "reason": reason})
@@ -215,7 +271,9 @@ class InboxScanner:
             "flatten_max_level": AUTO_FLATTEN_LEVEL,
         }
         if fmt == "csv":
-            opts.update(sep="auto", encoding="auto")
+            opts.update(sep="auto", encoding="auto", skip_rows="auto")
+        if fmt == "xlsx":
+            opts.update(skip_rows="auto", drop_note_rows=True, sheet_name="auto")
         if fmt in {"jsonl", "json"}:
             opts["encoding"] = "auto"
         if fmt == "json":
@@ -228,16 +286,24 @@ class InboxScanner:
             "file": opts,
         }
 
-    def _zip_formats(self, path: str) -> Counter[str]:
+    def _zip_members(self, path: str) -> list[tuple[str, str]]:
         with self.fs.open(path, "rb") as raw, zipfile.ZipFile(raw) as zf:
-            formats: Counter[str] = Counter()
-            for member in zf.namelist():
-                if member.endswith("/") or not accepts(member, ["*"], DEFAULT_EXCLUDE):
-                    continue
-                fmt, _ = classify(member)
-                if fmt and fmt not in {"zip", "sqlite"}:
-                    formats[_suffix_pattern(member)] += 1
-            return formats
+            names = zf.namelist()
+        members = []
+        for member in names:
+            if member.endswith("/") or not accepts(member, ["*"], DEFAULT_EXCLUDE):
+                continue
+            fmt, _ = classify(member)
+            if fmt in {None, "zip", "sqlite"}:
+                continue
+            if is_documentation(member):
+                self._ignore(f"{path}!{member}", "documentação (dicionário, leia-me, manual)")
+                continue
+            members.append((member, fmt))
+        return members
+
+    def _zip_formats(self, path: str) -> Counter[str]:
+        return Counter(_suffix_pattern(m) for m, _ in self._zip_members(path))
 
     def _too_recent(self, path: str) -> bool:
         settle = self.settings.inbox_settle_seconds
@@ -246,44 +312,61 @@ class InboxScanner:
         modified = _modified_epoch(self.fs.info(path))
         return modified is not None and time.time() - modified < settle
 
-    def _loose(self, path: str, base: str) -> None:
-        rel = f"{self.rel_root}/{base}"
-        fmt, reason = classify(base)
-        stem = _split_ext(base)[0]
-        handlers = {"sqlite": self._loose_sqlite, "zip": self._loose_zip, "xlsx": self._loose_xlsx}
-        if fmt is None:
-            self._ignore(path, reason or "não suportado")
-        elif fmt in handlers:
-            handlers[fmt](path, rel, stem)
-        else:
-            self.specs.append(self._file_spec(self.names.take(stem), rel, fmt))
+    def _loose(self, entries: list[tuple[str, str]]) -> None:
+        groups: dict[tuple[str, str], dict[str, Any]] = {}
 
-    def _loose_sqlite(self, path: str, rel: str, stem: str) -> None:
-        self._sqlite(path, stem)
+        def group(fmt: str, name: str) -> dict[str, Any]:
+            return groups.setdefault(
+                (fmt, family(name)), {"files": set(), "members": set(), "paths": []}
+            )
 
-    def _loose_zip(self, path: str, rel: str, stem: str) -> None:
-        patterns = self._zip_formats(path)
-        if not patterns:
-            self._ignore(path, "zip sem arquivos tabulares suportados")
-            return
-        by_format: dict[str, list[str]] = defaultdict(list)
-        for pattern in patterns:
-            by_format[_pattern_format(pattern)].append(pattern)
-        multiple = len(by_format) > 1
-        for member_fmt, member_patterns in sorted(by_format.items()):
-            pattern = max(member_patterns, key=lambda p: patterns[p])
-            name = self.names.take(stem, member_fmt if multiple else "")
-            self.specs.append(self._file_spec(name, rel, member_fmt, zip_member_pattern=pattern))
+        for path, base in entries:
+            fmt, reason = classify(base)
+            if fmt is None:
+                self._ignore(path, reason or "não suportado")
+            elif is_documentation(base):
+                self._ignore(path, "documentação (dicionário, leia-me, manual)")
+            elif fmt == "sqlite":
+                self._guard(path, self._sqlite, path, _split_ext(base)[0])
+            elif fmt == "zip":
+                try:
+                    members = self._zip_members(path)
+                except Exception as exc:
+                    self.errors.append({"path": path, "reason": f"{type(exc).__name__}: {exc}"})
+                    continue
+                if not members:
+                    self._ignore(path, "zip sem arquivos tabulares suportados")
+                for member, member_fmt in members:
+                    g = group(member_fmt, member)
+                    g["files"].add(base)
+                    g["members"].add(member)
+                    g["paths"].append(path)
+            else:
+                g = group(fmt, base)
+                g["files"].add(base)
+                g["paths"].append(path)
 
-    def _loose_xlsx(self, path: str, rel: str, stem: str) -> None:
-        sheets = self._sheets(path)
-        if not sheets:
-            self._ignore(path, "Excel sem abas visíveis")
-            return
-        multiple = len(sheets) > 1
-        for sheet in sheets:
-            name = self.names.take(stem, sheet if multiple else "")
-            self.specs.append(self._file_spec(name, rel, "xlsx", sheet_name=sheet))
+        for (fmt, fam), g in sorted(groups.items()):
+            self._guard(g["paths"][0], self._loose_group, fmt, fam, g)
+
+    def _loose_group(self, fmt: str, fam: str, g: dict[str, Any]) -> None:
+        files = sorted(g["files"])
+        extra: dict[str, Any] = {"include": files, "recursive": False}
+        if g["members"]:
+            extra["zip_members"] = sorted(g["members"])
+        rel = self.rel_root
+        if fmt == "xlsx" and len(files) == 1 and not g["members"]:
+            sheets = self._sheets(g["paths"][0])
+            if not sheets:
+                self._ignore(g["paths"][0], "Excel sem abas visíveis")
+                return
+            if len(sheets) > 1:
+                for sheet in sheets:
+                    name = self.names.take(fam, sheet)
+                    self.specs.append(self._file_spec(name, rel, fmt, sheet_name=sheet, **extra))
+                return
+            extra["sheet_name"] = sheets[0]
+        self.specs.append(self._file_spec(self.names.take(fam), rel, fmt, **extra))
 
     def _sheets(self, path: str) -> list[str]:
         with self.fs.open(path, "rb") as f, zipfile.ZipFile(f) as zf:
@@ -340,6 +423,9 @@ class InboxScanner:
         for file in sorted(self.fs.find(path)):
             name = posixpath.basename(file)
             if not accepts(name, ["*"], DEFAULT_EXCLUDE):
+                continue
+            if is_documentation(name):
+                self._ignore(file, "documentação (dicionário, leia-me, manual)")
                 continue
             fmt, reason = classify(name)
             if fmt is None or fmt == "sqlite":

@@ -12,7 +12,7 @@ from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from datetime import datetime
 from fnmatch import fnmatch
-from itertools import islice
+from itertools import chain, islice
 from typing import IO, Any
 
 import fastavro
@@ -38,8 +38,10 @@ from datahack_ingest.normalize import to_text
 from datahack_ingest.sniff import (
     SAMPLE_BYTES,
     decode_sample,
+    detect_csv_header_row,
     detect_delimiter,
     detect_encoding,
+    detect_header_row,
     infer_json_records_path,
     infer_xml_record_tag,
 )
@@ -125,8 +127,10 @@ class FileExtractor:
         fs, _, paths = fsspec.get_fs_token_paths(self.urlpath)
         candidates: set[str] = set()
         for p in paths:
-            if fs.isdir(p):
+            if fs.isdir(p) and self.opts.recursive:
                 candidates.update(f for f in fs.find(p) if not f.endswith("/"))
+            elif fs.isdir(p):
+                candidates.update(f for f in fs.ls(p, detail=False) if fs.isfile(f))
             elif fs.isfile(p):
                 candidates.add(p)
         files = sorted(p for p in candidates if accepts(p, self.opts.include, self.opts.exclude))
@@ -196,11 +200,15 @@ class FileExtractor:
             compression = self._compression(path)
             yield path, lambda: fs.open(path, "rb", compression=compression)
             return
+        wanted = {m.lower() for m in self.opts.zip_members}
         with fs.open(path, "rb") as raw:
             members = sorted(
                 n
                 for n in zipfile.ZipFile(raw).namelist()
-                if not n.endswith("/") and fnmatch(n, self.opts.zip_member_pattern)
+                if not n.endswith("/")
+                and fnmatch(n.lower(), self.opts.zip_member_pattern.lower())
+                and accepts(n, ["*"], self.opts.exclude)
+                and (not wanted or n.lower() in wanted)
             )
         if not members:
             raise FileNotFoundError(
@@ -243,21 +251,24 @@ class FileExtractor:
             return self.opts.encoding
         return detect_encoding(sample if sample is not None else self._sample(opener))
 
-    def _csv_dialect(self, opener: Opener) -> tuple[str, str]:
+    def _csv_dialect(self, opener: Opener) -> tuple[str, str, int]:
         sample = None
-        if self.opts.encoding == "auto" or self.opts.sep == "auto":
+        auto_skip = self.opts.skip_rows == "auto"
+        if self.opts.encoding == "auto" or self.opts.sep == "auto" or auto_skip:
             sample = self._sample(opener)
         encoding = self._encoding(opener, sample)
+        text = decode_sample(sample, encoding) if sample is not None else ""
         sep = self.opts.sep
         if sep == "auto":
-            sep = detect_delimiter(decode_sample(sample, encoding), self.opts.quotechar)
+            sep = detect_delimiter(text, self.opts.quotechar)
         elif sep == r"\t":
             sep = "\t"
-        return sep, encoding
+        skip = detect_csv_header_row(text, sep, self.opts.quotechar) if auto_skip else 0
+        return sep, encoding, skip if auto_skip else int(self.opts.skip_rows)
 
     def _read_csv(self, opener: Opener) -> Iterator[pd.DataFrame]:
-        sep, encoding = self._csv_dialect(opener)
-        log.info("dialeto csv", extra={"sep": sep, "encoding": encoding})
+        sep, encoding, skip = self._csv_dialect(opener)
+        log.info("dialeto csv", extra={"sep": sep, "encoding": encoding, "skip_rows": skip})
         with opener() as f:
             yield from pd.read_csv(
                 f,
@@ -265,7 +276,7 @@ class FileExtractor:
                 encoding=encoding,
                 encoding_errors="replace",
                 quotechar=self.opts.quotechar,
-                skiprows=self.opts.skip_rows,
+                skiprows=skip,
                 dtype=str,
                 keep_default_na=False,
                 na_values=[""],
@@ -375,31 +386,55 @@ class FileExtractor:
                 for batch in pa.Table.from_batches([table]).to_batches(self.source.chunk_size):
                     yield _arrow_to_text_frame(batch)
 
+    def _worksheet(self, wb):
+        sheet = self.opts.sheet_name
+        if sheet == "auto":
+            visible = [ws for ws in wb.worksheets if ws.sheet_state == "visible"]
+            return visible[0] if visible else wb.worksheets[0]
+        return wb.worksheets[sheet] if isinstance(sheet, int) else wb[sheet]
+
+    def _xlsx_rows(self, ws) -> tuple[tuple | None, Iterator[tuple]]:
+        rows = ws.iter_rows(values_only=True)
+        if self.opts.skip_rows == "auto":
+            head = list(islice(rows, 60))
+            if not head:
+                return None, iter(())
+            idx = detect_header_row(head)
+            if idx:
+                log.info("cabeçalho detectado", extra={"header_row": idx + 1})
+            return head[idx], chain(head[idx + 1 :], rows)
+        for _ in range(int(self.opts.skip_rows)):
+            next(rows, None)
+        return next(rows, None), rows
+
     def _read_xlsx(self, opener: Opener) -> Iterator[pd.DataFrame]:
         with opener() as f:
             wb = load_workbook(_seekable(f), read_only=True, data_only=True)
             try:
-                sheet = self.opts.sheet_name
-                ws = wb.worksheets[sheet] if isinstance(sheet, int) else wb[sheet]
-                rows = ws.iter_rows(values_only=True)
-                for _ in range(self.opts.skip_rows):
-                    next(rows, None)
-                header = next(rows, None)
+                header, rows = self._xlsx_rows(self._worksheet(wb))
                 if header is None:
                     return
+                filled = [i for i, h in enumerate(header) if h is not None and str(h).strip()]
+                width = (filled[-1] + 1) if filled else len(header)
                 columns = [
                     str(h) if h is not None and str(h).strip() else f"col_{i + 1}"
-                    for i, h in enumerate(header)
+                    for i, h in enumerate(header[:width])
                 ]
-                width = len(columns)
+                min_cells = 2 if self.opts.drop_note_rows and width >= 4 else 1
+                dropped = 0
                 for batch in _chunks(rows, self.source.chunk_size):
-                    data = [
-                        [to_text(v) for v in (list(r) + [None] * width)[:width]]
-                        for r in batch
-                        if any(v is not None for v in r)
-                    ]
+                    data = []
+                    for r in batch:
+                        values = (list(r) + [None] * width)[:width]
+                        cells = sum(1 for v in values if v is not None and str(v).strip())
+                        if cells < min_cells:
+                            dropped += cells > 0
+                            continue
+                        data.append([to_text(v) for v in values])
                     if data:
                         yield pd.DataFrame(data, columns=columns, dtype=object)
+                if dropped:
+                    log.info("linhas de nota descartadas", extra={"rows": dropped})
             finally:
                 wb.close()
 

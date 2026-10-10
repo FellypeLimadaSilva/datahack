@@ -56,6 +56,10 @@ class Settings:
     auto_type_threshold: float = 0.98
     auto_sample_rows: int = 200_000
     auto_incremental_rows: int = 2_000_000
+    export_config_path: Path = Path("config/exports.yml")
+    outputs_dir: Path = Path("outputs")
+    export_user: str = "dh_bi_reader"
+    export_password: str | None = field(default=None, repr=False)
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -83,6 +87,22 @@ class Settings:
             auto_type_threshold=float(_env("DH_AUTO_TYPE_THRESHOLD", "0.98")),
             auto_sample_rows=int(_env("DH_AUTO_SAMPLE_ROWS", "200000")),
             auto_incremental_rows=int(_env("DH_AUTO_INCREMENTAL_ROWS", "2000000")),
+            export_config_path=Path(_env("DH_EXPORT_CONFIG", "config/exports.yml")),
+            outputs_dir=Path(_env("DH_OUTPUTS", "outputs")),
+            export_user=_env("WAREHOUSE_EXPORT_USER", _env("WAREHOUSE_BI_USER", "dh_bi_reader")),
+            export_password=_env("WAREHOUSE_EXPORT_PASSWORD", _env("WAREHOUSE_BI_PASSWORD")),
+        )
+
+    def export_conninfo(self) -> str:
+        return make_conninfo(
+            host=self.pg_host,
+            port=self.pg_port,
+            dbname=self.pg_db,
+            user=self.export_user,
+            password=self.export_password or None,
+            sslmode=self.pg_sslmode,
+            application_name="datahack-export",
+            connect_timeout=10,
         )
 
     def conninfo(self) -> str:

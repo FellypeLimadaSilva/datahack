@@ -1,0 +1,13 @@
+version: 1
+
+defaults:
+  schema: gold
+  min_cell: 10
+  formats: [csv, parquet]
+  max_file_mb: 50
+
+tables:
+  - name: controle_atualizacao
+    suppress: false
+  - name: dh_catalogo_dados
+    suppress: false

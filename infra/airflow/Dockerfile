@@ -38,6 +38,8 @@ ENV DH_HOME=/opt/datahack \
     DH_EXAMPLES_CATALOG=/opt/datahack/config/examples.yml \
     DH_LANDING_URI=/opt/datahack/data/landing \
     DH_LAKE_URI=/opt/datahack/data/lake \
+    DH_EXPORT_CONFIG=/opt/datahack/config/exports.yml \
+    DH_OUTPUTS=/opt/datahack/outputs \
     DH_LOG_FORMAT=json \
     PYTHONPATH=/opt/datahack/src
 

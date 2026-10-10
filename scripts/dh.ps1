@@ -5,38 +5,168 @@ param(
 
 $ErrorActionPreference = "Stop"
 Set-Location (Split-Path -Parent $PSScriptRoot)
+$Native = $env:DH_RUNNER -eq "native"
+$ImagesTar = "images/datahack-images.tar"
 
-function Invoke-Cli { docker compose run --rm cli @args; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }
-function Ensure-Env {
+function Import-DotEnv {
+    if (-not (Test-Path ".env")) { throw "Arquivo .env ausente. Rode: .\scripts\dh.ps1 env" }
+    foreach ($line in Get-Content ".env") {
+        if ($line -match '^\s*([A-Za-z_][A-Za-z0-9_]*)=(.*)$') {
+            [Environment]::SetEnvironmentVariable($Matches[1], $Matches[2], "Process")
+        }
+    }
+}
+
+function Invoke-CliCode {
+    if ($Native) {
+        Import-DotEnv
+        $exe = $args[0]
+        $tail = @($args | Select-Object -Skip 1)
+        & $exe @tail | Out-Host
+    } else {
+        docker compose run --rm cli @args | Out-Host
+    }
+    return $LASTEXITCODE
+}
+
+function Invoke-Cli {
+    $code = Invoke-CliCode @args
+    if ($code -ne 0) { exit $code }
+}
+
+function Get-Python {
     $py = Get-Command python -ErrorAction SilentlyContinue
     if (-not $py) { $py = Get-Command py -ErrorAction SilentlyContinue }
-    if (-not $py) {
-        if (Test-Path ".env") { return }
-        throw "Python nao encontrado. Instale Python 3.12+ ou rode via devcontainer."
+    return $py
+}
+
+function Ensure-Env {
+    $py = Get-Python
+    if ($py) {
+        & $py.Source scripts/init_env.py
+    } elseif (Get-Command docker -ErrorAction SilentlyContinue) {
+        docker run --rm -v "${PWD}:/w" -w /w python:3.12-slim-bookworm python scripts/init_env.py
+    } elseif (-not (Test-Path ".env")) {
+        throw "Sem Python e sem Docker: nao ha como gerar o .env."
     }
-    & $py.Source scripts/init_env.py
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
+
+function Write-Check([string]$Name, [bool]$Ok, [string]$Fix, [bool]$Critical = $true, [string]$Info = "") {
+    if ($Ok) { $tag = "[ OK ]"; $text = $Info } elseif ($Critical) { $tag = "[FALHA]"; $text = "$Info $Fix" } else { $tag = "[AVISO]"; $text = "$Info $Fix" }
+    Write-Host ("{0} {1,-28} {2}" -f $tag, $Name, $text.Trim())
+    return ($Ok -or -not $Critical)
+}
+
+function Test-Port([int]$Port) {
+    if (-not (Get-Command Get-NetTCPConnection -ErrorAction SilentlyContinue)) { return $true }
+    $busy = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
+    return -not $busy
+}
+
+function Invoke-Doctor {
+    $ok = $true
+    $docker = [bool](Get-Command docker -ErrorAction SilentlyContinue)
+    $ok = (Write-Check "Docker CLI" $docker "instale o Docker Desktop") -and $ok
+    if ($docker) {
+        docker info --format "{{.ServerVersion}}" *> $null
+        $engine = $LASTEXITCODE -eq 0
+        $ok = (Write-Check "Docker Engine" $engine "abra o Docker Desktop e aguarde 'Engine running'") -and $ok
+        docker compose version *> $null
+        $ok = (Write-Check "Docker Compose v2" ($LASTEXITCODE -eq 0) "atualize o Docker Desktop") -and $ok
+        if ($engine) {
+            $mem = [double](docker info --format "{{.MemTotal}}") / 1GB
+            $null = Write-Check "Memoria do Docker" ($mem -ge 3.5) "aumente em Settings > Resources (minimo 4 GB; 6 GB com Airflow)" $false ("{0:N1} GB" -f $mem)
+        }
+    }
+    $wsl = Get-Command wsl -ErrorAction SilentlyContinue
+    if ($wsl) {
+        wsl --status *> $null
+        $null = Write-Check "WSL 2" ($LASTEXITCODE -eq 0) "se falhar: wsl --install (admin + reiniciar)" $false
+    }
+    $ok = (Write-Check "Git" ([bool](Get-Command git -ErrorAction SilentlyContinue)) "instale o Git") -and $ok
+    $null = Write-Check "Python" ([bool](Get-Python)) "opcional; sem ele o .env e gerado via Docker" $false
+    $drive = (Get-Location).Drive
+    if ($drive) {
+        $free = $drive.Free / 1GB
+        $ok = (Write-Check "Disco livre" ($free -ge 10) "libere espaco (minimo 10 GB)" $true ("{0:N1} GB" -f $free)) -and $ok
+    }
+    $port = 5433
+    if (Test-Path ".env") {
+        $line = Select-String -Path ".env" -Pattern '^WAREHOUSE_PORT=(\d+)' | Select-Object -First 1
+        if ($line) { $port = [int]$line.Matches[0].Groups[1].Value }
+    }
+    $null = Write-Check "Porta do banco ($port)" (Test-Port $port) "em uso: troque WAREHOUSE_PORT no .env" $false
+    $null = Write-Check "Porta do Airflow (8080)" (Test-Port 8080) "em uso: troque AIRFLOW_PORT no .env" $false
+    $null = Write-Check ".env" (Test-Path ".env") "rode: .\scripts\dh.ps1 env" $false
+    $crlf = (Get-Content -Raw "infra/postgres/initdb/10-bootstrap.sh") -match "`r"
+    $ok = (Write-Check "Fim de linha dos scripts" (-not $crlf) "clone de novo com: git config --global core.autocrlf false") -and $ok
+    if ($ok) { Write-Host "Ambiente pronto." } else { Write-Host "Corrija os itens [FALHA] acima."; exit 1 }
+}
+
+function Invoke-NativeBootstrap {
+    Import-DotEnv
+    if (-not (Get-Command psql -ErrorAction SilentlyContinue)) { throw "psql nao encontrado: instale o PostgreSQL 16 e adicione o bin ao PATH." }
+    $h = $env:WAREHOUSE_HOST; $p = $env:WAREHOUSE_PORT; $db = $env:WAREHOUSE_DB
+    $exists = psql -h $h -p $p -U postgres -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = '$db'"
+    if ($exists -ne "1") { psql -h $h -p $p -U postgres -d postgres -c "CREATE DATABASE $db"; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }
+    psql -v ON_ERROR_STOP=1 -h $h -p $p -U postgres -d $db `
+        -v dbname=$db -v ingest_pw=$env:WAREHOUSE_INGEST_PASSWORD -v dbt_pw=$env:WAREHOUSE_DBT_PASSWORD `
+        -v bi_pw=$env:WAREHOUSE_BI_PASSWORD -v backup_pw=$env:WAREHOUSE_BACKUP_PASSWORD `
+        -v repl_pw=$env:WAREHOUSE_REPLICATION_PASSWORD -f infra/postgres/bootstrap.sql
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    Write-Host "Banco $db pronto em ${h}:$p"
 }
 
 switch ($Command) {
     "env"          { Ensure-Env }
+    "doctor"       { Invoke-Doctor }
     "build"        { Ensure-Env; docker compose build }
     "up"           { Ensure-Env; docker compose up -d --build; Write-Host "Airflow: http://localhost:8080 | Postgres: localhost:5433" }
+    "up-lite"      {
+        Ensure-Env
+        docker compose build cli; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        docker compose up -d --wait warehouse; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        Invoke-Cli python -m datahack_ingest init
+        Write-Host "Postgres pronto (sem Airflow). Use: .\scripts\dh.ps1 pipeline"
+    }
     "down"         { docker compose down }
     "ps"           { docker compose ps }
     "logs"         { docker compose logs -f --tail=200 @Rest }
+    "smoke"        {
+        Invoke-Cli python -m datahack_ingest --version
+        Invoke-Cli python -m datahack_ingest init
+        Invoke-Cli python -m datahack_ingest validate
+        Invoke-Cli dbt debug --project-dir dbt
+        Write-Host "Smoke test concluido."
+    }
+    "images-save"  {
+        New-Item -ItemType Directory -Force images | Out-Null
+        $images = docker compose --profile cli config --images | Sort-Object -Unique
+        $present = @($images | Where-Object { docker image inspect $_ *> $null; $LASTEXITCODE -eq 0 })
+        if (-not $present) { throw "Nenhuma imagem local. Rode antes: .\scripts\dh.ps1 up-lite (ou build)" }
+        docker save -o $ImagesTar @present; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        Write-Host ("Salvo {0} ({1}) em {2}" -f ($present -join ", "), ("{0:N0} MB" -f ((Get-Item $ImagesTar).Length / 1MB)), $ImagesTar)
+    }
+    "images-load"  {
+        if (-not (Test-Path $ImagesTar)) { throw "Copie o arquivo para $ImagesTar antes." }
+        docker load -i $ImagesTar; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    }
+    "db-bootstrap-native" { Invoke-NativeBootstrap }
     "sample"       { Invoke-Cli python scripts/generate_sample_data.py --out data/landing/sample }
     "demo-inbox"   { Invoke-Cli python scripts/generate_messy_data.py --out data/landing/inbox }
     "discover"     { Invoke-Cli python -m datahack_ingest discover }
     "ingest"       { if ($Rest) { Invoke-Cli python -m datahack_ingest run @Rest } else { Invoke-Cli python -m datahack_ingest run --all --continue-on-error } }
     "models"       { Invoke-Cli python -m datahack_ingest generate-models @Rest }
+    "export"       { Invoke-Cli python -m datahack_ingest export @Rest }
     "dbt-build"    { if ($Rest) { Invoke-Cli dbt build --project-dir dbt --select @Rest } else { Invoke-Cli dbt build --project-dir dbt } }
     "dbt-test"     { Invoke-Cli dbt test --project-dir dbt }
     "pipeline" {
-        docker compose run --rm cli python -m datahack_ingest run --all --continue-on-error
-        $ingest = $LASTEXITCODE
+        $ingest = Invoke-CliCode python -m datahack_ingest run --all --continue-on-error
         if ($ingest -ne 0 -and $env:DH_REQUIRE_ALL_SOURCES -eq "true") { exit $ingest }
         Invoke-Cli python -m datahack_ingest generate-models
         Invoke-Cli dbt build --project-dir dbt
+        Invoke-Cli python -m datahack_ingest export
         if ($ingest -ne 0) { Write-Host "Atencao: fontes com falha na ingestao (veja o JSON acima)."; exit $ingest }
     }
     "psql"         { docker compose exec warehouse bash -c 'psql -U $POSTGRES_USER -d $POSTGRES_DB' }
@@ -52,15 +182,21 @@ switch ($Command) {
     }
     default {
         Write-Host @"
-Uso: .\scripts\dh.ps1 <comando> [args]
-  env | build | up | down | ps | logs [servico]
-  sample                      gera dataset de exemplo (varejo)
-  demo-inbox                  gera arquivos baguncados em data/landing/inbox
+Uso: .\scripts\dh.ps1 <comando> [args]      (sem Docker: `$env:DH_RUNNER = "native")
+  doctor                      verifica Docker, WSL, disco, portas e fim de linha
+  env                         cria ou completa o .env
+  up-lite                     sobe so o Postgres e a imagem CLI (recomendado no laboratorio)
+  up | build | down | ps | logs [servico]
+  smoke                       testa CLI, banco e dbt
+  images-save | images-load   leva as imagens num pendrive (images/datahack-images.tar)
+  db-bootstrap-native         prepara um PostgreSQL instalado sem Docker
+  sample | demo-inbox         dados de exemplo / arquivos baguncados de demonstracao
   discover                    mostra o que a inbox virou de fonte e o que foi ignorado
   ingest [fontes...]          ingere fontes (padrao: todas, continuando em caso de erro)
   models [--reset]            gera Silver e Gold automaticas a partir da Bronze
   dbt-build [seletor]         dbt build (models + testes)
-  pipeline                    ingest + models + dbt-build
+  export [--tables ...]       exporta a Gold para outputs/ com supressao de grupos < 10
+  pipeline                    ingest + models + dbt-build + export
   dbt-test | psql | db-bootstrap | backup | ha-up | alert-test | test | lint | nuke
 "@
     }

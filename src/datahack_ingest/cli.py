@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import sys
+from pathlib import Path
 
 import psycopg
 from psycopg import sql
@@ -14,6 +15,7 @@ from datahack_ingest import __version__
 from datahack_ingest.alerting import Alert, configured_channels, send_alert
 from datahack_ingest.catalog import required_env_vars
 from datahack_ingest.discovery import ResolvedCatalog, resolve_catalog
+from datahack_ingest.export import Exporter, ExportError, load_export_config
 from datahack_ingest.logging_setup import configure
 from datahack_ingest.modelgen import ModelGenerator
 from datahack_ingest.runner import run_source
@@ -53,6 +55,11 @@ def _parser() -> argparse.ArgumentParser:
     gm.add_argument("--reset", action="store_true", help="refaz a inferência de tipos e chaves")
     gm.add_argument("--dry-run", action="store_true", help="perfila sem gravar arquivos nem ops")
 
+    ex = sub.add_parser("export", help="exporta tabelas da Gold para outputs/ (CSV/Parquet)")
+    ex.add_argument("--tables", nargs="*", help="tabelas da Gold (padrão: config/exports.yml)")
+    ex.add_argument("--config", help="arquivo de exportação (padrão: $DH_EXPORT_CONFIG)")
+    ex.add_argument("--out", help="pasta de saída (padrão: $DH_OUTPUTS)")
+
     sub.add_parser("alert-test", help="envia um alerta de teste para os canais configurados")
 
     mt = sub.add_parser("maintenance", help="ANALYZE na Bronze e expurgo do histórico de controle")
@@ -86,6 +93,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cmd == "generate-models":
         return _generate(settings, resolved, args.reset, args.dry_run)
+
+    if args.cmd == "export":
+        return _export(settings, args)
 
     if args.cmd == "init":
         with psycopg.connect(settings.conninfo(), autocommit=True) as conn:
@@ -179,6 +189,15 @@ def _list(resolved: ResolvedCatalog, as_json: bool, enabled_only: bool) -> int:
     return 0
 
 
+def _source_location(source) -> str:
+    opts = getattr(source, "file", None)
+    if opts is None:
+        return source.description.removeprefix("Descoberta automática: ")
+    if opts.include != ["*"] and not opts.recursive:
+        return ", ".join(f"{opts.path}/{name}" for name in opts.include)
+    return opts.path
+
+
 def _discover(resolved: ResolvedCatalog, as_json: bool) -> int:
     found = [s for s in resolved.catalog.sources if resolved.origin(s.name) == "inbox"]
     payload = {
@@ -187,7 +206,7 @@ def _discover(resolved: ResolvedCatalog, as_json: bool) -> int:
                 "name": s.name,
                 "kind": s.kind,
                 "format": getattr(getattr(s, "file", None), "format", "sqlite"),
-                "path": getattr(getattr(s, "file", None), "path", None) or s.description,
+                "path": _source_location(s),
                 "table": f"bronze.{s.table}",
             }
             for s in found
@@ -236,6 +255,35 @@ def _generate(settings: Settings, resolved: ResolvedCatalog, reset: bool, dry_ru
         "skipped": generator.skipped,
     }
     print(json.dumps(summary, ensure_ascii=False, indent=2))
+    return 0
+
+
+def _export(settings: Settings, args: argparse.Namespace) -> int:
+    try:
+        config = load_export_config(Path(args.config or settings.export_config_path))
+    except (ValidationError, ValueError) as exc:
+        print(f"[erro de configuração] exportação: {exc}", file=sys.stderr)
+        return 2
+    if not config.tables and not args.tables:
+        print(json.dumps({"status": "skipped", "reason": "nenhuma tabela em exports.yml"}))
+        return 0
+    exporter = Exporter(settings.export_conninfo(), Path(args.out or settings.outputs_dir), config)
+    try:
+        manifest = exporter.run(args.tables or None)
+    except (ExportError, psycopg.Error) as exc:
+        print(f"[erro] exportação: {exc}", file=sys.stderr)
+        return 1
+    summary = [
+        {
+            "table": t["table"],
+            "rows": t["rows"],
+            "suppressed_rows": t["suppressed_rows"],
+            "base_columns": t["base_columns"],
+            "files": [f["file"] for f in t["files"]],
+        }
+        for t in manifest["tables"]
+    ]
+    print(json.dumps({"status": "success", "tables": summary}, ensure_ascii=False, indent=2))
     return 0
 
 

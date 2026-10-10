@@ -227,6 +227,114 @@ def transacoes(out: Path, rng: random.Random, n: int) -> None:
     pq.write_table(table, folder / "parte_001.parquet")
 
 
+CURSOS = [
+    ("5101", "Direito", 1),
+    ("5102", "Enfermagem", 2),
+    ("5103", "Pedagogia", 1),
+    ("5104", "Engenharia Civil", 2),
+    ("5105", "Letras", 1),
+    ("5106", "Medicina Veterinária", 2),
+]
+
+
+def trajetoria(out: Path, rng: random.Random) -> None:
+    folder = out / "trajetoria"
+    folder.mkdir(parents=True, exist_ok=True)
+    header = [
+        "CO_IES",
+        "NO_IES",
+        "TP_CATEGORIA_ADMINISTRATIVA",
+        "CO_CURSO",
+        "NO_CURSO",
+        "CO_MUNICIPIO",
+        "TP_MODALIDADE_ENSINO",
+        "NU_ANO_INGRESSO",
+        "NU_ANO_REFERENCIA",
+        "QT_INGRESSANTE",
+        "QT_DESISTENCIA",
+        "QT_CONCLUINTE",
+        "TAP",
+        "TCA",
+        "TDA",
+    ]
+    for coorte in (2015, 2016):
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Indicadores"
+        for line in (
+            "Ministério da Educação",
+            "Instituto Nacional de Estudos e Pesquisas Educacionais Anísio Teixeira",
+            None,
+            f"Indicadores de Trajetória da Educação Superior - Coorte {coorte}",
+            "Mato Grosso",
+            None,
+            None,
+            None,
+        ):
+            ws.append([line])
+        ws.append(header)
+        for co_curso, nome, rede in CURSOS:
+            ingressantes = rng.choice([6, 8, 45, 80, 120]) if co_curso != "5101" else 150
+            desist = 0
+            concl = 0
+            for ano in range(coorte, 2025):
+                d = rng.randint(0, max(1, (ingressantes - desist - concl) // 5))
+                c = rng.randint(0, 6) if ano - coorte >= 4 else 0
+                desist += d
+                concl += c
+                ws.append(
+                    [
+                        f"{100 + rede}",
+                        f"Instituição {rede}",
+                        rede,
+                        co_curso,
+                        nome,
+                        "5103403",
+                        1,
+                        coorte,
+                        ano,
+                        ingressantes,
+                        desist,
+                        concl,
+                        round(100 * (ingressantes - desist - concl) / ingressantes, 2),
+                        round(100 * concl / ingressantes, 2),
+                        round(100 * desist / ingressantes, 2),
+                    ]
+                )
+        ws.append([None])
+        ws.append(["Fonte: Inep, Censo da Educação Superior."])
+        ws.append(["Notas: TAP, TCA e TDA em percentual."])
+        wb.save(folder / f"indicadores_trajetoria_educacao_superior_{coorte}_2024.xlsx")
+
+
+def censo(out: Path, rng: random.Random) -> None:
+    for ano in (2023, 2024):
+        cursos = [
+            "NU_ANO_CENSO;SG_UF;CO_IES;CO_CURSO;NO_CURSO;TP_REDE;TP_MODALIDADE_ENSINO;QT_MAT;QT_ING;QT_SIT_DESVINCULADO"
+        ]
+        for co_curso, nome, rede in CURSOS:
+            cursos.append(
+                f"{ano};MT;{100 + rede};{co_curso};{nome};{rede};1;"
+                f"{rng.randint(50, 900)};{rng.randint(10, 200)};{rng.randint(0, 60)}"
+            )
+        ies = ["NU_ANO_CENSO;CO_IES;NO_IES;CO_MUNICIPIO;TP_CATEGORIA_ADMINISTRATIVA"]
+        ies += [
+            f"{ano};101;Instituição Pública;5103403;1",
+            f"{ano};102;Instituição Privada;5108402;4",
+        ]
+        base = f"microdados_censo_da_educacao_superior_{ano}"
+        with zipfile.ZipFile(out / f"{base}.zip", "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr(
+                f"{base}/dados/MICRODADOS_CADASTRO_CURSOS_{ano}.CSV",
+                "\n".join(cursos).encode("latin-1"),
+            )
+            zf.writestr(
+                f"{base}/dados/MICRODADOS_ED_SUP_IES_{ano}.CSV", "\n".join(ies).encode("latin-1")
+            )
+            zf.writestr(f"{base}/Anexos/ANEXO I/dicionário_dados_educação_superior.xlsx", b"PK")
+            zf.writestr(f"{base}/leia-me/Leia-me.pdf", b"%PDF-1.4")
+
+
 def noise(out: Path) -> None:
     (out / "LEIA-ME.pdf").write_bytes(b"%PDF-1.4")
     (out / "~$Estoque.xlsx").write_bytes(b"lock")
@@ -252,6 +360,8 @@ def main(argv: list[str] | None = None) -> int:
     legado(out)
     reservadas(out)
     transacoes(out, rng, args.rows)
+    trajetoria(out, rng)
+    censo(out, rng)
     noise(out)
     print(f"inbox de demonstração gerada em {out}")
     return 0

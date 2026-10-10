@@ -47,3 +47,16 @@
         select make_date(y, (h + l - 7 * m + 114) / 31, ((h + l - 7 * m + 114) % 31) + 1) from s5
     )
 {%- endmacro %}
+
+{% macro dh_join_rate(left, left_key, right, right_key) -%}
+    select
+        count(*) as chaves_origem,
+        count(*) filter (where d.chave is not null) as chaves_encontradas,
+        round(count(*) filter (where d.chave is not null)::numeric / nullif(count(*), 0), 4) as taxa_juncao
+    from (select distinct {{ left_key }} as chave from {{ left }} where {{ left_key }} is not null) as o
+    left join (select distinct {{ right_key }} as chave from {{ right }}) as d using (chave)
+{%- endmacro %}
+
+{% macro dh_min_cell(expr, base, min_cell=10) -%}
+    case when {{ base }} >= {{ min_cell }} then {{ expr }} end
+{%- endmacro %}

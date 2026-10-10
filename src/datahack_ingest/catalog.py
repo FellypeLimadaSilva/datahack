@@ -147,7 +147,7 @@ class VolumeCheck(_Strict):
 FileFormat = Literal["csv", "jsonl", "json", "parquet", "xlsx", "xml", "fixed_width", "avro", "orc"]
 
 
-DEFAULT_EXCLUDE = [".*", "~$*", "*.tmp", "*.part", "*.crdownload", "_source.yml"]
+DEFAULT_EXCLUDE = [".*", "~$*", "*.tmp", "*.part", "*.crdownload", "_source.yml", "_sources.yml"]
 
 
 class FileOptions(_Strict):
@@ -155,13 +155,16 @@ class FileOptions(_Strict):
     format: FileFormat
     compression: Literal["infer", "none", "gzip", "bz2", "xz", "zstd", "zip"] = "infer"
     zip_member_pattern: str = "*"
+    zip_members: list[str] = []
     include: list[str] = ["*"]
     exclude: list[str] = DEFAULT_EXCLUDE
+    recursive: bool = True
     min_age_seconds: Annotated[int, Field(ge=0)] = 0
     sep: str = ","
     encoding: str = "auto"
     quotechar: str = '"'
-    skip_rows: int = 0
+    skip_rows: Annotated[int, Field(ge=0)] | Literal["auto"] = 0
+    drop_note_rows: bool = False
     records_path: str | None = None
     sheet_name: str | int = 0
     flatten_max_level: int = 1
@@ -173,6 +176,8 @@ class FileOptions(_Strict):
     def _format_rules(self) -> FileOptions:
         if self.sep != "auto" and len(self.sep) != 1 and self.sep != r"\t":
             raise ValueError("sep deve ser um caractere ou 'auto'")
+        if self.skip_rows == "auto" and self.format not in {"csv", "xlsx"}:
+            raise ValueError("skip_rows auto só se aplica a csv e xlsx")
         if self.format == "fixed_width":
             if not self.widths:
                 raise ValueError("format fixed_width exige widths")

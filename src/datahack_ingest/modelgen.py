@@ -34,6 +34,7 @@ _PLURALS = (("oes", "ao"), ("aes", "ao"), ("ais", "al"), ("eis", "el"), ("ns", "
 CODE_NAME = re.compile(
     r"(^|_)(cpf|cnpj|cep|telefone|tel|celular|fone|rg|pis|nis|chave|matricula|codigo|cod|ncm|cfop"
     r"|ean|gtin|isbn|conta|agencia|cartao|protocolo|processo|inscricao)(_|$)"
+    r"|^(co|cd|tp|id)_"
 )
 IDENT_PII = re.compile(
     r"(^|_)(cpf|rg|email|e_mail|telefone|tel|celular|fone|phone|whatsapp|cartao|card|pis|nis"

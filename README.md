@@ -36,19 +36,23 @@ flowchart LR
     A -. orquestra .-> S
 ```
 
-## Início rápido (Windows, PowerShell)
+## Como rodar do zero (Windows, PowerShell)
 
-Pré-requisitos: **Docker Desktop** (6 GB+ de RAM alocada), **Git**, **Python 3.12+** e **VS Code**.
+Pré-requisitos: **Docker Desktop** (4 GB+ de RAM; 6 GB com Airflow) e **Git**. Python é opcional.
 
 ```powershell
 git clone https://github.com/FellypeLimadaSilva/datahack.git
 cd datahack
-python scripts/init_env.py        # gera .env com segredos aleatórios (nunca commitado)
-docker compose up -d --build      # warehouse + Airflow (primeiro build: ~5 min)
-.\scripts\dh.ps1 sample           # dataset sintético de varejo (opcional, DH_EXAMPLES=true)
-.\scripts\dh.ps1 demo-inbox       # arquivos bagunçados de demonstração na inbox (opcional)
-.\scripts\dh.ps1 pipeline         # ingestão + Silver/Gold automáticas + dbt build
+.\scripts\dh.ps1 doctor           # confere Docker, WSL, disco, portas
+.\scripts\dh.ps1 up-lite          # .env com segredos aleatórios + Postgres + imagem CLI
+.\scripts\dh.ps1 smoke            # testa CLI, banco e dbt
+# coloque os arquivos em data\landing\inbox\ (fora do Git)
+.\scripts\dh.ps1 pipeline         # ingestão + Silver/Gold + dbt build + exportação para outputs\
 ```
+
+Plataforma completa com Airflow: `.\scripts\dh.ps1 up`. Sem Docker, laboratório e pendrive:
+[docs/LAB_SETUP.md](docs/LAB_SETUP.md). Dados de demonstração: `dh.ps1 sample` (varejo) e
+`dh.ps1 demo-inbox` (arquivos bagunçados).
 
 Com os seus dados: copie para `data/landing/inbox/` e rode `.\scripts\dh.ps1 pipeline`
 (ou dispare a DAG `medallion_pipeline`). `.\scripts\dh.ps1 discover` mostra antes o que cada
@@ -65,8 +69,29 @@ Linux/macOS/WSL: troque `.\scripts\dh.ps1 <cmd>` por `make <cmd>`. No VS Code:
 | Metabase (`--profile bi`) | http://localhost:3000 | criado no primeiro acesso |
 | Réplica de leitura (`--profile ha`) | `localhost:5434` | mesmas roles do warehouse |
 
-**Power BI:** Obter dados → PostgreSQL → servidor `localhost:5433`, banco `datahack`,
-usuário `dh_bi_reader`. Só o schema `gold` fica visível (regra de ouro do consumo).
+**Dashboard fora da máquina:** `dh.ps1 export` grava as tabelas da Gold listadas em
+[`config/exports.yml`](config/exports.yml) em `outputs/` (CSV e Parquet), removendo grupos com
+menos de 10 alunos, e o `_manifest.json` registra linhas e hash de cada arquivo. O dashboard lê
+de `outputs/`: Power BI (Obter dados → Parquet/Texto), ou o app pronto em
+[`dashboard/app.py`](dashboard/app.py) (`streamlit run dashboard/app.py`, publicável no Streamlit
+Community Cloud). Conexão direta ao banco para desenvolvimento: `localhost:5433`, banco `datahack`,
+usuário `dh_bi_reader`, que só enxerga o schema `gold`.
+
+## Estrutura
+
+```
+config/        catálogo de fontes, exemplos e exportação
+data/          landing/inbox (dados brutos, fora do Git)
+dbt/           macros, modelos Gold, exemplos; models/auto gerado (fora do Git)
+src/           datahack-ingest: descoberta, ingestão, geração de modelos, exportação
+sql/           consultas de apoio
+outputs/       tabelas finais versionadas que alimentam o dashboard
+dashboard/     app Streamlit que lê outputs/
+prompts/       conversas com IA (obrigatório no evento) e índice
+docs/          estrategia.md (Fase 1), arquitetura.md, LAB_SETUP.md, ADRs
+airflow/       DAGs (opcional)
+infra/         Dockerfiles e configuração do Postgres
+```
 
 ## Camadas e roles
 
@@ -85,7 +110,10 @@ usuário `dh_bi_reader`. Só o schema `gold` fica visível (regra de ouro do con
 | Ver o que a inbox detectou | `dh.ps1 discover` | `make discover` |
 | Ingerir tudo / uma fonte | `dh.ps1 ingest` / `dh.ps1 ingest vendas` | `make ingest` / `make ingest s=vendas` |
 | Gerar Silver/Gold automáticas | `dh.ps1 models` / `dh.ps1 models --reset` | `make models` / `make models reset=1` |
+| Exportar Gold para `outputs/` | `dh.ps1 export` | `make export` |
 | Pipeline completo | `dh.ps1 pipeline` | `make pipeline` |
+| Diagnóstico / teste rápido | `dh.ps1 doctor` / `dh.ps1 smoke` | `make smoke` |
+| Imagens para pendrive | `dh.ps1 images-save` / `dh.ps1 images-load` | `make images-save` / `make images-load` |
 | Perfilar fonte nova sem gravar | `docker compose run --rm cli python -m datahack_ingest run <fonte> --dry-run` | idem |
 | dbt (models + testes) | `dh.ps1 dbt-build` / `dh.ps1 dbt-build fact_vendas+` | `make dbt-build sel=fact_vendas+` |
 | Testes Python | `dh.ps1 test` | `make test` |
@@ -98,8 +126,8 @@ usuário `dh_bi_reader`. Só o schema `gold` fica visível (regra de ouro do con
 
 | Forma | Quando usar | O que você faz |
 |---|---|---|
-| **Inbox** (zero configuração) | Arquivos e bancos SQLite do evento | Copia para `data/landing/inbox/`; uma pasta = uma tabela, arquivo solto = uma tabela, cada aba do Excel e cada tabela do SQLite = uma tabela |
-| **Inbox + `_source.yml`** | Precisa ajustar chave, PII, estratégia ou formato | Coloca um `_source.yml` na pasta (ex.: `primary_key: [id]`, `load_strategy: merge`) |
+| **Inbox** (zero configuração) | Arquivos e bancos SQLite do evento | Copia para `data/landing/inbox/`; uma pasta = uma tabela; arquivos soltos com o mesmo nome a menos do ano (`CPC_2021`, `CPC_2022`) = uma tabela; zip solto = uma tabela por arquivo de dados dentro dele; cada aba do Excel e cada tabela do SQLite = uma tabela |
+| **Inbox + `_source.yml`** | Precisa ajustar chave, filtro, PII, estratégia ou formato | `_source.yml` na pasta, ou `inbox/_sources.yml` (nome da fonte → campos) para arquivos soltos |
 | **Catálogo** (`config/sources.yml`) | APIs, bancos corporativos, ETL antes de gravar, exclusões | Declara a fonte; segredos só por nome de variável |
 
 Silver e Gold são geradas para toda tabela que não tenha modelo dbt escrito à mão. Quando a regra
@@ -140,7 +168,7 @@ Nada precisa ser usado por inteiro. O mínimo é PostgreSQL + `datahack-ingest` 
 
 ## Documentação
 
-- [Arquitetura e decisões](docs/ARCHITECTURE.md) · [ADRs](docs/adr/)
+- [Arquitetura e decisões](docs/arquitetura.md) · [ADRs](docs/adr/)
 - [Adicionar fonte](docs/ADDING_A_SOURCE.md) · [Runbook de operação](docs/RUNBOOK.md)
 - [Segurança e LGPD](SECURITY.md) · [Como contribuir](CONTRIBUTING.md) · [Changelog](CHANGELOG.md)
 
