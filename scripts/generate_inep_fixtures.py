@@ -88,6 +88,7 @@ CURSOS_COLS = [
     "QT_MAT_PROUNII",
     "QT_MAT_PROUNIP",
     "QT_MAT_PROCESCPUBLICA",
+    "QT_MAT_PROCESCPRIVADA",
     "QT_MAT_RESERVA_VAGA",
     "QT_MAT_APOIO_SOCIAL",
     "QT_MAT_NOTURNO",
@@ -310,6 +311,7 @@ def censo_rows(ano: int) -> list[list]:
                     rng.randint(0, 20) if rede == 2 else 0,
                     rng.randint(0, 20) if rede == 2 else 0,
                     rng.randint(20, mat),
+                    rng.randint(0, 20),
                     rng.randint(0, 20) if rede == 1 else 0,
                     rng.randint(0, 15),
                     rng.randint(0, mat),
@@ -355,7 +357,7 @@ def censo_rows(ano: int) -> list[list]:
             0,
             0,
             0,
-            *([0] * 8),
+            *([0] * 9),
         ]
     )
     return rows
