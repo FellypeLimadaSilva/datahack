@@ -144,7 +144,7 @@ function pivot(name, dsKey, o, desc) {
 // Cartão de KPI no estilo painel de operações: número grande, "chip" de contexto e subtítulo. Todo o texto sai pronto do SQL
 // (formato pt-BR), o template só imprime. Handlebars não filtra por clique; os filtros da barra valem normalmente.
 const intf = e => { const t = `CAST(${e} AS TEXT)`; return `CASE WHEN LENGTH(${t}) > 6 THEN SUBSTR(${t}, 1, LENGTH(${t}) - 6) || '.' || SUBSTR(${t}, LENGTH(${t}) - 5, 3) || '.' || SUBSTR(${t}, LENGTH(${t}) - 2) WHEN LENGTH(${t}) > 3 THEN SUBSTR(${t}, 1, LENGTH(${t}) - 3) || '.' || SUBSTR(${t}, LENGTH(${t}) - 2) ELSE ${t} END`; };
-const txt = e => `REPLACE(CAST(ROUND(${e}, 1) AS TEXT), '.', ',')`;
+const txt = e => `REPLACE(CAST(ROUND(CAST(${e} AS NUMERIC), 1) AS TEXT), '.', ',')`;
 function card(name, dsKey, o, desc) {
   const m1 = { expressionType: 'SQL', sqlExpression: `COALESCE((${o.value}) || '${o.unit || ''}', '—')`, label: 'v' };
   const mm = [m1];
