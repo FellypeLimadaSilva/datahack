@@ -1,0 +1,8 @@
+*
+!chatbot/requirements.txt
+!chatbot/app
+!chatbot/static
+!deploy/chatbot
+!superset/bundle/rota_do_diploma.zip
+!outputs/_indicadores.json
+**/__pycache__
