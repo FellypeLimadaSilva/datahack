@@ -4,6 +4,7 @@ with cursos as (
         d.qt_ingressante,
         d.qt_desistencia_final,
         d.qt_concluinte_final,
+        d.qt_base_final,
         e.qt_concluinte_participante,
         e.qt_concluinte_proficiente,
         e.pct_proficiente
@@ -17,6 +18,7 @@ grupos as (
         coalesce(rede, 'Total') as rede,
         count(*) as nu_cursos,
         sum(qt_ingressante) as qt_ingressante,
+        sum(qt_base_final) as qt_base,
         sum(qt_desistencia_final) as qt_desistencia,
         sum(qt_concluinte_final) as qt_concluinte,
         count(pct_proficiente) as nu_cursos_enade,
@@ -35,15 +37,15 @@ select
     rede::text,
     nu_cursos::bigint,
     {{ dh_mask_count('qt_ingressante') }}::bigint as qt_ingressante,
-    {{ dh_rate('qt_desistencia', 'qt_ingressante') }}::numeric as de_100_desistem,
-    {{ dh_rate('qt_concluinte', 'qt_ingressante') }}::numeric as de_100_concluem,
+    {{ dh_rate('qt_desistencia', 'qt_base') }}::numeric as de_100_desistem,
+    {{ dh_rate('qt_concluinte', 'qt_base') }}::numeric as de_100_concluem,
     nu_cursos_enade::bigint,
     {{ dh_mask_count('qt_participante_enade') }}::bigint as qt_participante_enade,
     case when qt_participante_enade >= {{ var('min_cell') }} then round(pct_proficiente, 2) end::numeric
         as pct_proficiente,
     case
         when qt_participante_enade >= {{ var('min_cell') }}
-            then round({{ dh_rate('qt_concluinte', 'qt_ingressante') }} * pct_proficiente / 100, 2)
+            then round({{ dh_rate('qt_concluinte', 'qt_base') }} * pct_proficiente / 100, 2)
     end::numeric as de_100_concluem_proficientes
 from grupos
 where qt_ingressante >= {{ var('min_cell') }}

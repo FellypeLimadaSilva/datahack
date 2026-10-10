@@ -14,6 +14,8 @@ select
         as qt_desistencia_marco,
     max(qt_concluinte_acum) filter (where nu_ano_curso = {{ var('ano_curso_comparacao') }})
         as qt_concluinte_marco,
+    max(qt_base_acum) filter (where nu_ano_curso = {{ var('ano_curso_comparacao') }})
+        as qt_base_marco,
     bool_or(nu_ano_curso = {{ var('ano_curso_comparacao') }}) as tem_marco,
     max(qt_desistencia_acum) filter (where nu_ano_referencia = nu_ultimo_ano_observado)
         as qt_desistencia_final,
@@ -21,6 +23,8 @@ select
         as qt_concluinte_final,
     max(qt_permanencia) filter (where nu_ano_referencia = nu_ultimo_ano_observado)
         as qt_permanencia_final,
+    max(qt_base_acum) filter (where nu_ano_referencia = nu_ultimo_ano_observado)
+        as qt_base_final,
     max(nu_ultimo_ano_observado) as nu_ultimo_ano_observado
 from {{ ref('int_trajetoria_acumulada') }}
 group by co_curso, nu_ano_ingresso

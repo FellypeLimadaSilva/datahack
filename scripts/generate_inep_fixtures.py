@@ -87,6 +87,14 @@ CURSOS_COLS = [
     "QT_MAT_FIES",
     "QT_MAT_PROUNII",
     "QT_MAT_PROUNIP",
+    "QT_MAT_PROCESCPUBLICA",
+    "QT_MAT_RESERVA_VAGA",
+    "QT_MAT_APOIO_SOCIAL",
+    "QT_MAT_NOTURNO",
+    "QT_MAT_PRETA",
+    "QT_MAT_PARDA",
+    "QT_MAT_INDIGENA",
+    "QT_MAT_CORND",
 ]
 IES_COLS = [
     "NU_ANO_CENSO",
@@ -202,9 +210,9 @@ def trajetoria_rows(coorte: int, seed: int, invalid: bool = False) -> list[list]
                     concl,
                     desist,
                     falec,
-                    round(100 * ativos / ingressantes, 6),
-                    round(100 * concl_acum / ingressantes, 6),
-                    round(100 * desist_acum / ingressantes, 6),
+                    round(100 * ativos / (ingressantes - falec_acum), 6),
+                    round(100 * concl_acum / (ingressantes - falec_acum), 6),
+                    round(100 * desist_acum / (ingressantes - falec_acum), 6),
                     round(100 * concl / ingressantes, 6),
                     round(100 * desist / ingressantes, 6),
                 ]
@@ -301,6 +309,14 @@ def censo_rows(ano: int) -> list[list]:
                     rng.randint(0, 40) if rede == 2 else 0,
                     rng.randint(0, 20) if rede == 2 else 0,
                     rng.randint(0, 20) if rede == 2 else 0,
+                    rng.randint(20, mat),
+                    rng.randint(0, 20) if rede == 1 else 0,
+                    rng.randint(0, 15),
+                    rng.randint(0, mat),
+                    rng.randint(0, 15),
+                    rng.randint(10, 30),
+                    rng.randint(0, 3),
+                    rng.randint(0, 10),
                 ]
             )
     rows.append(
@@ -339,6 +355,7 @@ def censo_rows(ano: int) -> list[list]:
             0,
             0,
             0,
+            *([0] * 8),
         ]
     )
     return rows
