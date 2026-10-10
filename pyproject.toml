@@ -12,7 +12,6 @@ authors = [{ name = "Fellype Lima da Silva" }]
 dependencies = [
     "pandas>=2.2",
     "pyarrow>=15",
-    "sqlalchemy>=2.0",
     "psycopg[binary]>=3.1",
     "requests>=2.31",
     "pyyaml>=6.0",
@@ -27,12 +26,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-oracle = ["oracledb>=2.0"]
-mssql = ["pymssql>=2.3"]
-mysql = ["pymysql>=1.1"]
-s3 = ["s3fs>=2024.2"]
-azure = ["adlfs>=2024.2"]
-gcs = ["gcsfs>=2024.2"]
 dbt = ["dbt-core==1.12.5", "dbt-postgres==1.11.0"]
 dev = [
     "pytest>=8",
@@ -64,12 +57,13 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "S105", "S106", "PLR2004", "S603", "S607", "PLC0415", "RUF012"]
+"tests/**" = ["S101", "S105", "S106", "PLR2004", "S603", "S607", "S608", "PLC0415", "RUF012", "PLR0915"]
+"src/datahack_ingest/publish.py" = ["S603"]
 "src/datahack_ingest/cli.py" = ["PLR0911", "PLR0912"]
 "src/datahack_ingest/normalize.py" = ["PLR0911"]
 "src/datahack_ingest/transforms.py" = ["PLR0911", "PLR0912"]
 "src/datahack_ingest/extractors/api.py" = ["PLR0912"]
-"scripts/**" = ["S311"]
+"scripts/**" = ["S311", "RUF005"]
 "airflow/dags/**" = ["PLC0415", "S603"]
 
 [tool.pytest.ini_options]

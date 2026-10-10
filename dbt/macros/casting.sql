@@ -45,13 +45,14 @@
     {{ dh_safe_cast(expr, target) }}
 {%- endmacro %}
 
-{% macro dh_to_bool(col) -%}
-    case
-        when lower({{ dh_clean_text(col) }}) in ('true', 't', '1', 'sim', 's', 'yes', 'y') then true
-        when lower({{ dh_clean_text(col) }}) in ('false', 'f', '0', 'nao', 'não', 'n', 'no') then false
-    end
-{%- endmacro %}
-
-{% macro dh_to_jsonb(col) -%}
-    {{ dh_safe_cast(dh_clean_text(col), 'jsonb') }}
+{% macro dh_typed_column(name, kind='text') -%}
+    {%- if name is none -%}
+        null::{{ kind }}
+    {%- elif kind == 'numeric' -%}
+        {{ dh_to_numeric(name, 'auto') }}::numeric
+    {%- elif kind in ('bigint', 'int') -%}
+        {{ dh_to_int(name) }}::{{ kind }}
+    {%- else -%}
+        {{ dh_clean_text(name) }}::text
+    {%- endif -%}
 {%- endmacro %}

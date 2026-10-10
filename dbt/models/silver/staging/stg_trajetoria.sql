@@ -1,0 +1,42 @@
+with versao as (
+    {{ dh_latest_partition(source('bronze', 'trajetoria'), 'nu_ano_ingresso') }}
+)
+
+select
+    {{ dh_clean_text('co_curso') }}::text as co_curso,
+    {{ dh_clean_text('co_ies') }}::text as co_ies,
+    {{ dh_clean_text('no_ies') }}::text as no_ies,
+    {{ dh_clean_text('no_curso') }}::text as no_curso,
+    {{ dh_clean_text('co_municipio') }}::text as co_municipio,
+    {{ dh_to_int('co_uf') }}::int as co_uf,
+    {{ dh_to_int('tp_categoria_administrativa') }}::int as tp_categoria_administrativa,
+    {{ dh_rede(dh_to_int('tp_categoria_administrativa')) }}::text as rede,
+    {{ dh_to_int('tp_organizacao_academica') }}::int as tp_organizacao_academica,
+    {{ dh_to_int('tp_grau_academico') }}::int as tp_grau_academico,
+    {{ dh_grau(dh_to_int('tp_grau_academico')) }}::text as grau_academico,
+    {{ dh_to_int('tp_modalidade_ensino') }}::int as tp_modalidade_ensino,
+    {{ dh_modalidade(dh_to_int('tp_modalidade_ensino')) }}::text as modalidade,
+    {{ dh_clean_text('co_cine_rotulo') }}::text as co_cine_rotulo,
+    {{ dh_clean_text('no_cine_rotulo') }}::text as no_cine_rotulo,
+    {{ dh_clean_text('co_cine_area_geral') }}::text as co_cine_area_geral,
+    {{ dh_clean_text('no_cine_area_geral') }}::text as no_cine_area_geral,
+    {{ dh_to_int('nu_ano_ingresso') }}::int as nu_ano_ingresso,
+    {{ dh_to_int('nu_ano_referencia') }}::int as nu_ano_referencia,
+    ({{ dh_to_int('nu_ano_referencia') }} - {{ dh_to_int('nu_ano_ingresso') }} + 1)::int as nu_ano_curso,
+    {{ dh_to_int('nu_prazo_integralizacao') }}::int as nu_prazo_integralizacao,
+    {{ dh_to_int('nu_ano_integralizacao') }}::int as nu_ano_integralizacao,
+    {{ dh_to_int('nu_prazo_acompanhamento') }}::int as nu_prazo_acompanhamento,
+    {{ dh_to_int('nu_ano_maximo_acompanhamento') }}::int as nu_ano_maximo_acompanhamento,
+    {{ dh_to_int('qt_ingressante') }}::bigint as qt_ingressante,
+    {{ dh_to_int('qt_permanencia') }}::bigint as qt_permanencia,
+    {{ dh_to_int('qt_concluinte') }}::bigint as qt_concluinte,
+    {{ dh_to_int('qt_desistencia') }}::bigint as qt_desistencia,
+    {{ dh_to_int('qt_falecido') }}::bigint as qt_falecido,
+    {{ dh_to_numeric('tap', 'auto') }}::numeric as tap,
+    {{ dh_to_numeric('tca', 'auto') }}::numeric as tca,
+    {{ dh_to_numeric('tda', 'auto') }}::numeric as tda,
+    {{ dh_to_numeric('tcan', 'auto') }}::numeric as tcan,
+    {{ dh_to_numeric('tada', 'auto') }}::numeric as tada,
+    _dh_source_file::text as arquivo_origem,
+    _dh_ingested_at::timestamptz as carregado_em
+from versao

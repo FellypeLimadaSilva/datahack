@@ -17,11 +17,6 @@ capitalisation_policy = lower
 [sqlfluff:rules:capitalisation.functions]
 extended_capitalisation_policy = lower
 
-[sqlfluff:layout:type:alias_expression]
-spacing_before = align
-align_within = select_clause
-align_scope = bracketed
-
 [sqlfluff:templater:jinja:macros]
 env_var = {% macro env_var(name, default='') %}{{ default }}{% endmacro %}
 

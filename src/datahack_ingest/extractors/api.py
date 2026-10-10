@@ -14,7 +14,6 @@ from urllib3.util.retry import Retry
 
 from datahack_ingest.catalog import ApiAuth, ApiSource
 from datahack_ingest.extractors.base import ExtractState, ExtractUnit, get_path, records_to_frame
-from datahack_ingest.normalize import to_text
 
 log = logging.getLogger(__name__)
 _TOKEN_SKEW_SECONDS = 60
@@ -159,8 +158,6 @@ class ApiExtractor:
     def _graphql_pages(self, state: ExtractState) -> Iterator[list[Any]]:
         gql = self.opts.graphql
         variables: dict[str, Any] = dict(gql.variables)
-        if self.opts.incremental_param and state.watermark is not None:
-            variables[self.opts.incremental_param] = to_text(state.watermark)
         with self._session() as session:
             for _ in range(self.opts.pagination.max_pages):
                 payload = self._request(
@@ -183,8 +180,6 @@ class ApiExtractor:
     def _rest_pages(self, state: ExtractState) -> Iterator[list[Any]]:
         p = self.opts.pagination
         params: dict[str, Any] = dict(self.opts.params)
-        if self.opts.incremental_param and state.watermark is not None:
-            params[self.opts.incremental_param] = to_text(state.watermark)
         url = self.opts.url
         page, offset, cursor = p.start_page, 0, None
 

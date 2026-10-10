@@ -7,7 +7,6 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
-from sqlalchemy import create_engine, text
 
 from datahack_ingest.catalog import Catalog
 from datahack_ingest.extractors import ExtractState, build_extractor
@@ -134,7 +133,7 @@ class _Api(BaseHTTPRequestHandler):
         return
 
 
-def test_api_paginates_with_bearer_and_incremental_param(monkeypatch):
+def test_api_paginates_with_bearer(monkeypatch):
     monkeypatch.setenv("TEST_TOKEN", "segredo")
     server = HTTPServer(("127.0.0.1", 0), _Api)
     threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -148,41 +147,15 @@ def test_api_paginates_with_bearer_and_incremental_param(monkeypatch):
                 "api": {
                     "url": url,
                     "records_path": "data",
-                    "incremental_param": "since",
                     "auth": {"type": "bearer", "token_env": "TEST_TOKEN"},
                     "pagination": {"type": "page", "page_size": 2, "size_param": "per_page"},
                 },
             }
         )
         _Api.calls = []
-        _, df = _collect(build_extractor(src, ""), ExtractState(watermark="2026-01-01"))
+        _, df = _collect(build_extractor(src, ""), ExtractState())
         assert df["id"].tolist() == ["0", "1", "2"]
         assert len(_Api.calls) == 2
         assert _Api.calls[0]["auth"] == "Bearer segredo"
-        assert _Api.calls[0]["q"]["since"] == ["2026-01-01"]
     finally:
         server.shutdown()
-
-
-def test_sql_incremental_watermark(tmp_path, monkeypatch):
-    db = tmp_path / "src.db"
-    url = f"sqlite:///{db}"
-    eng = create_engine(url)
-    with eng.begin() as c:
-        c.execute(text("create table t (id integer, v integer, upd integer)"))
-        c.execute(text("insert into t values (1, null, 10), (2, 5, 20), (3, 7, 30)"))
-    monkeypatch.setenv("SRC_URL", url)
-    src = _source(
-        {
-            "name": "s",
-            "kind": "sql",
-            "chunk_size": 100,
-            "watermark_column": "upd",
-            "watermark_type": "integer",
-            "sql": {"url_env": "SRC_URL", "table": "t"},
-        }
-    )
-    _, df = _collect(build_extractor(src, ""), ExtractState(watermark=10))
-    assert df["id"].tolist() == ["2", "3"]
-    _, full = _collect(build_extractor(src, ""))
-    assert full["v"].tolist()[0] is None

@@ -8,11 +8,9 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 IDENT = r"^[a-z][a-z0-9_]{0,62}$"
-SRC_COLUMN = r"^[A-Za-z_][A-Za-z0-9_\.]*$"
 CALLABLE_REF = r"^[A-Za-z_][A-Za-z0-9_\.]*:[A-Za-z_][A-Za-z0-9_]*$"
 
-LoadStrategy = Literal["full", "append", "merge"]
-WatermarkType = Literal["timestamp", "integer", "string"]
+LoadStrategy = Literal["full", "append"]
 Ident = Annotated[str, Field(pattern=IDENT)]
 
 
@@ -119,13 +117,6 @@ TransformStep = Annotated[
     | PythonHook,
     Field(discriminator="op"),
 ]
-
-
-class DeleteDetection(_Strict):
-    mode: Literal["soft", "hard"] = "soft"
-    scope: Literal["snapshot", "keys_query"] = "snapshot"
-    keys_query: str | None = None
-    max_delete_ratio: Annotated[float, Field(gt=0, le=1)] = 0.5
 
 
 class VolumeCheck(_Strict):
@@ -240,7 +231,6 @@ class ApiOptions(_Strict):
     pagination: ApiPagination = ApiPagination()
     graphql: GraphQLOptions | None = None
     records_path: str | None = None
-    incremental_param: str | None = None
     timeout_seconds: float = 60
     max_retries: int = 5
     verify_tls: bool = True
@@ -256,104 +246,38 @@ class ApiOptions(_Strict):
         return self
 
 
-class SqlPartition(_Strict):
-    column: Annotated[str, Field(pattern=SRC_COLUMN)]
-    num_partitions: Annotated[int, Field(ge=2, le=64)] = 4
-    lower_bound: int | None = None
-    upper_bound: int | None = None
-
-
-class SqlOptions(_Strict):
-    url_env: str | None = None
-    url: str | None = None
-    query: str | None = None
-    table: str | None = None
-    partition: SqlPartition | None = None
-
-    @model_validator(mode="after")
-    def _one_of(self) -> SqlOptions:
-        if bool(self.url_env) == bool(self.url):
-            raise ValueError("informe exatamente um entre 'url_env' e 'url'")
-        if self.url and not self.url.startswith("sqlite:///"):
-            raise ValueError("'url' literal só é aceito para sqlite; use url_env para credenciais")
-        if bool(self.query) == bool(self.table):
-            raise ValueError("informe exatamente um entre 'query' e 'table'")
-        if self.table and not re.match(SRC_COLUMN, self.table):
-            raise ValueError(f"nome de tabela inválido: {self.table!r}")
-        return self
-
-
 class _SourceBase(_Strict):
     name: Ident
     description: str = ""
     owner: str | None = None
     enabled: bool = True
+    required: bool = True
     tags: list[str] = []
-    sink: Literal["postgres", "parquet"] = "postgres"
     target_table: Ident | None = None
     load_strategy: LoadStrategy = "append"
-    primary_key: list[Ident] = []
-    watermark_column: Annotated[str | None, Field(pattern=SRC_COLUMN)] = None
-    watermark_type: WatermarkType = "timestamp"
+    essential_columns: list[Ident] = []
     chunk_size: Annotated[int, Field(ge=100, le=1_000_000)] = 50_000
     pii_columns: list[str] = []
     transforms: list[TransformStep] = []
-    delete_detection: DeleteDetection | None = None
     volume_check: VolumeCheck | None = None
-    auto_model: bool = True
 
     @property
     def table(self) -> str:
         return self.target_table or self.name
-
-    @model_validator(mode="after")
-    def _strategy_rules(self) -> _SourceBase:
-        if self.load_strategy == "merge" and not self.primary_key:
-            raise ValueError(f"{self.name}: load_strategy=merge exige primary_key")
-        if self.sink == "parquet" and self.load_strategy == "merge":
-            raise ValueError(f"{self.name}: sink parquet aceita apenas full/append")
-        dd = self.delete_detection
-        if dd:
-            if self.load_strategy != "merge" or self.sink != "postgres":
-                raise ValueError(f"{self.name}: delete_detection exige merge no sink postgres")
-            if dd.scope == "snapshot" and self.watermark_column:
-                raise ValueError(
-                    f"{self.name}: delete_detection snapshot exige extração completa; "
-                    "com watermark use scope keys_query"
-                )
-            if dd.scope == "keys_query" and not dd.keys_query:
-                raise ValueError(f"{self.name}: scope keys_query exige keys_query")
-        return self
 
 
 class FileSource(_SourceBase):
     kind: Literal["file"]
     file: FileOptions
 
-    @model_validator(mode="after")
-    def _file_rules(self) -> FileSource:
-        if self.delete_detection and self.delete_detection.scope == "keys_query":
-            raise ValueError(f"{self.name}: keys_query só é suportado em fontes sql")
-        return self
-
 
 class ApiSource(_SourceBase):
     kind: Literal["api"]
     api: ApiOptions
 
-    @model_validator(mode="after")
-    def _api_rules(self) -> ApiSource:
-        if self.delete_detection and self.delete_detection.scope == "keys_query":
-            raise ValueError(f"{self.name}: keys_query só é suportado em fontes sql")
-        return self
 
-
-class SqlSource(_SourceBase):
-    kind: Literal["sql"]
-    sql: SqlOptions
-
-
-Source = Annotated[FileSource | ApiSource | SqlSource, Field(discriminator="kind")]
+Source = Annotated[FileSource | ApiSource, Field(discriminator="kind")]
+AnySource = FileSource | ApiSource
 
 
 class Catalog(_Strict):
@@ -364,19 +288,19 @@ class Catalog(_Strict):
     def _unique(self) -> Catalog:
         seen: set[str] = set()
         for s in self.sources:
-            for key in {s.name, f"table:{s.table}:{s.sink}"}:
+            for key in {s.name, f"table:{s.table}"}:
                 if key in seen:
                     raise ValueError(f"fonte/tabela duplicada no catálogo: {key}")
                 seen.add(key)
         return self
 
-    def get(self, name: str) -> FileSource | ApiSource | SqlSource:
+    def get(self, name: str) -> AnySource:
         for s in self.sources:
             if s.name == name:
                 return s
         raise KeyError(f"fonte não encontrada no catálogo: {name}")
 
-    def enabled(self) -> list[FileSource | ApiSource | SqlSource]:
+    def enabled(self) -> list[AnySource]:
         return [s for s in self.sources if s.enabled]
 
 
@@ -396,10 +320,8 @@ def load_catalog(path: str | Path) -> Catalog:
     return Catalog.model_validate({"sources": read_catalog_specs(path)})
 
 
-def required_env_vars(source: FileSource | ApiSource | SqlSource) -> list[str]:
+def required_env_vars(source: AnySource) -> list[str]:
     names: list[str] = []
-    if isinstance(source, SqlSource) and source.sql.url_env:
-        names.append(source.sql.url_env)
     if isinstance(source, ApiSource):
         a = source.api.auth
         names += [

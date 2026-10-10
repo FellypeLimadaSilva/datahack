@@ -37,6 +37,8 @@ BASE_CANDIDATES = (
     "alunos",
 )
 MANIFEST = "_manifest.json"
+INDICATORS = "_indicadores.json"
+COUNT_PREFIX = "qt_"
 BATCH = 50_000
 Format = Literal["csv", "parquet"]
 
@@ -188,11 +190,50 @@ def _arrow_value(value: Any, kind: pa.DataType) -> Any:
     return value
 
 
+def small_cells(rows: list[tuple], names: list[str], min_cell: int) -> list[str]:
+    counts = [i for i, n in enumerate(names) if n.startswith(COUNT_PREFIX)]
+    bad = set()
+    for row in rows:
+        for i in counts:
+            value = row[i]
+            if value is not None and 0 < value < min_cell:
+                bad.add(names[i])
+    return sorted(bad)
+
+
+def indicator_metadata(manifest_path: Path, tables: list[str]) -> dict[str, Any]:
+    if not manifest_path.exists():
+        return {}
+    data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    out: dict[str, Any] = {}
+    for node in data.get("nodes", {}).values():
+        if node.get("resource_type") != "model" or node.get("name") not in tables:
+            continue
+        out[node["name"]] = {
+            "descricao": node.get("description", ""),
+            "meta": node.get("meta", {}) or node.get("config", {}).get("meta", {}),
+            "colunas": {
+                name: {"descricao": col.get("description", ""), "meta": col.get("meta", {})}
+                for name, col in node.get("columns", {}).items()
+            },
+        }
+    return out
+
+
 class Exporter:
-    def __init__(self, conninfo: str, out_dir: Path, config: ExportConfig) -> None:
+    def __init__(
+        self,
+        conninfo: str,
+        out_dir: Path,
+        config: ExportConfig,
+        release: dict[str, Any] | None = None,
+        dbt_manifest: Path | None = None,
+    ) -> None:
         self.conninfo = conninfo
         self.out_dir = out_dir
         self.config = config
+        self.release = release or {}
+        self.dbt_manifest = dbt_manifest
 
     def run(self, only: list[str] | None = None) -> dict[str, Any]:
         tables = [t for t in self.config.tables if not only or t.name in only]
@@ -204,23 +245,50 @@ class Exporter:
             )
         self.out_dir.mkdir(parents=True, exist_ok=True)
         previous = self._previous_files()
-        results = []
-        with psycopg.connect(self.conninfo, autocommit=False) as conn:
-            conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
-            for spec in tables:
-                schema = spec.schema_name or self.config.defaults.schema_name
-                _base_columns(spec, [c for c, _ in _columns(conn, schema, spec.name)])
-            for spec in tables:
-                results.append(self._export(conn, spec))
+        results: list[TableResult] = []
+        staged: list[_Staged] = []
+        try:
+            with psycopg.connect(self.conninfo, autocommit=False) as conn:
+                conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
+                for spec in tables:
+                    schema = spec.schema_name or self.config.defaults.schema_name
+                    _base_columns(spec, [c for c, _ in _columns(conn, schema, spec.name)])
+                for spec in tables:
+                    result, files = self._export(conn, spec)
+                    results.append(result)
+                    staged.extend(files)
+        except BaseException:
+            for item in staged:
+                item.tmp.unlink(missing_ok=True)
+            raise
+        by_table = {r.table: r for r in results}
+        for item in staged:
+            os.replace(item.tmp, item.final)
+            by_table[item.table].files.append(
+                {"file": item.final.name, "bytes": item.size, "sha256": _sha256(item.final)}
+            )
+        exported = [r.table.split(".", 1)[1] for r in results]
         manifest = {
             "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
             "platform_version": __version__,
-            "min_cell_rule": "linhas com coluna de base abaixo de min_cell ou nula são removidas",
+            **self.release,
+            "min_cell": self.config.defaults.min_cell,
+            "min_cell_rule": (
+                "linhas com base abaixo de min_cell são removidas; contagens qt_* entre 1 e "
+                "min_cell - 1 são publicadas vazias; a exportação falha se alguma escapar"
+            ),
             "tables": [asdict(r) for r in results],
         }
         current = {f["file"] for r in results for f in r.files}
-        for stale in previous - current:
+        for stale in previous - current - {INDICATORS}:
             (self.out_dir / stale).unlink(missing_ok=True)
+        if self.dbt_manifest:
+            _atomic_text(
+                self.out_dir / INDICATORS,
+                json.dumps(
+                    indicator_metadata(self.dbt_manifest, exported), ensure_ascii=False, indent=2
+                ),
+            )
         _atomic_text(self.out_dir / MANIFEST, json.dumps(manifest, ensure_ascii=False, indent=2))
         return manifest
 
@@ -234,7 +302,9 @@ class Exporter:
         except (ValueError, KeyError, TypeError):
             return set()
 
-    def _export(self, conn: psycopg.Connection, spec: ExportTable) -> TableResult:
+    def _export(
+        self, conn: psycopg.Connection, spec: ExportTable
+    ) -> tuple[TableResult, list[_Staged]]:
         defaults = self.config.defaults
         schema = spec.schema_name or defaults.schema_name
         min_cell = spec.min_cell or defaults.min_cell
@@ -274,9 +344,16 @@ class Exporter:
                 cur.itersize = BATCH
                 cur.execute(query)
                 while batch := cur.fetchmany(BATCH):
+                    if spec.suppress:
+                        leaked = small_cells(batch, names, min_cell)
+                        if leaked:
+                            raise ExportError(
+                                f"{spec.name}: contagens entre 1 e {min_cell - 1} em {leaked}; "
+                                "a Gold deve mascarar essas células"
+                            )
                     writers.write(batch)
                     result.rows += len(batch)
-            result.files = writers.close(defaults.max_file_mb)
+            files = writers.close(defaults.max_file_mb, result.table)
         except BaseException:
             writers.abort()
             raise
@@ -288,7 +365,15 @@ class Exporter:
                 "suppressed": result.suppressed_rows,
             },
         )
-        return result
+        return result, files
+
+
+@dataclass
+class _Staged:
+    table: str
+    tmp: Path
+    final: Path
+    size: int
 
 
 class _Writers:
@@ -327,7 +412,7 @@ class _Writers:
             ]
             self.parquet.write_table(pa.Table.from_arrays(arrays, schema=self.schema))
 
-    def close(self, max_mb: float) -> list[dict[str, Any]]:
+    def close(self, max_mb: float, table: str) -> list[_Staged]:
         if self.csv_fh:
             self.csv_fh.close()
         if self.parquet:
@@ -341,10 +426,8 @@ class _Writers:
                     f"{self.stem}.{fmt} teria {size / 1048576:.1f} MB (limite {max_mb} MB): "
                     "agregue mais a tabela antes de exportar"
                 )
-            final = self.out_dir / f"{self.stem}.{fmt}"
             tmp.chmod(0o644)
-            os.replace(tmp, final)
-            files.append({"file": final.name, "bytes": size, "sha256": _sha256(final)})
+            files.append(_Staged(table, tmp, self.out_dir / f"{self.stem}.{fmt}", size))
         self.tmp = {}
         return files
 

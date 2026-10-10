@@ -34,14 +34,14 @@ jobs:
         run: |
           python scripts/init_env.py
           docker compose config -q
-          docker compose --profile tools --profile bi --profile cli config -q
+          docker compose --profile tools --profile cli config -q
       - name: Gitleaks (varredura de segredos no histórico)
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   e2e:
-    name: Ingestão + dbt build + testes (PostgreSQL 16)
+    name: Ingestão, portões, publicação e restauração (PostgreSQL 16)
     runs-on: ubuntu-latest
     needs: lint
     services:
@@ -66,70 +66,50 @@ jobs:
       DBT_PROFILES_DIR: ${{ github.workspace }}/dbt
       DBT_TARGET: dev
       DH_LOG_FORMAT: json
-      DH_INBOX_SETTLE_SECONDS: "0"
-      DH_CATALOG: tests/fixtures/catalog_offline.yml
-      DH_EXAMPLES: "true"
+      DH_E2E: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "${{ env.PYTHON_VERSION }}", cache: pip }
       - run: pip install -e ".[dev,dbt]"
-      - name: Bootstrap do warehouse (roles, schemas, privilégios)
+      - name: Bootstrap do warehouse (duas vezes, para provar que é idempotente)
         env: { PGPASSWORD: ci_admin_pw }
         run: |
-          psql -h localhost -U dh_admin -d datahack -c "CREATE EXTENSION IF NOT EXISTS pg_stat_statements" || true
-          psql -v ON_ERROR_STOP=1 -h localhost -U dh_admin -d datahack \
-            -v dbname=datahack -v ingest_pw=ci_ingest_pw -v dbt_pw=ci_dbt_pw -v bi_pw=ci_bi_pw \
-            -v backup_pw=ci_backup_pw -v repl_pw=ci_repl_pw \
-            -f infra/postgres/bootstrap.sql
-          psql -q -v ON_ERROR_STOP=1 -h localhost -U dh_admin -d datahack \
-            -v dbname=datahack -v ingest_pw=ci_ingest_pw -v dbt_pw=ci_dbt_pw -v bi_pw=ci_bi_pw \
-            -v backup_pw=ci_backup_pw -v repl_pw=ci_repl_pw \
-            -f infra/postgres/bootstrap.sql
-      - name: Dados sintéticos (exemplos) e inbox com arquivos bagunçados
-        run: |
-          python scripts/generate_sample_data.py --scale 0.3
-          python scripts/generate_messy_data.py --rows 20000
-          python -m datahack_ingest discover
-      - name: Testes Python (unit + integração)
+          for i in 1 2; do
+            psql -q -v ON_ERROR_STOP=1 -h localhost -U dh_admin -d datahack \
+              -v dbname=datahack -v ingest_pw=ci_ingest_pw -v dbt_pw=ci_dbt_pw -v bi_pw=ci_bi_pw \
+              -v backup_pw=ci_backup_pw -f infra/postgres/bootstrap.sql
+          done
+      - name: Testes (unidade, integração e ponta a ponta com rejeição e rollback)
         run: pytest -q --cov=datahack_ingest --cov-report=term-missing
-      - name: Ingestão (todas as fontes)
-        run: python -m datahack_ingest run --all
-      - name: Ingestão idempotente (reexecução não duplica)
-        run: python -m datahack_ingest run --all
-      - name: Silver e Gold automáticas
-        run: python -m datahack_ingest generate-models
-      - name: dbt build (exemplos + automáticas + testes de dados)
-        working-directory: dbt
-        run: dbt build
-      - name: Exportação para outputs/ (supressão de células < 10)
-        run: python -m datahack_ingest export --out /tmp/outputs && cat /tmp/outputs/_manifest.json
-      - name: dbt build sem os exemplos (componentes opcionais)
-        working-directory: dbt
-        env: { DH_EXAMPLES: "false" }
-        run: dbt build
-      - name: dbt build incremental (segunda execução)
-        working-directory: dbt
-        run: dbt build --select stg_vendas+
-      - name: Matriz de acesso (bi_reader só lê gold)
+      - name: Pipeline com arquivos no layout do INEP (duas execuções)
+        env: { DH_CATALOG: tests/fixtures/catalog_inep.yml }
+        run: |
+          python scripts/generate_inep_fixtures.py --out data/landing
+          python -m datahack_ingest pipeline
+          python -m datahack_ingest pipeline
+          python - <<'PY'
+          import json
+          m = json.load(open("outputs/_manifest.json"))
+          assert m["version"] and m["sources"]["trajetoria"]["files"], m
+          print({t["table"]: t["rows"] for t in m["tables"]})
+          PY
+      - name: Matriz de acesso (BI só lê a gold publicada)
         env: { PGPASSWORD: ci_bi_pw }
         run: |
-          psql -v ON_ERROR_STOP=1 -h localhost -U dh_bi_reader -d datahack -c "select count(*) from gold.fact_vendas"
-          psql -v ON_ERROR_STOP=1 -h localhost -U dh_bi_reader -d datahack -c "select count(*) from gold.clientes"
-          psql -v ON_ERROR_STOP=1 -h localhost -U dh_bi_reader -d datahack -c "select count(*) from gold.dh_catalogo_dados"
-          ! psql -h localhost -U dh_bi_reader -d datahack -c "select 1 from silver.clientes limit 1"
-          ! psql -h localhost -U dh_bi_reader -d datahack -c "select 1 from bronze.vendas limit 1"
-          ! psql -h localhost -U dh_bi_reader -d datahack -c "select 1 from silver.stg_vendas limit 1"
+          psql -v ON_ERROR_STOP=1 -h localhost -U dh_bi_reader -d datahack -c "select count(*) from gold.p1_trajetoria_coorte"
+          ! psql -h localhost -U dh_bi_reader -d datahack -c "select 1 from gold_candidate.p1_trajetoria_coorte limit 1"
+          ! psql -h localhost -U dh_bi_reader -d datahack -c "select 1 from silver.stg_trajetoria limit 1"
+          ! psql -h localhost -U dh_bi_reader -d datahack -c "select 1 from bronze.trajetoria limit 1"
           ! psql -h localhost -U dh_bi_reader -d datahack -c "create table gold.x (a int)"
-      - name: Backup com role somente leitura e verificação de restauração
-        env: { PGHOST: localhost, PGUSER: dh_backup, PGPASSWORD: ci_backup_pw, PGDATABASE: datahack }
+      - name: Backup e restauração real em banco vazio (contagens e permissões)
+        env: { PGHOST: localhost, PGDATABASE: datahack }
         run: |
-          BACKUP_ONCE=true BACKUP_DIR=/tmp/backups bash infra/postgres/backup.sh
-          PGUSER=dh_admin PGPASSWORD=ci_admin_pw createdb -h localhost restore_check
-          PGUSER=dh_admin PGPASSWORD=ci_admin_pw pg_restore --no-owner -h localhost -d restore_check /tmp/backups/datahack_*.dump || true
-          test "$(PGUSER=dh_admin PGPASSWORD=ci_admin_pw psql -h localhost -d restore_check -tAc 'select count(*) from gold.fact_vendas')" -gt 0
+          PGUSER=dh_backup PGPASSWORD=ci_backup_pw BACKUP_ONCE=true BACKUP_DIR=/tmp/backups bash infra/postgres/backup.sh
+          PGUSER=dh_admin PGPASSWORD=ci_admin_pw bash infra/postgres/restore_check.sh /tmp/backups/datahack_*.dump
       - name: Documentação dbt (artefato)
         working-directory: dbt
+        env: { DH_GOLD_SCHEMA: gold }
         run: dbt docs generate
       - uses: actions/upload-artifact@v4
         with:
@@ -169,13 +149,11 @@ jobs:
           EOF
 
   lab:
-    name: Fluxo do laboratório em Docker (up-lite + pipeline + export)
+    name: Fluxo do laboratório em Docker (up-lite + pipeline + outputs)
     runs-on: ubuntu-latest
     needs: lint
     env:
-      DH_EXAMPLES: "false"
-      DH_INBOX_SETTLE_SECONDS: "0"
-      RUN: docker compose run --rm -e DH_CATALOG=/dev/null cli
+      RUN: docker compose run --rm -e DH_CATALOG=/opt/datahack/tests/catalog_inep.yml -v ./tests/fixtures:/opt/datahack/tests:ro cli
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -189,14 +167,11 @@ jobs:
           docker compose up -d --wait warehouse
           $RUN python -m datahack_ingest init
           $RUN dbt debug --project-dir dbt
-      - name: Pipeline completo com arquivos bagunçados
+      - name: Pipeline com arquivos no layout do INEP
         run: |
-          $RUN python scripts/generate_messy_data.py --out data/landing/inbox --rows 5000
-          $RUN python -m datahack_ingest run --all --continue-on-error
-          $RUN python -m datahack_ingest run --all
-          $RUN python -m datahack_ingest generate-models
-          $RUN dbt build --project-dir dbt
-          $RUN python -m datahack_ingest export
+          $RUN python scripts/generate_inep_fixtures.py --out data/landing
+          $RUN python -m datahack_ingest pipeline
+          $RUN python -m datahack_ingest pipeline
           test -s outputs/_manifest.json && cat outputs/_manifest.json
       - name: Logs em caso de falha
         if: failure()

@@ -1,0 +1,26 @@
+select
+    co_curso::text,
+    no_curso::text,
+    no_ies::text,
+    rede::text,
+    modalidade::text,
+    grau_academico::text,
+    no_cine_area_geral::text,
+    nu_coortes::bigint,
+    {{ var('ano_curso_comparacao') }}::int as nu_ano_curso_marco,
+    {{ dh_mask_count('qt_ingressante') }}::bigint as qt_ingressante,
+    {{ dh_mask_count('qt_desistencia_marco') }}::bigint as qt_desistencia_marco,
+    taxa_desistencia_marco::numeric,
+    nu_edicao_cpc::int,
+    cpc_faixa::text,
+    cpc_continuo::numeric,
+    enade_continuo::numeric,
+    idd_padronizado::numeric,
+    doutores_padronizado::numeric,
+    regime_trabalho_padronizado::numeric,
+    infraestrutura_padronizado::numeric,
+    didatico_pedagogica_padronizado::numeric,
+    tem_cpc::boolean,
+    (qt_ingressante >= {{ var('min_base_ranking') }})::boolean as is_elegivel_ranking
+from {{ ref('int_curso_desistencia') }}
+where qt_ingressante >= {{ var('min_cell') }}

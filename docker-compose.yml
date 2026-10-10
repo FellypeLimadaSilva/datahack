@@ -19,14 +19,6 @@ x-airflow-env: &airflow-env
   DH_TIMEZONE: ${DH_TIMEZONE:-America/Cuiaba}
   DH_PIPELINE_SCHEDULE: ${DH_PIPELINE_SCHEDULE:-}
   DH_INGEST_CONCURRENCY: ${DH_INGEST_CONCURRENCY:-4}
-  DH_EXAMPLES: ${DH_EXAMPLES:-false}
-  DH_INBOX_ENABLED: ${DH_INBOX_ENABLED:-true}
-  DH_INBOX_SETTLE_SECONDS: ${DH_INBOX_SETTLE_SECONDS:-15}
-  DH_AUTO_MODELS: ${DH_AUTO_MODELS:-true}
-  DH_AUTO_TYPE_THRESHOLD: ${DH_AUTO_TYPE_THRESHOLD:-0.98}
-  DH_AUTO_SAMPLE_ROWS: ${DH_AUTO_SAMPLE_ROWS:-200000}
-  DH_AUTO_INCREMENTAL_ROWS: ${DH_AUTO_INCREMENTAL_ROWS:-2000000}
-  DH_REQUIRE_ALL_SOURCES: ${DH_REQUIRE_ALL_SOURCES:-false}
   DH_TASK_RETRIES: ${DH_TASK_RETRIES:-2}
   DH_RETRY_DELAY_SECONDS: ${DH_RETRY_DELAY_SECONDS:-120}
   WAREHOUSE_HOST: warehouse
@@ -37,18 +29,9 @@ x-airflow-env: &airflow-env
   WAREHOUSE_BI_PASSWORD: ${WAREHOUSE_BI_PASSWORD:?}
   DBT_PII_SALT: ${DBT_PII_SALT:?}
   DBT_TARGET: prod
+  DBT_PROFILES_DIR: /opt/datahack/dbt
+  DBT_PROJECT_DIR: /opt/datahack/dbt
   DH_OUTPUTS: /opt/datahack/outputs
-  DH_ALERT_MIN_SEVERITY: ${DH_ALERT_MIN_SEVERITY:-warning}
-  DH_ALERT_SLACK_WEBHOOK_URL: ${DH_ALERT_SLACK_WEBHOOK_URL:-}
-  DH_ALERT_TEAMS_WEBHOOK_URL: ${DH_ALERT_TEAMS_WEBHOOK_URL:-}
-  DH_ALERT_WEBHOOK_URL: ${DH_ALERT_WEBHOOK_URL:-}
-  DH_ALERT_EMAIL_TO: ${DH_ALERT_EMAIL_TO:-}
-  DH_SMTP_HOST: ${DH_SMTP_HOST:-}
-  DH_SMTP_PORT: ${DH_SMTP_PORT:-587}
-  DH_SMTP_USER: ${DH_SMTP_USER:-}
-  DH_SMTP_PASSWORD: ${DH_SMTP_PASSWORD:-}
-  DH_SMTP_FROM: ${DH_SMTP_FROM:-}
-  DH_SMTP_STARTTLS: ${DH_SMTP_STARTTLS:-true}
 
 x-airflow-common: &airflow-common
   build:
@@ -89,7 +72,6 @@ services:
       WAREHOUSE_DBT_PASSWORD: ${WAREHOUSE_DBT_PASSWORD:?}
       WAREHOUSE_BI_PASSWORD: ${WAREHOUSE_BI_PASSWORD:?}
       WAREHOUSE_BACKUP_PASSWORD: ${WAREHOUSE_BACKUP_PASSWORD:?}
-      WAREHOUSE_REPLICATION_PASSWORD: ${WAREHOUSE_REPLICATION_PASSWORD:?}
       TZ: UTC
     volumes:
       - warehouse-data:/var/lib/postgresql/data
@@ -123,35 +105,6 @@ services:
     volumes:
       - ./infra/postgres/backup.sh:/opt/datahack/postgres/backup.sh:ro
       - ./backups:/backups
-    networks: [warehouse]
-    depends_on:
-      warehouse:
-        condition: service_healthy
-    restart: unless-stopped
-
-  warehouse-replica:
-    image: postgres:16-bookworm
-    profiles: [ha]
-    entrypoint: ["bash", "/opt/datahack/postgres/replica-entrypoint.sh"]
-    environment:
-      PGDATA: /var/lib/postgresql/data/pgdata
-      PRIMARY_HOST: warehouse
-      REPLICATION_PASSWORD: ${WAREHOUSE_REPLICATION_PASSWORD:?}
-      REPLICATION_SLOT: replica_1
-      TZ: UTC
-    volumes:
-      - warehouse-replica-data:/var/lib/postgresql/data
-      - ./infra/postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
-      - ./infra/postgres/replica-entrypoint.sh:/opt/datahack/postgres/replica-entrypoint.sh:ro
-    ports:
-      - "127.0.0.1:${WAREHOUSE_REPLICA_PORT:-5434}:5432"
-    shm_size: 1g
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h localhost -p 5432"]
-      interval: 10s
-      timeout: 5s
-      retries: 30
-      start_period: 60s
     networks: [warehouse]
     depends_on:
       warehouse:
@@ -296,23 +249,6 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  metabase:
-    image: metabase/metabase:latest
-    profiles: [bi]
-    environment:
-      MB_DB_FILE: /metabase-data/metabase.db
-      JAVA_TIMEZONE: ${DH_TIMEZONE:-America/Cuiaba}
-      MB_ANON_TRACKING_ENABLED: "false"
-    volumes:
-      - metabase-data:/metabase-data
-    ports:
-      - "127.0.0.1:${METABASE_PORT:-3000}:3000"
-    networks: [warehouse]
-    depends_on:
-      warehouse:
-        condition: service_healthy
-    restart: unless-stopped
-
 networks:
   backend:
     name: ${COMPOSE_PROJECT_NAME:-datahack}_backend
@@ -321,8 +257,6 @@ networks:
 
 volumes:
   warehouse-data:
-  warehouse-replica-data:
   airflow-db-data:
   airflow-logs:
   pgadmin-data:
-  metabase-data:

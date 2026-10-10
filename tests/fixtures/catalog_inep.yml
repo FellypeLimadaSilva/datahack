@@ -1,0 +1,168 @@
+version: 1
+sources:
+- name: censo_cursos
+  kind: file
+  description: 'Censo da Educação Superior, cadastro de cursos. Grão: ano x curso x município de oferta.
+    Um zip por ano (2021-2024). Recorte MT na extração (SG_UF), pois o arquivo nacional tem 40x o volume
+    e o desafio é de Mato Grosso.'
+  owner: equipe
+  required: true
+  tags:
+  - inep
+  - censo
+  - p3
+  - b1
+  - b2
+  load_strategy: append
+  chunk_size: 50000
+  essential_columns:
+  - nu_ano_censo
+  - co_curso
+  - co_ies
+  - co_municipio
+  - tp_rede
+  - tp_modalidade_ensino
+  - tp_nivel_academico
+  - qt_mat
+  - qt_ing
+  - qt_vg_total
+  - qt_sit_desvinculado
+  transforms:
+  - op: filter
+    column: sg_uf
+    operator: eq
+    value: MT
+  file:
+    path: inep/censo
+    include:
+    - microdados_censo_da_educacao_superior_*.zip
+    zip_member_pattern: '*MICRODADOS_CADASTRO_CURSOS_*.CSV'
+    format: csv
+    sep: ;
+    encoding: cp1252
+- name: censo_ies
+  kind: file
+  description: 'Censo da Educação Superior, cadastro de instituições. Grão: ano x IES, Brasil inteiro,
+    porque cursos EAD ofertados em MT pertencem a IES sediadas em outros estados. O nome do arquivo muda
+    entre os anos (CADASTRO_IES em 2021, ED_SUP_IES depois); o padrão cobre os dois.'
+  owner: equipe
+  required: true
+  tags:
+  - inep
+  - censo
+  load_strategy: append
+  essential_columns:
+  - nu_ano_censo
+  - co_ies
+  - no_ies
+  - tp_categoria_administrativa
+  file:
+    path: inep/censo
+    include:
+    - microdados_censo_da_educacao_superior_*.zip
+    zip_member_pattern: '*_IES_*.CSV'
+    format: csv
+    sep: ;
+    encoding: cp1252
+- name: trajetoria
+  kind: file
+  description: 'Indicadores de Trajetória. Grão: curso x coorte (ano de ingresso) x ano de referência.
+    Um zip por coorte 2015-2020, acompanhada até 2024. Cabeçalho na linha 9 e notas de rodapé tratados;
+    recorte MT (CO_UF 51).'
+  owner: equipe
+  required: true
+  tags:
+  - inep
+  - trajetoria
+  - p1
+  - p2
+  - p4
+  - p5
+  load_strategy: append
+  essential_columns:
+  - co_curso
+  - nu_ano_ingresso
+  - nu_ano_referencia
+  - tp_modalidade_ensino
+  - tp_grau_academico
+  - qt_ingressante
+  - qt_permanencia
+  - qt_concluinte
+  - qt_desistencia
+  - qt_falecido
+  transforms:
+  - op: filter
+    column: co_uf
+    operator: eq
+    value: '51'
+  file:
+    path: inep/trajetoria
+    include:
+    - indicadores_trajetoria_es_*.zip
+    zip_member_pattern: '*.xlsx'
+    format: xlsx
+    skip_rows: auto
+    drop_note_rows: true
+    sheet_name: auto
+- name: cpc
+  kind: file
+  description: 'Conceito Preliminar de Curso 2021-2023, Brasil. Grão: edição x curso.'
+  owner: equipe
+  required: true
+  tags:
+  - inep
+  - qualidade
+  - p4
+  load_strategy: append
+  essential_columns:
+  - ano
+  - codigo_do_curso
+  - cpc_faixa
+  - cpc_continuo
+  file:
+    path: inep/qualidade
+    include:
+    - cpc_*.xlsx
+    format: xlsx
+    skip_rows: auto
+    drop_note_rows: true
+    sheet_name: auto
+- name: igc
+  kind: file
+  description: 'Índice Geral de Cursos 2021-2023, Brasil. Grão: edição x instituição.'
+  owner: equipe
+  required: false
+  tags:
+  - inep
+  - qualidade
+  load_strategy: append
+  essential_columns:
+  - ano
+  - codigo_da_ies
+  - igc_faixa
+  file:
+    path: inep/qualidade
+    include:
+    - igc_*.xlsx
+    format: xlsx
+    skip_rows: auto
+    drop_note_rows: true
+    sheet_name: auto
+- name: enade_licenciaturas
+  kind: file
+  description: 'Conceito Enade 2025 das Licenciaturas. Grão: curso. Necessário para P5.'
+  owner: equipe
+  required: false
+  tags:
+  - inep
+  - qualidade
+  - p5
+  load_strategy: append
+  file:
+    path: inep/qualidade
+    include:
+    - conceito_enade_licenciaturas*.xlsx
+    format: xlsx
+    skip_rows: auto
+    drop_note_rows: true
+    sheet_name: auto

@@ -1,0 +1,93 @@
+version: 2
+
+models:
+  - name: stg_trajetoria
+    description: >
+      Trajetória tipada. Grão declarado: curso x coorte x ano de referência. Quando o INEP republica
+      uma coorte, vale o arquivo carregado por último para aquela coorte (as anteriores ficam na
+      Bronze para auditoria).
+    data_tests:
+      - dh_unique_combination:
+          arguments:
+            combination_of_columns: [co_curso, nu_ano_ingresso, nu_ano_referencia]
+    columns:
+      - { name: co_curso, data_tests: [not_null] }
+      - { name: nu_ano_ingresso, data_tests: [not_null, { dh_between: { arguments: { min_value: 2010, max_value: 2030 } } }] }
+      - { name: nu_ano_referencia, data_tests: [not_null] }
+      - { name: nu_ano_curso, data_tests: [{ dh_between: { arguments: { min_value: 1, max_value: 15 } } }] }
+      - { name: tp_modalidade_ensino, data_tests: [not_null, { accepted_values: { arguments: { values: [1, 2] } } }] }
+      - { name: rede, data_tests: [not_null] }
+      - { name: qt_ingressante, data_tests: [not_null, { dh_min_value: { arguments: { min_value: 1 } } }] }
+      - { name: qt_permanencia, data_tests: [not_null, dh_min_value] }
+      - { name: qt_concluinte, data_tests: [not_null, dh_min_value] }
+      - { name: qt_desistencia, data_tests: [not_null, dh_min_value] }
+      - { name: qt_falecido, data_tests: [not_null, dh_min_value] }
+
+  - name: stg_censo_cursos
+    description: Censo, cursos de MT. Grão declarado ano x curso x município de oferta; um arquivo vale por ano.
+    data_tests:
+      - dh_unique_combination:
+          arguments:
+            combination_of_columns: [nu_ano_censo, co_curso, co_municipio]
+    columns:
+      - { name: nu_ano_censo, data_tests: [not_null] }
+      - { name: co_curso, data_tests: [not_null] }
+      - { name: sg_uf, data_tests: [{ accepted_values: { arguments: { values: [MT] } } }] }
+      - { name: tp_rede, data_tests: [not_null, { accepted_values: { arguments: { values: [1, 2] } } }] }
+      - { name: tp_modalidade_ensino, data_tests: [not_null, { accepted_values: { arguments: { values: [1, 2] } } }] }
+      - { name: qt_mat, data_tests: [not_null, dh_min_value] }
+      - { name: qt_ing, data_tests: [not_null, dh_min_value] }
+      - { name: qt_sit_desvinculado, data_tests: [not_null, dh_min_value] }
+
+  - name: stg_censo_ies
+    description: Censo, instituições do Brasil. Grão declarado ano x IES.
+    data_tests:
+      - dh_unique_combination:
+          arguments:
+            combination_of_columns: [nu_ano_censo, co_ies]
+    columns:
+      - { name: co_ies, data_tests: [not_null] }
+
+  - name: stg_cpc
+    description: CPC tipado. Grão declarado edição x curso.
+    data_tests:
+      - dh_unique_combination:
+          arguments:
+            combination_of_columns: [nu_edicao, co_curso]
+    columns:
+      - { name: nu_edicao, data_tests: [not_null] }
+      - { name: co_curso, data_tests: [not_null] }
+      - name: cpc_faixa
+        data_tests:
+          - accepted_values: { arguments: { values: ["1", "2", "3", "4", "5", SC] } }
+      - name: cpc_continuo
+        data_tests:
+          - dh_between: { arguments: { min_value: 0, max_value: 5 } }
+
+  - name: stg_igc
+    description: IGC tipado. Grão declarado edição x IES.
+    data_tests:
+      - dh_unique_combination:
+          arguments:
+            combination_of_columns: [nu_edicao, co_ies]
+
+  - name: stg_enade_licenciaturas
+    description: >
+      Conceito Enade 2025 das Licenciaturas. As colunas são localizadas por nome (o layout de 2025
+      é novo); se curso ou proficiência não forem reconhecidos, a compilação falha e nada é
+      publicado. Vazio quando o arquivo ainda não foi carregado.
+    data_tests:
+      - dh_unique_combination:
+          arguments:
+            combination_of_columns: [nu_edicao, co_curso]
+    columns:
+      - name: pct_proficiente
+        data_tests:
+          - dh_between: { arguments: { min_value: 0, max_value: 100 } }
+
+  - name: stg_ibge_populacao
+    description: População por idade simples (18 a 24) nos municípios de MT, Censo 2022. Vazio sem a carga do IBGE.
+    data_tests:
+      - dh_unique_combination:
+          arguments:
+            combination_of_columns: [co_municipio, co_idade]

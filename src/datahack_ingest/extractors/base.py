@@ -11,7 +11,6 @@ from datahack_ingest.normalize import to_text
 
 @dataclass
 class ExtractState:
-    watermark: Any = None
     loaded_file_hashes: set[str] = field(default_factory=set)
     strategy: str = "append"
 

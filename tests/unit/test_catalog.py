@@ -19,9 +19,9 @@ def test_repository_catalogs_are_valid():
         "enade_licenciaturas",
         "ibge_populacao_idade_mt",
     }
-    examples = load_catalog(ROOT / "config" / "examples.yml")
-    names = {s.name for s in examples.enabled()}
-    assert names == {"lojas", "produtos", "vendas", "metas", "estoque_foto"}
+    required = {s.name for s in templates.enabled() if s.required}
+    assert required == {"censo_cursos", "censo_ies", "trajetoria", "cpc"}
+    assert all(s.essential_columns for s in templates.enabled() if s.required)
 
 
 def _src(**over):
@@ -30,16 +30,11 @@ def _src(**over):
     return base
 
 
-def test_merge_requires_primary_key():
-    with pytest.raises(ValidationError, match="primary_key"):
+def test_only_full_and_append_strategies():
+    with pytest.raises(ValidationError):
         Catalog.model_validate({"sources": [_src(load_strategy="merge")]})
-
-
-def test_parquet_sink_rejects_merge():
-    with pytest.raises(ValidationError, match="parquet"):
-        Catalog.model_validate(
-            {"sources": [_src(load_strategy="merge", primary_key=["id"], sink="parquet")]}
-        )
+    with pytest.raises(ValidationError):
+        Catalog.model_validate({"sources": [_src(kind="sql", sql={"url": "sqlite:///x"})]})
 
 
 def test_invalid_identifier_rejected():
@@ -59,22 +54,7 @@ def test_duplicate_target_table_rejected():
         )
 
 
-def test_sql_requires_exactly_one_of_query_or_table():
-    with pytest.raises(ValidationError):
-        Catalog.model_validate(
-            {
-                "sources": [
-                    {
-                        "name": "s",
-                        "kind": "sql",
-                        "sql": {"url_env": "X", "query": "select 1", "table": "t"},
-                    }
-                ]
-            }
-        )
-
-
-def test_required_env_vars_for_api_and_sql():
+def test_required_env_vars_for_api():
     cat = Catalog.model_validate(
         {
             "sources": [
@@ -83,9 +63,7 @@ def test_required_env_vars_for_api_and_sql():
                     "kind": "api",
                     "api": {"url": "https://x", "auth": {"type": "bearer", "token_env": "TOK"}},
                 },
-                {"name": "s", "kind": "sql", "sql": {"url_env": "DB_URL", "table": "t"}},
             ]
         }
     )
     assert required_env_vars(cat.get("a")) == ["TOK"]
-    assert required_env_vars(cat.get("s")) == ["DB_URL"]

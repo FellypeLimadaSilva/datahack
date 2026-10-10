@@ -4,12 +4,15 @@ sources:
   - name: censo_cursos
     kind: file
     description: >-
-      Censo da Educação Superior, cadastro de cursos (curso x município de oferta x ano), 2021-2024.
-      Recorte MT na extração (SG_UF): o desafio é de Mato Grosso e o arquivo nacional tem 40x o volume.
+      Censo da Educação Superior, cadastro de cursos. Grão: ano x curso x município de oferta.
+      Um zip por ano (2021-2024). Recorte MT na extração (SG_UF), pois o arquivo nacional tem 40x o
+      volume e o desafio é de Mato Grosso.
     owner: equipe
+    required: true
     tags: [inep, censo, p3, b1, b2]
     load_strategy: append
     chunk_size: 50000
+    essential_columns: [nu_ano_censo, co_curso, co_ies, co_municipio, tp_rede, tp_modalidade_ensino, tp_nivel_academico, qt_mat, qt_ing, qt_vg_total, qt_sit_desvinculado]
     transforms:
       - { op: filter, column: sg_uf, operator: eq, value: MT }
     file:
@@ -23,11 +26,14 @@ sources:
   - name: censo_ies
     kind: file
     description: >-
-      Censo da Educação Superior, cadastro de instituições (IES x ano), Brasil. O nome do arquivo
-      muda entre os anos (CADASTRO_IES em 2021, ED_SUP_IES depois); o padrão cobre os dois.
+      Censo da Educação Superior, cadastro de instituições. Grão: ano x IES, Brasil inteiro, porque
+      cursos EAD ofertados em MT pertencem a IES sediadas em outros estados. O nome do arquivo muda
+      entre os anos (CADASTRO_IES em 2021, ED_SUP_IES depois); o padrão cobre os dois.
     owner: equipe
+    required: true
     tags: [inep, censo]
     load_strategy: append
+    essential_columns: [nu_ano_censo, co_ies, no_ies, tp_categoria_administrativa]
     file:
       path: inep/censo
       include: ["microdados_censo_da_educacao_superior_*.zip"]
@@ -39,11 +45,14 @@ sources:
   - name: trajetoria
     kind: file
     description: >-
-      Indicadores de Trajetória (curso x coorte x ano de referência), um zip por coorte 2015-2020
-      acompanhada até 2024. Cabeçalho na linha 9 e notas de rodapé tratados; recorte MT (CO_UF 51).
+      Indicadores de Trajetória. Grão: curso x coorte (ano de ingresso) x ano de referência. Um zip
+      por coorte 2015-2020, acompanhada até 2024. Cabeçalho na linha 9 e notas de rodapé tratados;
+      recorte MT (CO_UF 51).
     owner: equipe
+    required: true
     tags: [inep, trajetoria, p1, p2, p4, p5]
     load_strategy: append
+    essential_columns: [co_curso, nu_ano_ingresso, nu_ano_referencia, tp_modalidade_ensino, tp_grau_academico, qt_ingressante, qt_permanencia, qt_concluinte, qt_desistencia, qt_falecido]
     transforms:
       - { op: filter, column: co_uf, operator: eq, value: "51" }
     file:
@@ -57,10 +66,12 @@ sources:
 
   - name: cpc
     kind: file
-    description: Conceito Preliminar de Curso 2021-2023, Brasil (curso).
+    description: "Conceito Preliminar de Curso 2021-2023, Brasil. Grão: edição x curso."
     owner: equipe
+    required: true
     tags: [inep, qualidade, p4]
     load_strategy: append
+    essential_columns: [ano, codigo_do_curso, cpc_faixa, cpc_continuo]
     file:
       path: inep/qualidade
       include: ["cpc_*.xlsx"]
@@ -71,10 +82,12 @@ sources:
 
   - name: igc
     kind: file
-    description: Índice Geral de Cursos 2021-2023, Brasil (instituição).
+    description: "Índice Geral de Cursos 2021-2023, Brasil. Grão: edição x instituição."
     owner: equipe
+    required: false
     tags: [inep, qualidade]
     load_strategy: append
+    essential_columns: [ano, codigo_da_ies, igc_faixa]
     file:
       path: inep/qualidade
       include: ["igc_*.xlsx"]
@@ -85,8 +98,9 @@ sources:
 
   - name: enade_licenciaturas
     kind: file
-    description: Conceito Enade 2025 das Licenciaturas (curso).
+    description: "Conceito Enade 2025 das Licenciaturas. Grão: curso. Necessário para P5."
     owner: equipe
+    required: false
     tags: [inep, qualidade, p5]
     load_strategy: append
     file:
@@ -97,118 +111,17 @@ sources:
       drop_note_rows: true
       sheet_name: auto
 
-  - name: api_exemplo_pedidos
-    kind: api
-    enabled: false
-    description: Modelo REST com token, paginação e incremental.
-    load_strategy: merge
-    primary_key: [id]
-    watermark_column: updated_at
-    watermark_type: timestamp
-    api:
-      url: https://api.exemplo.com.br/v1/pedidos
-      auth: { type: bearer, token_env: API_EXEMPLO_TOKEN }
-      records_path: data
-      incremental_param: updated_since
-      pagination: { type: page, page_param: page, size_param: per_page, page_size: 200 }
-      rate_limit_per_second: 5
-
-  - name: crm_graphql_clientes
-    kind: api
-    enabled: false
-    description: Modelo GraphQL com OAuth2 client credentials, ETL de PII antes de gravar.
-    load_strategy: merge
-    primary_key: [id]
-    watermark_column: updated_at
-    transforms:
-      - { op: hash_columns, columns: [email], salt_env: DBT_PII_SALT }
-      - { op: mask_columns, columns: [telefone], keep_last: 4 }
-      - { op: drop_columns, columns: [senha_hash, token_interno] }
-    api:
-      url: https://api.crm.exemplo.com/graphql
-      records_path: data.clientes.nodes
-      incremental_param: desde
-      auth:
-        type: oauth2_client_credentials
-        token_url: https://auth.crm.exemplo.com/oauth/token
-        client_id_env: CRM_CLIENT_ID
-        client_secret_env: CRM_CLIENT_SECRET
-        scope: clientes.read
-      graphql:
-        query: >-
-          query($after: String, $desde: String) {
-            clientes(first: 500, after: $after, atualizadoDesde: $desde) {
-              nodes { id nome email telefone updated_at }
-              pageInfo { hasNextPage endCursor }
-            }
-          }
-        page_info_path: data.clientes.pageInfo
-
-  - name: erp_notas_fiscais
-    kind: sql
-    enabled: false
-    description: Modelo SQL incremental com extração paralela e detecção de exclusões.
-    load_strategy: merge
-    primary_key: [nota_id]
-    watermark_column: dt_atualizacao
-    watermark_type: timestamp
-    chunk_size: 20000
-    delete_detection:
-      mode: soft
-      scope: keys_query
-      keys_query: SELECT nota_id FROM erp.notas_fiscais
-      max_delete_ratio: 0.05
-    volume_check: { min_ratio: 0.3, max_ratio: 5, action: warn }
-    sql:
-      url_env: ERP_DB_URL
-      query: >-
-        SELECT nota_id, numero, serie, emitente_cnpj, valor_total, dt_emissao, dt_atualizacao
-        FROM erp.notas_fiscais
-      partition: { column: nota_id, num_partitions: 8 }
-
-  - name: sefaz_nfe_xml
-    kind: file
-    enabled: false
-    description: Modelo de lote de XML compactado em zip, filtrando somente notas autorizadas.
-    load_strategy: append
-    transforms:
-      - { op: filter, column: situacao, operator: eq, value: autorizada }
-    file:
-      path: "nfe/*.zip"
-      format: xml
-      record_tag: infNFe
-      zip_member_pattern: "*.xml"
-      flatten_max_level: 2
-
-  - name: banco_cnab_retorno
-    kind: file
-    enabled: false
-    description: Modelo de arquivo posicional (largura fixa) compactado em gzip.
-    load_strategy: append
-    file:
-      path: "cnab/*.ret.gz"
-      format: fixed_width
-      widths: [1, 2, 14, 30, 13, 8]
-      names: [tipo_registro, codigo_ocorrencia, cnpj, nosso_numero, valor, data_ocorrencia]
-      encoding: latin-1
-
-  - name: logs_eventos_lake
-    kind: file
-    enabled: false
-    sink: parquet
-    description: Modelo para alto volume (Parquet particionado em DH_LAKE_URI).
-    load_strategy: append
-    chunk_size: 250000
-    file: { path: "eventos/*.jsonl.zst", format: jsonl, flatten_max_level: 2 }
-
   - name: ibge_populacao_idade_mt
     kind: api
     description: >-
       IBGE SIDRA tabela 9514 (Censo 2022): população residente de 18 a 24 anos por idade simples,
       municípios de MT (141 municípios x 7 idades = 987 linhas). Sexo e forma de declaração = Total.
+      Necessário para B1.
     owner: equipe
+    required: false
     tags: [ibge, contexto, b1]
     load_strategy: full
+    essential_columns: [co_municipio, co_idade, qt_populacao]
     transforms:
       - { op: filter, column: nc, operator: ne, value: "Nível Territorial (Código)" }
       - op: rename

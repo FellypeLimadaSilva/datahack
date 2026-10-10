@@ -1,89 +1,42 @@
 name: datahack
-version: "1.0.0"
+version: "2.0.0"
 config-version: 2
 profile: datahack
 
 model-paths: ["models"]
 analysis-paths: ["analyses"]
 test-paths: ["tests"]
-seed-paths: ["seeds"]
 macro-paths: ["macros"]
-snapshot-paths: ["snapshots"]
 clean-targets: ["target", "dbt_packages", "logs"]
-
-flags:
-  warn_error_options:
-    silence: [UnusedResourceConfigPath]
 
 vars:
   timezone: "America/Cuiaba"
-  calendar_start: "2020-01-01"
-  calendar_end: "2030-12-31"
-  incremental_lookback: "2 hours"
-  l4l_min_months: 12
+  min_cell: 10
+  min_base_ranking: 30
+  uf_codigo: "51"
+  p1_coorte: 2015
+  ano_curso_comparacao: 4
+  cpc_edicoes: [2021, 2022, 2023]
+  censo_anos: [2021, 2022, 2023, 2024]
 
 models:
   datahack:
     +persist_docs: { relation: true, columns: true }
     silver:
       +schema: silver
-      +materialized: view
+      +materialized: table
       +tags: ["silver"]
+      +post-hook:
+        - "analyze {{ this }}"
     gold:
-      +schema: gold
+      +schema: "{{ env_var('DH_GOLD_SCHEMA', 'gold_candidate') }}"
       +materialized: table
       +tags: ["gold"]
       +grants:
         select: ["{{ env_var('DBT_BI_ROLE', 'dh_bi_reader') }}"]
       +post-hook:
-        - "{% if config.get('materialized') in ('table', 'incremental') %}analyze {{ this }}{% endif %}"
-    auto:
-      +tags: ["auto"]
-      silver:
-        +schema: silver
-        +materialized: table
-        +tags: ["silver"]
-        +post-hook:
-          - "{% if config.get('materialized') in ('table', 'incremental') %}analyze {{ this }}{% endif %}"
-      gold:
-        +schema: gold
-        +materialized: view
-        +tags: ["gold"]
-        +grants:
-          select: ["{{ env_var('DBT_BI_ROLE', 'dh_bi_reader') }}"]
-    examples:
-      +enabled: "{{ env_var('DH_EXAMPLES', 'false') | lower in ['true', '1', 'yes', 'sim', 'on'] }}"
-      +tags: ["exemplo"]
-      silver:
-        +schema: silver
-        +materialized: view
-        +tags: ["silver"]
-      gold:
-        +schema: gold
-        +materialized: table
-        +tags: ["gold"]
-        +grants:
-          select: ["{{ env_var('DBT_BI_ROLE', 'dh_bi_reader') }}"]
-        +post-hook:
-          - "{% if config.get('materialized') in ('table', 'incremental') %}analyze {{ this }}{% endif %}"
-
-sources:
-  datahack:
-    examples:
-      +enabled: "{{ env_var('DH_EXAMPLES', 'false') | lower in ['true', '1', 'yes', 'sim', 'on'] }}"
-
-snapshots:
-  datahack:
-    examples:
-      +enabled: "{{ env_var('DH_EXAMPLES', 'false') | lower in ['true', '1', 'yes', 'sim', 'on'] }}"
-
-seeds:
-  datahack:
-    +schema: silver
-    +tags: ["seed"]
+        - "analyze {{ this }}"
 
 data_tests:
   datahack:
     +store_failures: false
-    examples:
-      +enabled: "{{ env_var('DH_EXAMPLES', 'false') | lower in ['true', '1', 'yes', 'sim', 'on'] }}"

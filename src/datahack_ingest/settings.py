@@ -35,7 +35,6 @@ def _flag(name: str, default: bool) -> bool:
 class Settings:
     catalog_path: Path
     landing_uri: str
-    lake_uri: str
     pg_host: str
     pg_port: int
     pg_db: str
@@ -46,16 +45,14 @@ class Settings:
     app_name: str = "datahack-ingest"
     log_format: str = "text"
     log_level: str = "INFO"
-    examples_enabled: bool = False
-    examples_catalog_path: Path = Path("config/examples.yml")
-    inbox_enabled: bool = True
-    inbox_path: str = "inbox"
-    inbox_settle_seconds: int = 15
     dbt_project_dir: Path = Path("dbt")
-    auto_models_enabled: bool = True
-    auto_type_threshold: float = 0.98
-    auto_sample_rows: int = 200_000
-    auto_incremental_rows: int = 2_000_000
+    dbt_target: str = "dev"
+    transform_user: str = "dh_transformer"
+    transform_password: str | None = field(default=None, repr=False)
+    bi_role: str = "dh_bi_reader"
+    gold_schema: str = "gold"
+    candidate_schema: str = "gold_candidate"
+    previous_schema: str = "gold_previous"
     export_config_path: Path = Path("config/exports.yml")
     outputs_dir: Path = Path("outputs")
     export_user: str = "dh_bi_reader"
@@ -67,7 +64,6 @@ class Settings:
         return cls(
             catalog_path=Path(_env("DH_CATALOG", "config/sources.yml")),
             landing_uri=_env("DH_LANDING_URI", "data/landing"),
-            lake_uri=_env("DH_LAKE_URI", "data/lake"),
             pg_host=_env("WAREHOUSE_HOST", "localhost"),
             pg_port=int(_env("WAREHOUSE_PORT", "5433")),
             pg_db=_env("WAREHOUSE_DB", "datahack"),
@@ -77,20 +73,35 @@ class Settings:
             pg_sslmode=_env("WAREHOUSE_SSLMODE", "prefer"),
             log_format=_env("DH_LOG_FORMAT", "text"),
             log_level=_env("DH_LOG_LEVEL", "INFO"),
-            examples_enabled=_flag("DH_EXAMPLES", False),
-            examples_catalog_path=Path(_env("DH_EXAMPLES_CATALOG", "config/examples.yml")),
-            inbox_enabled=_flag("DH_INBOX_ENABLED", True),
-            inbox_path=_env("DH_INBOX", "inbox"),
-            inbox_settle_seconds=int(_env("DH_INBOX_SETTLE_SECONDS", "15")),
             dbt_project_dir=Path(_env("DBT_PROJECT_DIR", "dbt")),
-            auto_models_enabled=_flag("DH_AUTO_MODELS", True),
-            auto_type_threshold=float(_env("DH_AUTO_TYPE_THRESHOLD", "0.98")),
-            auto_sample_rows=int(_env("DH_AUTO_SAMPLE_ROWS", "200000")),
-            auto_incremental_rows=int(_env("DH_AUTO_INCREMENTAL_ROWS", "2000000")),
+            dbt_target=_env("DBT_TARGET", "dev"),
+            transform_user=_env("WAREHOUSE_DBT_USER", "dh_transformer"),
+            transform_password=_env("WAREHOUSE_DBT_PASSWORD"),
+            bi_role=_env("DBT_BI_ROLE", "dh_bi_reader"),
             export_config_path=Path(_env("DH_EXPORT_CONFIG", "config/exports.yml")),
             outputs_dir=Path(_env("DH_OUTPUTS", "outputs")),
             export_user=_env("WAREHOUSE_EXPORT_USER", _env("WAREHOUSE_BI_USER", "dh_bi_reader")),
             export_password=_env("WAREHOUSE_EXPORT_PASSWORD", _env("WAREHOUSE_BI_PASSWORD")),
+        )
+
+    @property
+    def dbt_target_path(self) -> Path:
+        configured = _env("DBT_TARGET_PATH")
+        if not configured:
+            return self.dbt_project_dir / "target"
+        path = Path(configured)
+        return path if path.is_absolute() else self.dbt_project_dir / path
+
+    def transform_conninfo(self) -> str:
+        return make_conninfo(
+            host=self.pg_host,
+            port=self.pg_port,
+            dbname=self.pg_db,
+            user=self.transform_user,
+            password=self.transform_password or None,
+            sslmode=self.pg_sslmode,
+            application_name="datahack-publish",
+            connect_timeout=10,
         )
 
     def export_conninfo(self) -> str:

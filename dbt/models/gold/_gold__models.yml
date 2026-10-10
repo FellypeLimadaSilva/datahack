@@ -1,31 +1,224 @@
 version: 2
 
+anchors:
+  - &regra_celula >-
+    Linhas com base abaixo de 10 alunos não são publicadas; contagens qt_* entre 1 e 9 saem vazias.
+    Taxas são calculadas antes da máscara, sempre como soma do numerador sobre soma do denominador.
+
 models:
-  - name: dim_data
-    description: Calendário com feriados nacionais (fixos + móveis via Páscoa) e chaves de LY.
+  - name: p1_trajetoria_coorte
+    description: "P1. Quanto da turma fica pelo caminho: evolução de cada coorte de MT, ano a ano."
+    meta:
+      pergunta: P1
+      populacao: Ingressantes de cursos de graduação de MT na coorte (Indicadores de Trajetória)
+      numerador: Desistentes, concluintes e permanentes acumulados até o ano de referência
+      denominador: Ingressantes da coorte
+      periodo: Coortes 2015 a 2020, acompanhadas até 2024
+      agregacao: Soma de todos os cursos da modalidade; nunca média de taxas
+      grao: modalidade x coorte x ano de referência
+      celulas_pequenas: *regra_celula
+    data_tests:
+      - dh_no_small_cells
+      - dh_unique_combination:
+          arguments:
+            combination_of_columns: [modalidade, nu_ano_ingresso, nu_ano_referencia]
     columns:
-      - { name: data, data_type: date, constraints: [{ type: not_null }, { type: primary_key }], data_tests: [unique] }
-      - { name: ano, data_type: int }
-      - { name: trimestre, data_type: int }
-      - { name: mes, data_type: int }
-      - { name: nome_mes, data_type: text }
-      - { name: ano_mes, data_type: text }
-      - { name: primeiro_dia_mes, data_type: date }
-      - { name: dia, data_type: int }
-      - { name: dia_semana_iso, data_type: int, description: "1=segunda ... 7=domingo (ISO 8601)" }
-      - { name: nome_dia_semana, data_type: text }
-      - { name: semana_iso, data_type: int }
-      - { name: ano_iso, data_type: int }
-      - { name: is_fim_de_semana, data_type: boolean }
-      - { name: is_feriado, data_type: boolean }
-      - { name: nome_feriado, data_type: text }
-      - { name: tipo_feriado, data_type: text }
-      - { name: is_dia_util, data_type: boolean }
-      - { name: data_ano_anterior, data_type: date, description: "Mesma data no ano anterior (LY calendário)." }
-      - { name: data_mesmo_dia_semana_ano_anterior, data_type: date, description: "Data - 364 dias (LY varejo, mesmo dia da semana)." }
+      - { name: nu_ano_curso, description: "Ano do curso: 1 no ano de ingresso." }
+      - { name: taxa_desistencia_acum, description: "% da coorte que desistiu até o ano." }
+      - { name: taxa_conclusao_acum, description: "% da coorte que concluiu até o ano." }
+      - { name: taxa_permanencia, description: "% da coorte ainda matriculada no fim do ano." }
+      - { name: taxa_desistencia_ano, description: "Desistentes do ano sobre os ingressantes da coorte." }
+      - { name: taxa_desistencia_sobre_ativos, description: "Desistentes do ano sobre quem estava no curso naquele ano." }
+      - { name: is_ano_maior_perda, description: "Ano com mais desistências da coorte." }
+
+  - name: p2_desistencia_curso
+    description: "P2. Onde a rota mais se perde: desistência por curso e coorte no mesmo ano do curso."
+    meta:
+      pergunta: P2
+      populacao: Ingressantes de cada curso de MT por coorte
+      numerador: Desistentes acumulados até o ano do curso de comparação (padrão 4º ano)
+      denominador: Ingressantes da coorte no curso
+      periodo: Coortes 2015 a 2020; comparação sempre no mesmo ano do curso
+      agregacao: Nenhuma; um curso por linha. Ranking só com 30 ou mais ingressantes
+      grao: curso x coorte
+      celulas_pequenas: *regra_celula
+    data_tests:
+      - dh_no_small_cells
+      - dh_unique_combination:
+          arguments:
+            combination_of_columns: [co_curso, nu_ano_ingresso]
+
+  - name: p2_desistencia_area
+    description: "P2. Desistência acumulada por área CINE, coorte e ano do curso, para comparar coortes no mesmo ano do curso."
+    meta:
+      pergunta: P2
+      populacao: Ingressantes de MT por área geral CINE
+      numerador: Desistentes acumulados até o ano do curso
+      denominador: Ingressantes
+      periodo: Coortes 2015 a 2020
+      agregacao: Soma dos cursos da área
+      grao: área x modalidade x coorte x ano do curso
+      celulas_pequenas: *regra_celula
+    data_tests:
+      - dh_no_small_cells
+      - dh_unique_combination:
+          arguments:
+            combination_of_columns: [no_cine_area_geral, modalidade, nu_ano_ingresso, nu_ano_curso]
+
+  - name: p3_rede_modalidade_ano
+    description: "P3. Evasão anual e matrículas por rede e modalidade, 2021 a 2024 (Censo)."
+    meta:
+      pergunta: P3
+      populacao: Vínculos de graduação em cursos ofertados em MT no ano
+      numerador: Vínculos desvinculados no ano (QT_SIT_DESVINCULADO)
+      denominador: Matrículas + trancadas + desvinculados + transferidos + falecidos
+      periodo: Censo 2021 a 2024
+      agregacao: Soma de municípios e cursos
+      grao: ano x rede x modalidade
+      celulas_pequenas: *regra_celula
+    data_tests:
+      - dh_no_small_cells
+      - dh_unique_combination:
+          arguments:
+            combination_of_columns: [nu_ano_censo, rede, modalidade]
+    columns:
+      - { name: taxa_evasao_anual, description: "Proxy de evasão anual: desvinculados sobre vínculos do ano." }
+      - { name: variacao_evasao_pp, description: "Diferença em pontos percentuais para o ano anterior; destaca ano atípico." }
+
+  - name: p4_qualidade_curso
+    description: "P4. Curso, CPC e desistência no 4º ano: base do gráfico de dispersão."
+    meta:
+      pergunta: P4
+      populacao: Cursos de MT com coorte observada até o ano do curso de comparação
+      numerador: Desistentes acumulados até o 4º ano, coortes somadas
+      denominador: Ingressantes das mesmas coortes
+      periodo: Coortes 2015 a 2020; CPC mais recente entre 2021 e 2023
+      agregacao: Soma das coortes do curso
+      grao: curso
+      celulas_pequenas: *regra_celula
+    data_tests:
+      - dh_no_small_cells
+      - dh_row_count_equal:
+          arguments:
+            compare_model: ref('int_curso_desistencia')
+            compare_filter: qt_ingressante >= 10
+    columns:
+      - { name: co_curso, data_tests: [unique, not_null] }
+
+  - name: p4_qualidade_faixa
+    description: "P4. Desistência no 4º ano por faixa de CPC e rede."
+    meta:
+      pergunta: P4
+      populacao: Cursos de P4 agrupados por faixa de CPC
+      numerador: Desistentes até o 4º ano
+      denominador: Ingressantes
+      periodo: Coortes 2015 a 2020; CPC 2021 a 2023
+      agregacao: Soma dos cursos da faixa
+      grao: faixa CPC x rede
+      celulas_pequenas: *regra_celula
+    data_tests:
+      - dh_no_small_cells
+      - dh_unique_combination:
+          arguments:
+            combination_of_columns: [cpc_faixa, rede]
+
+  - name: p4_fatores
+    description: "P4. O que mais explica a desistência: correlação de cada componente do CPC com a taxa no 4º ano."
+    meta:
+      pergunta: P4
+      populacao: Cursos com CPC e 30 ou mais ingressantes
+      numerador: Correlação de Pearson entre fator e taxa de desistência
+      denominador: Não se aplica
+      periodo: Coortes 2015 a 2020; CPC 2021 a 2023
+      agregacao: Um curso, um ponto; não ponderado
+      grao: fator
+    data_tests:
+      - dh_no_small_cells
+
+  - name: p5_licenciaturas_curso
+    description: "P5. Licenciaturas de MT: desistência e proficiência no Enade 2025 por curso."
+    meta:
+      pergunta: P5
+      populacao: Cursos de licenciatura de MT na Trajetória
+      numerador: Desistentes e concluintes; concluintes proficientes no Enade
+      denominador: Ingressantes; participantes do Enade
+      periodo: Coortes 2015 a 2020; Enade 2025
+      agregacao: Soma das coortes do curso
+      grao: curso
+      celulas_pequenas: *regra_celula
+    data_tests:
+      - dh_no_small_cells
+    columns:
+      - { name: co_curso, data_tests: [unique, not_null] }
+
+  - name: p5_funil_licenciaturas
+    description: >-
+      P5. Funil das licenciaturas: de cada 100 que entram, quantos desistem, concluem e concluem
+      proficientes. A proficiência vem dos concluintes do Enade 2025, que não são a mesma turma da
+      Trajetória: a última etapa é uma estimativa e assim deve ser apresentada.
+    meta:
+      pergunta: P5
+      populacao: Licenciaturas de MT
+      numerador: Desistentes e concluintes no último ano observado; proficientes ponderados por participantes
+      denominador: Ingressantes; participantes do Enade
+      periodo: Coortes 2015 a 2020 até 2024; Enade 2025
+      agregacao: Soma; proficiência ponderada pelo número de participantes
+      grao: rede (com linha Total)
+      celulas_pequenas: *regra_celula
+    data_tests:
+      - dh_no_small_cells
+      - dh_unique_combination:
+          arguments:
+            combination_of_columns: [rede]
+
+  - name: b1_desertos_municipio
+    description: "B1. Desertos de ensino superior: vagas presenciais de graduação por 100 jovens de 18 a 24 anos."
+    meta:
+      pergunta: B1
+      populacao: Os 141 municípios de MT
+      numerador: Vagas presenciais de graduação ofertadas no município (último Censo carregado)
+      denominador: População de 18 a 24 anos (Censo IBGE 2022)
+      periodo: Censo da Educação Superior mais recente; população 2022
+      agregacao: Soma dos cursos do município
+      grao: município
+    data_tests:
+      - dh_no_small_cells
+    columns:
+      - { name: co_municipio, data_tests: [unique, not_null] }
+
+  - name: b2_financiamento_ano
+    description: "B2. Peso de FIES e ProUni na rede privada, 2021 a 2024."
+    meta:
+      pergunta: B2
+      populacao: Ingressantes e matrículas da rede privada em MT
+      numerador: Ingressantes ou matrículas com FIES; com ProUni (integral + parcial)
+      denominador: Ingressantes ou matrículas
+      periodo: Censo 2021 a 2024
+      agregacao: Soma
+      grao: ano x modalidade
+      celulas_pequenas: *regra_celula
+    data_tests:
+      - dh_no_small_cells
+      - dh_unique_combination:
+          arguments:
+            combination_of_columns: [nu_ano_censo, modalidade]
+
+  - name: b2_financiamento_desistencia
+    description: "B2. Cursos com mais financiados evadem menos? Desistência no 4º ano por quartil de financiamento."
+    meta:
+      pergunta: B2
+      populacao: Cursos privados de MT com 30 ou mais ingressantes na Trajetória
+      numerador: Desistentes até o 4º ano
+      denominador: Ingressantes
+      periodo: Coortes 2015 a 2020; financiamento médio do Censo 2021 a 2024
+      agregacao: Soma dos cursos do quartil
+      grao: quartil de financiamento
+      celulas_pequenas: *regra_celula
+    data_tests:
+      - dh_no_small_cells
 
   - name: controle_atualizacao
-    description: Última carga e última transformação por fonte — base do "Última atualização" no BI.
+    description: Última carga por fonte, base do "Última atualização" no dashboard.
     columns:
       - { name: fonte, data_type: text, data_tests: [unique, not_null] }
       - { name: ultimo_status, data_type: text }
@@ -35,45 +228,3 @@ models:
       - { name: linhas_rejeitadas_ultima_execucao, data_type: bigint }
       - { name: ultima_transformacao_local, data_type: timestamp }
       - { name: fuso_horario, data_type: text }
-
-  - name: dh_catalogo_dados
-    description: >
-      Catálogo de dados das tabelas geradas automaticamente: tipo inferido, chave, classificação LGPD
-      e perfil da amostra. Nenhum valor de dado é armazenado, apenas metadados.
-    data_tests:
-      - dh_unique_combination:
-          arguments:
-            combination_of_columns: [tabela_bronze, coluna_origem]
-    columns:
-      - { name: tabela_bronze, data_type: text, data_tests: [not_null] }
-      - { name: fonte, data_type: text }
-      - { name: tabela_silver, data_type: text }
-      - { name: tabela_gold, data_type: text }
-      - { name: coluna_origem, data_type: text, data_tests: [not_null] }
-      - { name: coluna, data_type: text }
-      - { name: ordem, data_type: integer }
-      - name: tipo
-        data_type: text
-        data_tests:
-          - accepted_values:
-              arguments:
-                values: [text, bigint, numeric, date, timestamp, timestamptz, boolean, jsonb]
-      - { name: formato, data_type: text }
-      - name: classificacao_lgpd
-        data_type: text
-        data_tests:
-          - accepted_values:
-              arguments:
-                values: [nenhum, pessoal, identificador]
-      - { name: is_pseudonimizada, data_type: boolean }
-      - { name: is_chave, data_type: boolean }
-      - { name: deduplicacao, data_type: text }
-      - { name: materializacao, data_type: text }
-      - { name: taxa_validos_amostra, data_type: numeric }
-      - { name: taxa_nulos_amostra, data_type: numeric }
-      - { name: taxa_distintos_amostra, data_type: numeric }
-      - { name: tamanho_maximo, data_type: integer }
-      - { name: linhas_amostra, data_type: bigint }
-      - { name: linhas_bronze, data_type: bigint }
-      - { name: perfilado_em, data_type: timestamptz }
-      - { name: gerado_em, data_type: timestamptz }

@@ -118,7 +118,7 @@ function Invoke-NativeBootstrap {
     psql -v ON_ERROR_STOP=1 -h $h -p $p -U postgres -d $db `
         -v dbname=$db -v ingest_pw=$env:WAREHOUSE_INGEST_PASSWORD -v dbt_pw=$env:WAREHOUSE_DBT_PASSWORD `
         -v bi_pw=$env:WAREHOUSE_BI_PASSWORD -v backup_pw=$env:WAREHOUSE_BACKUP_PASSWORD `
-        -v repl_pw=$env:WAREHOUSE_REPLICATION_PASSWORD -f infra/postgres/bootstrap.sql
+        -f infra/postgres/bootstrap.sql
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     Write-Host "Banco $db pronto em ${h}:$p"
 }
@@ -158,26 +158,21 @@ switch ($Command) {
         docker load -i $ImagesTar; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     }
     "db-bootstrap-native" { Invoke-NativeBootstrap }
-    "sample"       { Invoke-Cli python scripts/generate_sample_data.py --out data/landing/sample }
-    "demo-inbox"   { Invoke-Cli python scripts/generate_messy_data.py --out data/landing/inbox }
-    "discover"     { Invoke-Cli python -m datahack_ingest discover }
     "ingest"       { if ($Rest) { Invoke-Cli python -m datahack_ingest run @Rest } else { Invoke-Cli python -m datahack_ingest run --all --continue-on-error } }
-    "models"       { Invoke-Cli python -m datahack_ingest generate-models @Rest }
-    "export"       { Invoke-Cli python -m datahack_ingest export @Rest }
+    "gate"         { Invoke-Cli python -m datahack_ingest gate }
     "dbt-build"    { if ($Rest) { Invoke-Cli dbt build --project-dir dbt --select @Rest } else { Invoke-Cli dbt build --project-dir dbt } }
     "dbt-test"     { Invoke-Cli dbt test --project-dir dbt }
-    "pipeline" {
-        $ingest = Invoke-CliCode python -m datahack_ingest run --all --continue-on-error
-        if ($ingest -ne 0 -and $env:DH_REQUIRE_ALL_SOURCES -eq "true") { exit $ingest }
-        Invoke-Cli python -m datahack_ingest generate-models
-        Invoke-Cli dbt build --project-dir dbt
-        Invoke-Cli python -m datahack_ingest export
-        if ($ingest -ne 0) { Write-Host "Atencao: fontes com falha na ingestao (veja o JSON acima)."; exit $ingest }
+    "publish"      { Invoke-Cli python -m datahack_ingest publish }
+    "rollback"     { Invoke-Cli python -m datahack_ingest rollback }
+    "export"       { Invoke-Cli python -m datahack_ingest export @Rest }
+    "pipeline"     { Invoke-Cli python -m datahack_ingest pipeline @Rest }
+    "dashboard"    {
+        $py = Get-Python
+        if (-not $py) { throw "Python nao encontrado: instale o Python 3.12 para abrir o dashboard." }
+        & $py.Source -m streamlit run dashboard/app.py
     }
     "psql"         { docker compose exec warehouse bash -c 'psql -U $POSTGRES_USER -d $POSTGRES_DB' }
     "backup"       { docker compose run --rm -e BACKUP_ONCE=true warehouse-backup }
-    "ha-up"        { docker compose --profile ha up -d warehouse-replica }
-    "alert-test"   { Invoke-Cli python -m datahack_ingest alert-test }
     "db-bootstrap" { docker compose exec warehouse bash /docker-entrypoint-initdb.d/10-bootstrap.sh }
     "test"         { pytest -q }
     "lint"         { ruff check .; ruff format --check .; sqlfluff lint dbt/models }
@@ -191,18 +186,18 @@ Uso: .\scripts\dh.ps1 <comando> [args]      (sem Docker: `$env:DH_RUNNER = "nati
   doctor                      verifica Docker, WSL, disco, portas e fim de linha
   env                         cria ou completa o .env
   up-lite                     sobe so o Postgres e a imagem CLI (recomendado no laboratorio)
-  up | build | down | ps | logs [servico]
+  up | build | down | ps | logs [servico]   plataforma completa com Airflow
   smoke                       testa CLI, banco e dbt
   images-save | images-load   leva as imagens num pendrive (images/datahack-images.tar)
   db-bootstrap-native         prepara um PostgreSQL instalado sem Docker
-  sample | demo-inbox         dados de exemplo / arquivos baguncados de demonstracao
-  discover                    mostra o que a inbox virou de fonte e o que foi ignorado
-  ingest [fontes...]          ingere fontes (padrao: todas, continuando em caso de erro)
-  models [--reset]            gera Silver e Gold automaticas a partir da Bronze
-  dbt-build [seletor]         dbt build (models + testes)
-  export [--tables ...]       exporta a Gold para outputs/ com supressao de grupos < 10
-  pipeline                    ingest + models + dbt-build + export
-  dbt-test | psql | db-bootstrap | backup | ha-up | alert-test | test | lint | nuke
+  pipeline                    ingestao + portao + dbt em gold_candidate + publicacao + outputs/
+  ingest [fontes...]          so a ingestao na Bronze
+  gate                        mostra se as fontes obrigatorias estao completas
+  dbt-build [seletor]         dbt build no schema candidato (nao publica)
+  publish | rollback          promove o candidato / volta a versao anterior
+  export [--tables ...]       exporta a Gold publicada para outputs/
+  dashboard                   abre o dashboard lendo outputs/
+  dbt-test | psql | db-bootstrap | backup | test | lint | nuke
 "@
     }
 }

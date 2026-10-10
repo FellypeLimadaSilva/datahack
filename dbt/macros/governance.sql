@@ -10,53 +10,76 @@
     end
 {%- endmacro %}
 
-{% macro dh_latest(relation, keys, order_by='_dh_ingested_at desc', include_deleted=false) -%}
-    select * from (
-        select
-            r.*,
-            row_number() over (partition by {{ keys | join(', ') }} order by {{ order_by }}) as _dh_rn
-        from {{ relation }} r
-    ) ranked
-    where _dh_rn = 1
-    {%- if not include_deleted %}
-      and _dh_deleted_at is null
-    {%- endif %}
+{% macro dh_mask_count(expr) -%}
+    case when ({{ expr }}) between 1 and {{ var('min_cell') }} - 1 then null else ({{ expr }}) end
 {%- endmacro %}
 
-{% macro dh_easter_sunday(year) -%}
-    (
-        with p as (select ({{ year }})::int as y),
-        s1 as (
-            select y, y % 19 as a, y / 100 as b, y % 100 as c from p
-        ),
-        s2 as (
-            select y, a, b, c, b / 4 as d, b % 4 as e, (b + 8) / 25 as f, c / 4 as i, c % 4 as k
-            from s1
-        ),
-        s3 as (
-            select y, a, i, k, e,
-                   (19 * a + b - d - ((b - f + 1) / 3) + 15) % 30 as h
-            from s2
-        ),
-        s4 as (
-            select y, a, h, (32 + 2 * e + 2 * i - h - k) % 7 as l from s3
-        ),
-        s5 as (
-            select y, h, l, (a + 11 * h + 22 * l) / 451 as m from s4
-        )
-        select make_date(y, (h + l - 7 * m + 114) / 31, ((h + l - 7 * m + 114) % 31) + 1) from s5
-    )
+{% macro dh_rate(numerator, denominator, scale=100) -%}
+    round(({{ scale }} * ({{ numerator }})::numeric / nullif({{ denominator }}, 0))::numeric, 2)
 {%- endmacro %}
 
-{% macro dh_join_rate(left, left_key, right, right_key) -%}
-    select
-        count(*) as chaves_origem,
-        count(*) filter (where d.chave is not null) as chaves_encontradas,
-        round(count(*) filter (where d.chave is not null)::numeric / nullif(count(*), 0), 4) as taxa_juncao
-    from (select distinct {{ left_key }} as chave from {{ left }} where {{ left_key }} is not null) as o
-    left join (select distinct {{ right_key }} as chave from {{ right }}) as d using (chave)
+{% macro dh_rede(categoria) -%}
+    case
+        when {{ categoria }} in (1, 2, 3, 7) then 'Pública'
+        when {{ categoria }} in (4, 5, 6) then 'Privada'
+    end
 {%- endmacro %}
 
-{% macro dh_min_cell(expr, base, min_cell=10) -%}
-    case when {{ base }} >= {{ min_cell }} then {{ expr }} end
+{% macro dh_modalidade(code) -%}
+    case {{ code }} when 1 then 'Presencial' when 2 then 'EAD' end
+{%- endmacro %}
+
+{% macro dh_grau(code) -%}
+    case {{ code }}
+        when 1 then 'Bacharelado'
+        when 2 then 'Licenciatura'
+        when 3 then 'Tecnológico'
+        when 4 then 'Bacharelado e Licenciatura'
+    end
+{%- endmacro %}
+
+{% macro dh_latest_partition(relation, partition) -%}
+    select r.*
+    from {{ relation }} as r
+    inner join (
+        select distinct on (btrim({{ partition }}))
+            btrim({{ partition }}) as _dh_particao,
+            _dh_source_file as _dh_arquivo,
+            _dh_batch_id as _dh_lote
+        from {{ relation }}
+        where nullif(btrim({{ partition }}), '') is not null
+        order by btrim({{ partition }}), _dh_ingested_at desc
+    ) as v
+        on btrim(r.{{ partition }}) = v._dh_particao
+        and r._dh_source_file = v._dh_arquivo
+        and r._dh_batch_id = v._dh_lote
+{%- endmacro %}
+
+{% macro dh_relation_exists(source_name, table_name) -%}
+    {%- if not execute -%}
+        {{ return(true) }}
+    {%- endif -%}
+    {%- set src = source(source_name, table_name) -%}
+    {%- set rel = adapter.get_relation(database=src.database, schema=src.schema, identifier=src.identifier) -%}
+    {{ return(rel is not none) }}
+{%- endmacro %}
+
+{% macro dh_pick_column(source_name, table_name, patterns) -%}
+    {%- if not execute -%}
+        {{ return(none) }}
+    {%- endif -%}
+    {%- set src = source(source_name, table_name) -%}
+    {%- set rel = adapter.get_relation(database=src.database, schema=src.schema, identifier=src.identifier) -%}
+    {%- if rel is none -%}
+        {{ return(none) }}
+    {%- endif -%}
+    {%- set names = adapter.get_columns_in_relation(rel) | map(attribute='name') | list -%}
+    {%- for pattern in patterns -%}
+        {%- for name in names -%}
+            {%- if modules.re.search(pattern, name) -%}
+                {{ return(name) }}
+            {%- endif -%}
+        {%- endfor -%}
+    {%- endfor -%}
+    {{ return(none) }}
 {%- endmacro %}

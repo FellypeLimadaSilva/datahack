@@ -40,7 +40,12 @@ def _pairs(text: str) -> list[tuple[str, str]]:
 
 
 def _ensure_dirs() -> None:
-    for rel in ("data/landing/inbox", "data/lake", "dbt/models/auto"):
+    for rel in (
+        "data/landing/inep/censo",
+        "data/landing/inep/trajetoria",
+        "data/landing/inep/qualidade",
+        "outputs",
+    ):
         (ROOT / rel).mkdir(parents=True, exist_ok=True)
 
 

@@ -2,16 +2,31 @@ version: 2
 
 sources:
   - name: ops
-    description: Camada de controle e auditoria das ingestões.
+    description: Controle e auditoria das ingestões.
     schema: ops
     tables:
       - name: ingestion_runs
         description: Uma linha por execução de ingestão (sucesso ou falha).
-      - name: rejected_rows
-        description: "Linhas em quarentena (ex.: chave primária nula)."
-      - name: data_quality_events
-        description: Eventos de qualidade (volume anômalo e afins).
-      - name: auto_models
-        description: Tabelas com Silver e Gold geradas automaticamente (chave, deduplicação, materialização).
-      - name: data_catalog
-        description: Perfil e classificação LGPD de cada coluna das tabelas automáticas.
+      - name: file_manifest
+        description: Arquivos carregados, com hash SHA-256 e linhas gravadas.
+      - name: publications
+        description: Versões publicadas e rejeitadas, com fontes e resultado dos portões.
+
+  - name: bronze
+    description: Dado bruto do INEP e do IBGE, tudo texto, com metadados _dh_* de linhagem.
+    schema: bronze
+    tables:
+      - name: trajetoria
+        description: Indicadores de Trajetória. Grão curso x coorte x ano de referência.
+      - name: censo_cursos
+        description: Censo da Educação Superior, cursos. Grão ano x curso x município de oferta.
+      - name: censo_ies
+        description: Censo da Educação Superior, instituições. Grão ano x IES.
+      - name: cpc
+        description: Conceito Preliminar de Curso. Grão edição x curso.
+      - name: igc
+        description: Índice Geral de Cursos. Grão edição x IES.
+      - name: enade_licenciaturas
+        description: Conceito Enade 2025 das Licenciaturas. Grão curso.
+      - name: ibge_populacao_idade_mt
+        description: IBGE SIDRA 9514, população por idade simples nos municípios de MT (Censo 2022).

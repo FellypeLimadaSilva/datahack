@@ -13,8 +13,6 @@ backups/
 data/**
 !data/landing/
 !data/landing/.gitkeep
-!data/lake/
-!data/lake/.gitkeep
 *.csv
 *.parquet
 *.xlsx
@@ -65,9 +63,6 @@ Thumbs.db
 desktop.ini
 *.swp
 
-!data/landing/inbox/
-!data/landing/inbox/.gitkeep
-dbt/models/auto/
 
 !outputs/
 !outputs/**

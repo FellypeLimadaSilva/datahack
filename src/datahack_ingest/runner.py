@@ -12,17 +12,15 @@ from typing import Any
 import pandas as pd
 import psycopg
 
-from datahack_ingest.alerting import Alert, send_alert
-from datahack_ingest.catalog import ApiSource, FileSource, SqlSource
+from datahack_ingest.catalog import AnySource
 from datahack_ingest.extractors import ExtractState, build_extractor
-from datahack_ingest.normalize import normalize_identifier, to_text_frame
+from datahack_ingest.normalize import to_text_frame
 from datahack_ingest.settings import Settings
-from datahack_ingest.sinks import ParquetSink, PostgresSink
-from datahack_ingest.state import StateStore, parse_watermark, record_file, set_watermark
+from datahack_ingest.sinks import PostgresSink
+from datahack_ingest.state import StateStore, record_file
 from datahack_ingest.transforms import apply_transforms
 
 log = logging.getLogger(__name__)
-AnySource = FileSource | ApiSource | SqlSource
 
 
 class SourceLockedError(RuntimeError):
@@ -33,10 +31,19 @@ class VolumeAnomalyError(RuntimeError):
     pass
 
 
+class MissingColumnsError(RuntimeError):
+    pass
+
+
+class EmptyFullLoadError(RuntimeError):
+    pass
+
+
 @dataclass
 class RunResult:
     source: str
     run_id: str
+    required: bool = True
     status: str = "running"
     units_processed: int = 0
     units_skipped: int = 0
@@ -44,9 +51,6 @@ class RunResult:
     rows_filtered: int = 0
     rows_loaded: int = 0
     rows_rejected: int = 0
-    rows_deleted: int = 0
-    watermark_from: str | None = None
-    watermark_to: str | None = None
     new_columns: list[str] = field(default_factory=list)
     columns: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
@@ -55,42 +59,6 @@ class RunResult:
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)
-
-
-class _WatermarkTracker:
-    def __init__(self, column: str | None, vtype: str) -> None:
-        self.column = normalize_identifier(column.replace(".", "_")) if column else None
-        self.vtype = vtype
-        self.value: Any = None
-
-    def observe(self, frame: pd.DataFrame) -> None:
-        if not self.column or self.column not in frame.columns:
-            return
-        s = frame[self.column]
-        if self.vtype == "timestamp":
-            parsed = pd.to_datetime(s, errors="coerce", format="mixed")
-        elif self.vtype == "integer":
-            parsed = pd.to_numeric(s, errors="coerce")
-        else:
-            parsed = s.dropna()
-        if parsed.dropna().empty:
-            return
-        current = parsed.max()
-        if self.value is None or current > self.value:
-            self.value = current
-
-    def as_text(self) -> str | None:
-        if self.value is None:
-            return None
-        if self.vtype == "timestamp":
-            return pd.Timestamp(self.value).isoformat()
-        if self.vtype == "integer":
-            return str(int(self.value))
-        return str(self.value)
-
-
-def _supports_watermark(source: AnySource) -> bool:
-    return bool(source.watermark_column) and isinstance(source, ApiSource | SqlSource)
 
 
 def _prepare_frame(source: AnySource, raw: pd.DataFrame, result: RunResult) -> pd.DataFrame:
@@ -113,7 +81,7 @@ def run_source(
 ) -> RunResult:
     run_id = run_id or str(uuid.uuid4())
     orchestrator_run_id = orchestrator_run_id or os.environ.get("AIRFLOW_CTX_DAG_RUN_ID")
-    result = RunResult(source=source.name, run_id=run_id)
+    result = RunResult(source=source.name, run_id=run_id, required=source.required)
     started = time.monotonic()
     ctx = {"source": source.name, "run_id": run_id}
     log.info("início da ingestão", extra={**ctx, "strategy": source.load_strategy})
@@ -136,14 +104,6 @@ def run_source(
         result.status = "failed"
         result.error = f"{type(exc).__name__}: {exc}"
         log.exception("falha na ingestão", extra=ctx)
-        send_alert(
-            Alert(
-                title=f"Falha na ingestão: {source.name}",
-                message=result.error,
-                severity="error",
-                context={"run_id": run_id, "orchestrator_run_id": orchestrator_run_id},
-            )
-        )
         raise
     finally:
         result.duration_s = round(time.monotonic() - started, 3)
@@ -184,44 +144,26 @@ def _check_volume(source: AnySource, state: StateStore, result: RunResult) -> No
     result.warnings.append(message)
     if vc.action == "fail":
         raise VolumeAnomalyError(message)
-    send_alert(
-        Alert(
-            title=f"Volume anômalo: {source.name}",
-            message=message,
-            severity="warning",
-            context={"run_id": result.run_id},
+
+
+def _check_essential(source: AnySource, unit_key: str, columns: set[str]) -> None:
+    missing = [c for c in source.essential_columns if c not in columns]
+    if missing:
+        raise MissingColumnsError(
+            f"{source.name}: {unit_key} sem colunas essenciais {missing}; carga revertida"
         )
-    )
-
-
-def _extract_state(source: AnySource, state: StateStore, result: RunResult) -> ExtractState:
-    wm_stored = state.get_watermark(source.name) if _supports_watermark(source) else None
-    extract_state = ExtractState(strategy=source.load_strategy)
-    if wm_stored:
-        result.watermark_from = wm_stored[0]
-        extract_state.watermark = parse_watermark(*wm_stored)
-    if isinstance(source, FileSource) and source.load_strategy != "full":
-        if source.delete_detection:
-            extract_state.loaded_file_hashes = state.last_file_hash(source.name)
-        else:
-            extract_state.loaded_file_hashes = state.loaded_file_hashes(source.name)
-    return extract_state
 
 
 def _execute(source: AnySource, settings: Settings, state: StateStore, result: RunResult) -> None:
-    extract_state = _extract_state(source, state, result)
-
+    full = source.load_strategy == "full"
+    extract_state = ExtractState(strategy=source.load_strategy)
+    if not full:
+        extract_state.loaded_file_hashes = state.loaded_file_hashes(source.name)
     extractor = build_extractor(source, settings.landing_uri)
-    tracker = _WatermarkTracker(source.watermark_column, source.watermark_type)
-    uses_keys_query = bool(
-        source.delete_detection and source.delete_detection.scope == "keys_query"
-    )
 
     with psycopg.connect(settings.conninfo(), autocommit=True) as data:
-        sink = _build_sink(source, settings, data, result.run_id)
-        full = source.load_strategy == "full"
-        outer = data.transaction() if full else nullcontext()
-        with outer:
+        sink = PostgresSink(data, source.name, source.table, result.run_id)
+        with data.transaction() if full else nullcontext():
             if full:
                 sink.prepare()
                 sink.truncate()
@@ -229,33 +171,22 @@ def _execute(source: AnySource, settings: Settings, state: StateStore, result: R
                 with nullcontext() if full else data.transaction():
                     if not full:
                         sink.prepare()
-                    sink.begin_unit()
-                    copied = 0
+                    copied, seen = 0, set()
                     for raw in unit.frames:
                         frame = _prepare_frame(source, raw, result)
-                        tracker.observe(frame)
+                        seen.update(frame.columns)
                         copied += sink.write(frame, unit.key)
-                    if uses_keys_query:
-                        sink.load_keys(to_text_frame(f) for f in extractor.key_frames())
-                    written, rejected = sink.end_unit()
-                    written = copied if written < 0 else written
-                    result.rows_loaded += written
-                    result.rows_rejected += rejected
+                    if copied:
+                        _check_essential(source, unit.key, seen)
+                    result.rows_loaded += copied
                     if unit.file_sha256:
                         record_file(data, source.name, unit, copied, result.run_id)
-                    if _supports_watermark(source) and tracker.as_text():
-                        set_watermark(
-                            data,
-                            source.name,
-                            tracker.as_text(),
-                            source.watermark_type,
-                            result.run_id,
-                        )
                     _record_schema_changes(data, sink, source, result.run_id)
                     result.units_processed += 1
-            if full:
-                _check_volume(source, state, result)
-        if not full:
+            if full and result.rows_loaded == 0:
+                raise EmptyFullLoadError(
+                    f"{source.name}: carga full sem linhas; versão anterior mantida"
+                )
             _check_volume(source, state, result)
         result.units_skipped = getattr(extractor, "skipped", 0)
         deferred = getattr(extractor, "deferred", [])
@@ -263,27 +194,11 @@ def _execute(source: AnySource, settings: Settings, state: StateStore, result: R
             result.warnings.append(
                 f"{len(deferred)} arquivo(s) em gravação; entram na próxima execução"
             )
-        result.rows_deleted = getattr(sink, "rows_deleted", 0)
-        result.watermark_to = tracker.as_text() or result.watermark_from
-        result.new_columns = list(getattr(sink, "new_columns", []))
+        result.new_columns = list(sink.new_columns)
 
 
-def _build_sink(source: AnySource, settings: Settings, conn: psycopg.Connection, run_id: str):
-    if source.sink == "parquet":
-        return ParquetSink(settings.lake_uri, source.table, source.load_strategy, run_id)
-    return PostgresSink(
-        conn,
-        source.name,
-        source.table,
-        source.load_strategy,
-        source.primary_key,
-        run_id,
-        delete_detection=source.delete_detection,
-    )
-
-
-def _record_schema_changes(conn, sink, source: AnySource, run_id: str) -> None:
-    pending = getattr(sink, "new_columns", [])
+def _record_schema_changes(conn, sink: PostgresSink, source: AnySource, run_id: str) -> None:
+    pending = sink.new_columns
     recorded = getattr(sink, "_recorded", 0)
     for col in pending[recorded:]:
         conn.execute(
@@ -313,7 +228,6 @@ def _summary(r: RunResult) -> dict[str, Any]:
         "rows_filtered",
         "rows_loaded",
         "rows_rejected",
-        "rows_deleted",
         "duration_s",
     )
     return {k: getattr(r, k) for k in keys}

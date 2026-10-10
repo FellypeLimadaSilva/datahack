@@ -7,7 +7,16 @@ defaults:
   max_file_mb: 50
 
 tables:
-  - name: controle_atualizacao
-    suppress: false
-  - name: dh_catalogo_dados
-    suppress: false
+  - { name: p1_trajetoria_coorte, min_cell_column: qt_ingressante }
+  - { name: p2_desistencia_curso, min_cell_column: qt_ingressante }
+  - { name: p2_desistencia_area, min_cell_column: qt_ingressante }
+  - { name: p3_rede_modalidade_ano, min_cell_column: qt_vinculo }
+  - { name: p4_qualidade_curso, min_cell_column: qt_ingressante }
+  - { name: p4_qualidade_faixa, min_cell_column: qt_ingressante }
+  - { name: p4_fatores, min_cell_column: nu_cursos }
+  - { name: p5_licenciaturas_curso, min_cell_column: qt_ingressante }
+  - { name: p5_funil_licenciaturas, min_cell_column: qt_ingressante }
+  - { name: b1_desertos_municipio, suppress: false }
+  - { name: b2_financiamento_ano, min_cell_column: qt_matricula }
+  - { name: b2_financiamento_desistencia, min_cell_column: qt_ingressante }
+  - { name: controle_atualizacao, suppress: false }

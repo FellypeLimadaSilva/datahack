@@ -1,0 +1,54 @@
+version: 2
+
+models:
+  - name: int_trajetoria_acumulada
+    description: Trajetória com desistência, conclusão e óbito acumulados por curso e coorte.
+    data_tests:
+      - dh_flow_balance
+      - dh_row_count_equal:
+          arguments:
+            compare_model: ref('stg_trajetoria')
+
+  - name: int_censo_curso_ano
+    description: Censo agregado de município para curso. Grão ano x curso, só graduação (nível 1).
+    data_tests:
+      - dh_unique_combination:
+          arguments:
+            combination_of_columns: [nu_ano_censo, co_curso]
+      - dh_sum_equal:
+          arguments:
+            column_name: qt_mat
+            compare_model: ref('stg_censo_cursos')
+            compare_column: qt_mat
+            compare_filter: tp_nivel_academico = 1
+
+  - name: int_cpc_curso
+    description: >
+      Uma edição de CPC por curso, a mais recente entre as edições do desafio. Evita multiplicar a
+      Trajetória quando o curso tem mais de uma edição.
+    columns:
+      - { name: co_curso, data_tests: [unique, not_null] }
+
+  - name: int_trajetoria_marco
+    description: >
+      Uma linha por curso e coorte com os acumulados no ano do curso de comparação (var
+      ano_curso_comparacao, padrão 4) e no último ano observado. Comparar coortes no mesmo ano do
+      curso evita confundir tempo de acompanhamento com desempenho.
+    data_tests:
+      - dh_unique_combination:
+          arguments:
+            combination_of_columns: [co_curso, nu_ano_ingresso]
+
+  - name: int_curso_desistencia
+    description: >
+      Uma linha por curso: coortes somadas no ano do curso de comparação, com a edição de CPC
+      escolhida em int_cpc_curso. Valores sem máscara; a Gold aplica a regra de células pequenas.
+    columns:
+      - { name: co_curso, data_tests: [unique, not_null] }
+    data_tests:
+      - dh_sum_equal:
+          arguments:
+            column_name: qt_ingressante
+            compare_model: ref('int_trajetoria_marco')
+            compare_column: qt_ingressante
+            compare_filter: tem_marco

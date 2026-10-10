@@ -9,13 +9,44 @@
     select {{ column_name }} from {{ model }} where {{ column_name }} < {{ min_value }}
 {% endtest %}
 
-{% test dh_invalid_ratio(model, column_name, max_ratio=0) %}
-    select ratio
-    from (
-        select count(*) filter (where {{ column_name }} > 0)::numeric / nullif(count(*), 0) as ratio
+{% test dh_between(model, column_name, min_value, max_value) %}
+    select {{ column_name }}
+    from {{ model }}
+    where {{ column_name }} < {{ min_value }} or {{ column_name }} > {{ max_value }}
+{% endtest %}
+
+{% test dh_no_small_cells(model) %}
+    {%- set cols = [] -%}
+    {%- for c in adapter.get_columns_in_relation(model) -%}
+        {%- if c.name.startswith('qt_') -%}
+            {%- do cols.append(c.name) -%}
+        {%- endif -%}
+    {%- endfor -%}
+    {%- if cols | length == 0 -%}
+        select 1 where false
+    {%- else -%}
+        select *
         from {{ model }}
-    ) x
-    where ratio > {{ max_ratio }}
+        where {% for c in cols %}({{ c }} between 1 and {{ var('min_cell') }} - 1){% if not loop.last %} or {% endif %}{% endfor %}
+    {%- endif -%}
+{% endtest %}
+
+{% test dh_row_count_equal(model, compare_model, model_filter='true', compare_filter='true') %}
+    with a as (select count(*) as n from {{ model }} where {{ model_filter }}),
+    b as (select count(*) as n from {{ compare_model }} where {{ compare_filter }})
+    select a.n as modelo, b.n as referencia from a cross join b where a.n <> b.n
+{% endtest %}
+
+{% test dh_sum_equal(model, column_name, compare_model, compare_column, model_filter='true', compare_filter='true') %}
+    with a as (select coalesce(sum({{ column_name }}), 0) as s from {{ model }} where {{ model_filter }}),
+    b as (select coalesce(sum({{ compare_column }}), 0) as s from {{ compare_model }} where {{ compare_filter }})
+    select a.s as modelo, b.s as referencia from a cross join b where a.s <> b.s
+{% endtest %}
+
+{% test dh_flow_balance(model) %}
+    select *
+    from {{ model }}
+    where qt_permanencia + qt_concluinte_acum + qt_desistencia_acum + qt_falecido_acum <> qt_ingressante
 {% endtest %}
 
 {% test dh_join_coverage(model, column_name, to, field, min_ratio=0.95) %}

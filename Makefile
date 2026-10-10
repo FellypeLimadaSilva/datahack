@@ -3,11 +3,11 @@ COMPOSE := docker compose
 CLI := $(COMPOSE) run --rm cli
 
 .DEFAULT_GOAL := help
-.PHONY: help env up up-lite smoke down restart ps logs build sample demo-inbox discover ingest models export dbt-build dbt-test dbt-docs pipeline images-save images-load \
-        psql db-bootstrap backup ha-up alert-test test lint fmt clean nuke
+.PHONY: help env up up-lite smoke down restart ps logs build ingest gate publish rollback export dbt-build dbt-test dbt-docs pipeline images-save images-load \
+        psql db-bootstrap backup test lint fmt clean nuke
 
 help:
-	@echo "env build up up-lite smoke down restart ps logs sample demo-inbox discover ingest models export images-save images-load dbt-build dbt-test dbt-docs pipeline psql db-bootstrap backup ha-up alert-test test lint fmt clean nuke"
+	@echo "env build up up-lite smoke down restart ps logs ingest gate publish rollback export images-save images-load dbt-build dbt-test dbt-docs pipeline psql db-bootstrap backup test lint fmt clean nuke"
 
 env:
 	python3 scripts/init_env.py
@@ -48,20 +48,17 @@ ps:
 logs:
 	$(COMPOSE) logs -f --tail=200 $(s)
 
-sample:
-	$(CLI) python scripts/generate_sample_data.py --out data/landing/sample
-
-demo-inbox:
-	$(CLI) python scripts/generate_messy_data.py --out data/landing/inbox
-
-discover:
-	$(CLI) python -m datahack_ingest discover
-
 ingest:
 	$(CLI) python -m datahack_ingest run $(if $(s),$(s),--all --continue-on-error)
 
-models:
-	$(CLI) python -m datahack_ingest generate-models $(if $(reset),--reset,)
+gate:
+	$(CLI) python -m datahack_ingest gate
+
+publish:
+	$(CLI) python -m datahack_ingest publish
+
+rollback:
+	$(CLI) python -m datahack_ingest rollback
 
 export:
 	$(CLI) python -m datahack_ingest export
@@ -76,23 +73,13 @@ dbt-docs:
 	$(CLI) bash -c "DBT_TARGET_PATH=/opt/datahack/dbt/target dbt docs generate --project-dir dbt"
 
 pipeline:
-	@status=0; $(CLI) python -m datahack_ingest run --all --continue-on-error || status=$$?; \
-	if [ $$status -ne 0 ] && [ "$${DH_REQUIRE_ALL_SOURCES:-false}" = "true" ]; then exit $$status; fi; \
-	$(CLI) python -m datahack_ingest generate-models && \
-	$(CLI) dbt build --project-dir dbt && \
-	$(CLI) python -m datahack_ingest export && exit $$status
+	$(CLI) python -m datahack_ingest pipeline
 
 psql:
 	$(COMPOSE) exec warehouse bash -c 'psql -U $$POSTGRES_USER -d $$POSTGRES_DB'
 
 backup:
 	$(COMPOSE) run --rm -e BACKUP_ONCE=true warehouse-backup
-
-ha-up:
-	$(COMPOSE) --profile ha up -d warehouse-replica
-
-alert-test:
-	$(CLI) python -m datahack_ingest alert-test
 
 db-bootstrap:
 	$(COMPOSE) exec warehouse bash /docker-entrypoint-initdb.d/10-bootstrap.sh

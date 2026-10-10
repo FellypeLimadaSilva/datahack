@@ -17,7 +17,7 @@ run_backup() {
   final="${dir}/${PGDATABASE}_${ts}.dump"
   tmp="${dir}/.${PGDATABASE}_${ts}.partial"
   pg_dump --format=custom --compress=6 --no-owner --file="$tmp"
-  pg_restore --list "$tmp" > /dev/null
+  pg_restore --list "$tmp" > /dev/null || { echo "[backup] arquivo ilegível" >&2; rm -f "$tmp"; return 1; }
   mv "$tmp" "$final"
   sha256sum "$final" > "${final}.sha256"
   find "$dir" -maxdepth 1 -name "${PGDATABASE}_*.dump*" -mtime +"$retention" -delete

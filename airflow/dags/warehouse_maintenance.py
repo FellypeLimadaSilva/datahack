@@ -9,13 +9,6 @@ import pendulum
 from airflow.providers.standard.operators.bash import BashOperator
 from airflow.sdk import dag
 
-
-def notify_failure(context) -> None:
-    from datahack_ingest.airflow_hooks import notify_failure as _notify
-
-    _notify(context)
-
-
 DH_HOME = os.environ.get("DH_HOME", "/opt/datahack")
 PYTHON = os.environ.get("DH_PYTHON", sys.executable)
 RETENTION = int(os.environ.get("DH_OPS_RETENTION_DAYS", "90"))
@@ -38,7 +31,6 @@ def warehouse_maintenance():
             f"{shlex.quote(PYTHON)} -m datahack_ingest maintenance --retention-days {RETENTION}"
         ),
         execution_timeout=timedelta(hours=1),
-        on_failure_callback=notify_failure,
     )
 
 

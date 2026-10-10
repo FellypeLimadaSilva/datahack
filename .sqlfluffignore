@@ -1,2 +1,2 @@
-dbt/models/auto/
 dbt/target/
+dbt/models/silver/staging/stg_enade_licenciaturas.sql

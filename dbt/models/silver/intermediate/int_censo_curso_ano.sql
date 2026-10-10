@@ -1,0 +1,27 @@
+select
+    nu_ano_censo,
+    co_curso,
+    min(co_ies) as co_ies,
+    min(no_curso) as no_curso,
+    min(tp_rede) as tp_rede,
+    min(rede) as rede,
+    min(tp_modalidade_ensino) as tp_modalidade_ensino,
+    min(modalidade) as modalidade,
+    min(tp_grau_academico) as tp_grau_academico,
+    min(no_cine_area_geral) as no_cine_area_geral,
+    count(*) as nu_municipios_oferta,
+    sum(nu_vagas) as nu_vagas,
+    sum(qt_ing) as qt_ing,
+    sum(qt_mat) as qt_mat,
+    sum(qt_conc) as qt_conc,
+    sum(qt_sit_trancada) as qt_sit_trancada,
+    sum(qt_sit_desvinculado) as qt_sit_desvinculado,
+    sum(qt_sit_transferido) as qt_sit_transferido,
+    sum(qt_sit_falecido) as qt_sit_falecido,
+    sum(qt_ing_fies) as qt_ing_fies,
+    sum(qt_ing_prouni_integral + qt_ing_prouni_parcial) as qt_ing_prouni,
+    sum(qt_mat_fies) as qt_mat_fies,
+    sum(qt_mat_prouni_integral + qt_mat_prouni_parcial) as qt_mat_prouni
+from {{ ref('stg_censo_cursos') }}
+where tp_nivel_academico = 1
+group by nu_ano_censo, co_curso

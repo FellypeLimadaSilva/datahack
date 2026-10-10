@@ -15,24 +15,6 @@
       "problemMatcher": []
     },
     {
-      "label": "DH: 2. gerar dados de exemplo",
-      "type": "shell",
-      "command": "docker compose run --rm cli python scripts/generate_sample_data.py --out data/landing/sample",
-      "problemMatcher": []
-    },
-    {
-      "label": "DH: 2b. gerar inbox de demonstração (arquivos bagunçados)",
-      "type": "shell",
-      "command": "docker compose run --rm cli python scripts/generate_messy_data.py --out data/landing/inbox",
-      "problemMatcher": []
-    },
-    {
-      "label": "DH: 2c. ver o que a inbox detectou",
-      "type": "shell",
-      "command": "docker compose run --rm cli python -m datahack_ingest discover",
-      "problemMatcher": []
-    },
-    {
       "label": "DH: 3. ingerir todas as fontes",
       "type": "shell",
       "command": "docker compose run --rm cli python -m datahack_ingest run --all --continue-on-error",
@@ -51,13 +33,7 @@
       "problemMatcher": []
     },
     {
-      "label": "DH: 3d. gerar Silver/Gold automáticas",
-      "type": "shell",
-      "command": "docker compose run --rm cli python -m datahack_ingest generate-models",
-      "problemMatcher": []
-    },
-    {
-      "label": "DH: 4. dbt build",
+      "label": "DH: 4. dbt build (schema candidato)",
       "type": "shell",
       "command": "docker compose run --rm cli dbt build --project-dir dbt",
       "group": "build",
@@ -120,6 +96,13 @@
       "label": "DH: derrubar plataforma",
       "type": "shell",
       "command": "docker compose down",
+      "problemMatcher": []
+    },
+    {
+      "label": "DH: 5. pipeline completo (portão + publicação + outputs)",
+      "type": "shell",
+      "command": "docker compose run --rm cli python -m datahack_ingest pipeline",
+      "group": "build",
       "problemMatcher": []
     }
   ],

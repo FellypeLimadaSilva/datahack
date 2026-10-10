@@ -32,7 +32,6 @@ def env(settings, tmp_path, unique_name):
         c.execute(sql.SQL("DROP TABLE IF EXISTS {}").format(sql.Identifier("bronze", unique_name)))
         for t in (
             "ingestion_runs",
-            "watermarks",
             "file_manifest",
             "schema_changes",
             "rejected_rows",
@@ -48,23 +47,6 @@ def _rows(s, query: str, *params):
         return c.execute(query, params).fetchall()
 
 
-def test_merge_upserts_rejects_null_pk_and_is_idempotent(env):
-    s, d, name = env
-    (d / "a.csv").write_text("id,valor\n1,10\n2,20\n,99\n", encoding="utf-8")
-    src = _file_source(name, "*.csv", load_strategy="merge", primary_key=["id"])
-    r1 = run_source(src, s)
-    assert (r1.rows_loaded, r1.rows_rejected) == (2, 1)
-
-    (d / "b.csv").write_text("id,valor\n1,10\n2,25\n3,30\n", encoding="utf-8")
-    r2 = run_source(src, s)
-    assert r2.units_skipped == 1 and r2.rows_loaded == 2
-    data = _rows(s, f'SELECT id, valor FROM bronze."{name}" ORDER BY id::int')
-    assert data == [("1", "10"), ("2", "25"), ("3", "30")]
-
-    r3 = run_source(src, s)
-    assert r3.units_processed == 0 and r3.units_skipped == 2
-
-
 def test_full_replaces_atomically_and_schema_drift_is_audited(env):
     s, d, name = env
     f = d / "c.csv"
@@ -77,19 +59,6 @@ def test_full_replaces_atomically_and_schema_drift_is_audited(env):
     assert _rows(s, f'SELECT id, nova_coluna FROM bronze."{name}"') == [("3", "x")]
     changes = _rows(s, "SELECT column_name FROM ops.schema_changes WHERE source = %s", name)
     assert ("nova_coluna",) in changes
-
-
-def test_failure_rolls_back_and_is_recorded(env):
-    s, d, name = env
-    (d / "ok.csv").write_text("id\n1\n", encoding="utf-8")
-    src = _file_source(name, "ok.csv", load_strategy="merge", primary_key=["id_inexistente"])
-    with pytest.raises(ValueError, match="primary_key ausente"):
-        run_source(src, s)
-    status = _rows(
-        s, "SELECT status, error IS NOT NULL FROM ops.ingestion_runs WHERE source = %s", name
-    )
-    assert status == [("failed", True)]
-    assert _rows(s, "SELECT count(*) FROM ops.file_manifest WHERE source = %s", name) == [(0,)]
 
 
 def test_concurrent_run_is_blocked_by_advisory_lock(env):
@@ -111,106 +80,70 @@ def test_ingestor_cannot_read_gold_or_silver(settings):
             assert row == (False,), f"dh_ingestor não deveria acessar {schema}"
 
 
-def test_parquet_sink_writes_partitioned_lake(env, tmp_path_factory):
+def test_append_loads_each_file_once_and_rerun_is_noop(env):
     s, d, name = env
-    lake = tmp_path_factory.mktemp("lake")
-    s = dataclasses.replace(s, lake_uri=str(lake))
-    (d / "e.csv").write_text("id,evento\n1,click\n2,view\n", encoding="utf-8")
-    src = _file_source(name, "e.csv", sink="parquet", load_strategy="append")
-    r = run_source(src, s)
-    assert r.rows_loaded == 2
-    files = list((lake / "bronze" / name).rglob("*.parquet"))
-    assert len(files) == 1 and files[0].parent.name.startswith("ingest_date=")
-    import pyarrow.parquet as pq
+    (d / "a_2021.csv").write_text("ano,v\n2021,10\n2021,20\n", encoding="utf-8")
+    src = _file_source(name, "*.csv", load_strategy="append")
+    r1 = run_source(src, s)
+    assert (r1.units_processed, r1.rows_loaded) == (1, 2)
+    (d / "a_2023.csv").write_text("ano,v\n2023,30\n", encoding="utf-8")
+    r2 = run_source(src, s)
+    assert (r2.units_processed, r2.units_skipped, r2.rows_loaded) == (1, 1, 1)
+    r3 = run_source(src, s)
+    assert (r3.units_processed, r3.rows_loaded) == (0, 0)
+    years = _rows(s, f'SELECT ano, count(*) FROM bronze."{name}" GROUP BY ano ORDER BY ano')
+    assert years == [("2021", 2), ("2023", 1)]
 
-    t = pq.read_table(files[0])
-    assert t.column("evento").to_pylist() == ["click", "view"]
-    assert "_dh_row_hash" in t.column_names
+
+def test_full_with_many_files_keeps_all_of_them(env):
+    s, d, name = env
+    for year in (2021, 2022, 2023):
+        (d / f"p_{year}.csv").write_text(f"ano\n{year}\n", encoding="utf-8")
+    src = _file_source(name, "p_*.csv", load_strategy="full")
+    run_source(src, s)
+    run_source(src, s)
+    assert _rows(s, f'SELECT ano FROM bronze."{name}" ORDER BY ano') == [
+        ("2021",),
+        ("2022",),
+        ("2023",),
+    ]
+
+
+def test_missing_essential_column_rolls_back_the_file(env):
+    s, d, name = env
+    (d / "a.csv").write_text("id,valor\n1,10\n", encoding="utf-8")
+    src = _file_source(name, "a.csv", essential_columns=["id", "qt_ingressante"])
+    with pytest.raises(Exception, match="colunas essenciais"):
+        run_source(src, s)
+    status = _rows(
+        s, "SELECT status, error IS NOT NULL FROM ops.ingestion_runs WHERE source = %s", name
+    )
+    assert status == [("failed", True)]
+    assert _rows(s, "SELECT count(*) FROM ops.file_manifest WHERE source = %s", name) == [(0,)]
+    exists = _rows(s, "SELECT to_regclass(%s) IS NULL", f"bronze.{name}")
+    count = (0,) if exists == [(True,)] else _rows(s, f'SELECT count(*) FROM bronze."{name}"')[0]
+    assert count == (0,)
+
+
+def test_empty_full_load_keeps_previous_version(env):
+    s, d, name = env
+    f = d / "c.csv"
+    f.write_text("id\n1\n2\n", encoding="utf-8")
+    src = _file_source(
+        name,
+        "c.csv",
+        load_strategy="full",
+        transforms=[{"op": "filter", "column": "id", "operator": "ne", "value": "x"}],
+    )
+    run_source(src, s)
+    f.write_text("id\nx\n", encoding="utf-8")
+    with pytest.raises(Exception, match="sem linhas"):
+        run_source(src, s)
+    assert _rows(s, f'SELECT id FROM bronze."{name}" ORDER BY id') == [("1",), ("2",)]
 
 
 def _write_ids(path, ids):
     path.write_text("id,nome\n" + "".join(f"{i},n{i}\n" for i in ids), encoding="utf-8")
-
-
-def test_soft_delete_detection_and_resurrection(env):
-    s, d, name = env
-    src = _file_source(
-        name,
-        "snap_*.csv",
-        load_strategy="merge",
-        primary_key=["id"],
-        delete_detection={"mode": "soft", "max_delete_ratio": 0.5},
-    )
-    _write_ids(d / "snap_1.csv", [1, 2, 3, 4])
-    run_source(src, s)
-    _write_ids(d / "snap_2.csv", [1, 2, 3])
-    r = run_source(src, s)
-    assert r.rows_deleted == 1
-    rows = _rows(s, f'SELECT id, _dh_deleted_at IS NOT NULL FROM bronze."{name}" ORDER BY id')
-    assert rows == [("1", False), ("2", False), ("3", False), ("4", True)]
-    _write_ids(d / "snap_3.csv", [1, 2, 3, 4])
-    run_source(src, s)
-    assert _rows(s, f'SELECT count(*) FROM bronze."{name}" WHERE _dh_deleted_at IS NOT NULL') == [
-        (0,)
-    ]
-
-
-def test_delete_guard_blocks_mass_deletion_and_rolls_back(env):
-    s, d, name = env
-    src = _file_source(
-        name,
-        "snap_*.csv",
-        load_strategy="merge",
-        primary_key=["id"],
-        delete_detection={"mode": "hard", "max_delete_ratio": 0.3},
-    )
-    _write_ids(d / "snap_1.csv", range(1, 11))
-    run_source(src, s)
-    _write_ids(d / "snap_2.csv", [1, 99])
-    with pytest.raises(Exception, match="bloqueada"):
-        run_source(src, s)
-    assert _rows(s, f'SELECT count(*) FROM bronze."{name}"') == [(10,)]
-    assert _rows(s, f"SELECT count(*) FROM bronze.\"{name}\" WHERE id = '99'") == [(0,)]
-
-
-def test_hard_delete_with_keys_query_on_incremental_sql(env, tmp_path_factory, monkeypatch):
-    from sqlalchemy import create_engine, text
-
-    s, _, name = env
-    db = tmp_path_factory.mktemp("src") / "erp.db"
-    url = f"sqlite:///{db}"
-    with create_engine(url).begin() as c:
-        c.execute(text("create table t (id integer, upd integer)"))
-        c.execute(text("insert into t values (1, 10), (2, 20), (3, 30)"))
-    monkeypatch.setenv("ERP_TEST_URL", url)
-    src = Catalog.model_validate(
-        {
-            "sources": [
-                {
-                    "name": name,
-                    "kind": "sql",
-                    "load_strategy": "merge",
-                    "primary_key": ["id"],
-                    "watermark_column": "upd",
-                    "watermark_type": "integer",
-                    "delete_detection": {
-                        "mode": "hard",
-                        "scope": "keys_query",
-                        "keys_query": "select id from t",
-                        "max_delete_ratio": 0.9,
-                    },
-                    "sql": {"url_env": "ERP_TEST_URL", "table": "t"},
-                }
-            ]
-        }
-    ).sources[0]
-    run_source(src, s)
-    with create_engine(url).begin() as c:
-        c.execute(text("delete from t where id = 2"))
-        c.execute(text("insert into t values (4, 40)"))
-    r = run_source(src, s)
-    assert r.rows_deleted == 1 and r.watermark_from == "30"
-    assert _rows(s, f'SELECT id FROM bronze."{name}" ORDER BY id') == [("1",), ("3",), ("4",)]
 
 
 def test_volume_check_fail_blocks_full_reload(env):
