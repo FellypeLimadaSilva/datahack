@@ -1,0 +1,5 @@
+# Acrescenta o seed SINTÉTICO. Só roda na PRIMEIRA criação do volume (apague com: docker compose down -v).
+services:
+  db:
+    volumes:
+      - ./sql/90_demo_seed.sql:/docker-entrypoint-initdb.d/90_demo_seed.sql:ro

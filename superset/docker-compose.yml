@@ -1,0 +1,38 @@
+# Rota do Diploma · Superset + Postgres (camada analítica "mart")
+#   docker compose up -d --build                  -> sobe vazio (marts criados, sem dados)
+#   docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d --build
+#                                                  -> sobe com dados SINTÉTICOS de demonstração
+# Superset: http://localhost:8088  (admin / admin)   ·  Postgres: localhost:5434 (rota / rota / rota)
+name: rota-do-diploma
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: rota
+      POSTGRES_PASSWORD: rota
+      POSTGRES_DB: rota
+    ports: ["5434:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/00_superset_db.sql:/docker-entrypoint-initdb.d/00_superset_db.sql:ro
+      - ./sql/00_marts_ddl.sql:/docker-entrypoint-initdb.d/10_marts_ddl.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rota -d rota"]
+      interval: 3s
+      retries: 30
+  superset:
+    build: .
+    depends_on:
+      db: { condition: service_healthy }
+    ports: ["8088:8088"]
+    environment:
+      SUPERSET_SECRET_KEY: troque-esta-chave-em-producao-0123456789abcdef0123456789
+      SUPERSET_DB_URI: postgresql+psycopg2://rota:rota@db:5432/superset
+    volumes:
+      - ./superset_config.py:/app/pythonpath/superset_config.py:ro
+      - ./docker/init.sh:/app/init.sh:ro
+      - ./docker/reimport.py:/app/reimport.py:ro
+      - ./bundle:/bundle:ro
+    command: ["sh", "/app/init.sh"]
+volumes:
+  pgdata:
