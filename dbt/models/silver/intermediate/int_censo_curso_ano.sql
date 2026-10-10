@@ -23,6 +23,7 @@ select
     sum(qt_mat_fies) as qt_mat_fies,
     sum(qt_mat_prouni_integral + qt_mat_prouni_parcial) as qt_mat_prouni,
     sum(qt_mat_escola_publica) as qt_mat_escola_publica,
+    sum(qt_mat_escola_privada) as qt_mat_escola_privada,
     sum(qt_mat_reserva_vaga) as qt_mat_reserva_vaga,
     sum(qt_mat_apoio_social) as qt_mat_apoio_social,
     sum(qt_mat_noturno) as qt_mat_noturno,

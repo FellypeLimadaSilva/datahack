@@ -3,6 +3,7 @@ with censo as (
         co_curso,
         sum(qt_mat) as qt_mat,
         sum(qt_mat_escola_publica) as qt_mat_escola_publica,
+        sum(qt_mat_escola_privada) as qt_mat_escola_privada,
         sum(qt_mat_reserva_vaga) as qt_mat_reserva_vaga,
         sum(qt_mat_apoio_social) as qt_mat_apoio_social,
         sum(qt_mat_noturno) as qt_mat_noturno,
@@ -17,7 +18,7 @@ fatores as (
     select
         co_curso,
         'Escola pública no ensino médio' as fator,
-        qt_mat_escola_publica::numeric / nullif(qt_mat, 0) as share
+        qt_mat_escola_publica::numeric / nullif(qt_mat_escola_publica + qt_mat_escola_privada, 0) as share
     from censo
     union all
     select

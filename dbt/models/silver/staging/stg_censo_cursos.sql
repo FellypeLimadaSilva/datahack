@@ -35,6 +35,7 @@ select
     {{ dh_to_int('qt_mat_prounii') }}::bigint as qt_mat_prouni_integral,
     {{ dh_to_int('qt_mat_prounip') }}::bigint as qt_mat_prouni_parcial,
     {{ dh_to_int('qt_mat_procescpublica') }}::bigint as qt_mat_escola_publica,
+    {{ dh_to_int('qt_mat_procescprivada') }}::bigint as qt_mat_escola_privada,
     {{ dh_to_int('qt_mat_reserva_vaga') }}::bigint as qt_mat_reserva_vaga,
     {{ dh_to_int('qt_mat_apoio_social') }}::bigint as qt_mat_apoio_social,
     {{ dh_to_int('qt_mat_noturno') }}::bigint as qt_mat_noturno,
