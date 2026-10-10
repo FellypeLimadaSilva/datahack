@@ -31,14 +31,14 @@ EXTRA_CATEGORICAL_COLOR_SCHEMES = [{
     "description": "UNIVAG · categórica",
     "label": "UNIVAG",
     "isDefault": True,
-    "colors": ["#1A2B5E", "#818AA6", "#4A5A8C", "#B4BAD0", "#2F4A8A", "#6C757D", "#0066CC", "#00AEF0"],
+    "colors": ["#1A2B5E", "#818AA6", "#4A5A8C", "#B4BAD0", "#2F4A8A", "#6C757D", "#8FA3D1", "#3E4C7E"],
 }]
 EXTRA_SEQUENTIAL_COLOR_SCHEMES = [{
     "id": "univag_seq",
     "description": "UNIVAG · sequencial",
     "label": "UNIVAG sequencial",
     "isDiverging": False,
-    "colors": ["#D9E8F7", "#A6C9ED", "#66A3E0", "#0066CC", "#1A2B5E"],
+    "colors": ["#EEF0F5", "#B4BAD0", "#818AA6", "#4A5A8C", "#1A2B5E"],
 }]
 # Cartões de KPI (gráfico Handlebars) precisam de style/class no HTML; só administradores editam dashboards.
 HTML_SANITIZATION_SCHEMA_EXTENSIONS = {"attributes": {"*": ["style", "className"]}}

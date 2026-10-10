@@ -27,6 +27,8 @@ def para_planilhas(contents: dict) -> dict:
         if path.startswith("datasets/") and path.endswith(".yaml"):
             conf = json.loads(text)
             conf["schema"] = None
+            if conf.get("sql"):   # dataset virtual (seletor "Exibir em"): no SQLite as tabelas não têm schema
+                conf["sql"] = conf["sql"].replace("gold.", "")
             contents[path] = json.dumps(conf, ensure_ascii=False)
         elif path.startswith("dashboards/") and path.endswith(".yaml"):
             conf = json.loads(text)

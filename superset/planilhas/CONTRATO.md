@@ -5,7 +5,7 @@
 
 ## p1_trajetoria_coorte
 
-P1 · Indicadores de Trajetória (INEP). Grão: modalidade × coorte × ano de referência. Taxas já em %, ponderadas pelos ingressantes ao reagregar.
+P1 · Indicadores de Trajetória (INEP). Grão: modalidade × coorte × ano de referência. Taxas já em %, ponderadas pelos ingressantes ao reagregar. Em "Exibir em: Número", as métricas viram contagens de estudantes.
 
 | Coluna | Tipo | Rótulo no dashboard |
 |---|---|---|
@@ -71,7 +71,7 @@ P2 · Desistência por área CINE, coorte e ano do curso. Grão: área × modali
 
 ## p3_rede_modalidade_ano
 
-P3 · Censo da Educação Superior 2021–2024. Grão: ano × rede × modalidade.
+P3 · Censo da Educação Superior 2021–2024. Grão: ano × rede × modalidade. As variações e a participação nas matrículas são calculadas aqui (janelas) para o modo "Número".
 
 | Coluna | Tipo | Rótulo no dashboard |
 |---|---|---|
@@ -147,7 +147,7 @@ P4 · Correlação de Pearson de cada componente do CPC com a desistência no 4�
 
 ## p5_licenciaturas_curso
 
-P5 · Licenciaturas de MT: desistência (Trajetória) e proficiência no Enade 2025, por curso.
+P5 · Licenciaturas de MT: desistência (Trajetória) e proficiência no Enade 2025, por curso. Em "Número", desistentes e proficientes são estimados por taxa × base.
 
 | Coluna | Tipo | Rótulo no dashboard |
 |---|---|---|
@@ -170,7 +170,7 @@ P5 · Licenciaturas de MT: desistência (Trajetória) e proficiência no Enade 2
 
 ## p5_funil_licenciaturas
 
-P5 · De cada 100 que entram: quantos desistem, concluem e concluem proficientes (a última etapa é estimativa).
+P5 · De cada 100 que entram: quantos desistem, concluem e concluem proficientes (a última etapa é estimativa). Em "Número": ingressantes × taxa.
 
 | Coluna | Tipo | Rótulo no dashboard |
 |---|---|---|
@@ -186,7 +186,7 @@ P5 · De cada 100 que entram: quantos desistem, concluem e concluem proficientes
 
 ## b1_desertos_municipio
 
-B1 · Vagas presenciais por 100 jovens de 18 a 24 anos (Censo da Educação Superior × IBGE 2022). Zero = sem oferta.
+B1 · Vagas presenciais por 100 jovens de 18 a 24 anos (Censo da Educação Superior × IBGE 2022). Zero = sem oferta. Em "Número", o gráfico de oferta mostra as vagas.
 
 | Coluna | Tipo | Rótulo no dashboard |
 |---|---|---|
@@ -201,7 +201,7 @@ B1 · Vagas presenciais por 100 jovens de 18 a 24 anos (Censo da Educação Supe
 
 ## b2_financiamento_ano
 
-B2 · Peso de FIES e ProUni na rede privada. Grão: ano × modalidade.
+B2 · Peso de FIES e ProUni na rede privada. Grão: ano × modalidade. Em "Número": estudantes com FIES ou ProUni.
 
 | Coluna | Tipo | Rótulo no dashboard |
 |---|---|---|

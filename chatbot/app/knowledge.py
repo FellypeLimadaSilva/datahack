@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -28,6 +29,20 @@ class Knowledge:
     tables: set[str] = field(default_factory=set)
     dictionary: str = ""
     topics: str = ""
+
+
+# O dashboard alterna entre porcentagem e número com a coluna "exibicao" (só existe no dataset virtual do Superset).
+# O bot consulta as tabelas gold direto: não enxerga essas colunas e usa sempre a fórmula da taxa.
+_SO_NO_DATASET_VIRTUAL = {"exibicao", "variacao_desvinculados", "variacao_matricula_abs", "pct_matricula_ano"}
+
+
+def _formula_taxa(expr: str) -> str:
+    """'CASE WHEN <modo número> THEN <contagem> ELSE <taxa> END' vira '<taxa>'; tira também o ajuste '/ COUNT(DISTINCT exibicao)'."""
+    if expr.startswith("CASE WHEN COUNT(CASE WHEN exibicao") and " ELSE " in expr:
+        expr = expr.split(" ELSE ", 1)[1]
+        expr = expr[:-4] if expr.endswith(" END") else expr
+    expr = re.sub(r"^CAST\((.*) / COUNT\(DISTINCT exibicao\) AS BIGINT\)$", r"\1", expr)
+    return expr.replace(" / COUNT(DISTINCT exibicao)", "")
 
 
 def _load(path: Path):
@@ -64,12 +79,14 @@ def build() -> Knowledge:
                 parts.append(f"- {key}: {meta[key]}")
         cols = []
         for c in ds.get("columns", []):
-            if not c.get("is_active", True) or c.get("expression"):
+            if not c.get("is_active", True) or c.get("expression") or c["column_name"] in _SO_NO_DATASET_VIRTUAL:
                 continue
             label = f" — {c['verbose_name']}" if c.get("verbose_name") else ""
             cols.append(f"  - {c['column_name']} ({c.get('type')}){label}")
         parts.append("Colunas:\n" + "\n".join(cols))
-        mets = [f"  - «{m.get('verbose_name') or m['metric_name']}» = {m['expression']}" for m in ds.get("metrics", [])]
+        formulas = [(m, _formula_taxa(m["expression"])) for m in ds.get("metrics", [])]
+        mets = [f"  - «{m.get('verbose_name') or m['metric_name']}» = {f}" for m, f in formulas
+                if not any(c in f for c in _SO_NO_DATASET_VIRTUAL)]   # métrica que depende de coluna só do dataset virtual não serve ao bot
         if mets:
             parts.append("Métricas do dashboard (use estas fórmulas ao reagregar):\n" + "\n".join(mets))
         parts.append("")

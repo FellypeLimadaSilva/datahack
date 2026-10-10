@@ -117,9 +117,11 @@ def answer(cl: OpenAI, kn: Knowledge, history: list[dict], context: str, user_id
     sources: set[str] = set()
     n_imagens = 0
 
-    for _ in range(MAX_TOOL_ROUNDS + 1):
+    for rodada in range(MAX_TOOL_ROUNDS + 1):
+        if rodada == MAX_TOOL_ROUNDS:   # última chance: sem ferramentas, responde com o que já conseguiu consultar
+            msgs.append({"role": "system", "content": prompts.ULTIMA_RODADA})
         stream = cl.chat.completions.create(
-            model=MODEL, messages=msgs, tools=TOOLS, tool_choice="auto", stream=True,
+            model=MODEL, messages=msgs, tools=TOOLS, tool_choice="none" if rodada == MAX_TOOL_ROUNDS else "auto", stream=True,
             max_tokens=MAX_OUTPUT_TOKENS, temperature=0.2, extra_body=NO_THINKING, user=user_id,
         )
         text, calls, sent = "", {}, 0
