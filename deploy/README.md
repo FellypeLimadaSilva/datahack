@@ -7,12 +7,12 @@ navegador ─► gateway (nginx, público) ─┬─► superset  (rede privada 
                                        └─► chatbot   (rede privada :8099) ─┼─► Postgres (gold, papel dh_bi_reader somente leitura)
 ```
 
-| Serviço | Config-as-code | Dockerfile | Volume |
+| Serviço | Dockerfile (variável `RAILWAY_DOCKERFILE_PATH`) | Healthcheck | Volume |
 |---|---|---|---|
 | Postgres | plugin da Railway | | (do plugin) |
-| `superset` | `deploy/railway.superset.json` | `deploy/superset.Dockerfile` | não |
-| `chatbot` | `deploy/railway.chatbot.json` | `deploy/chatbot.Dockerfile` | **sim, em `/data`** (guarda a chave da DeepSeek) |
-| `gateway` | `deploy/railway.gateway.json` | `deploy/gateway.Dockerfile` | não |
+| `superset` | `deploy/superset.Dockerfile` | `/health` (900 s) | não |
+| `chatbot` | `deploy/chatbot.Dockerfile` | `/healthz` | **sim, em `/data`** (guarda a chave da DeepSeek) |
+| `gateway` | `deploy/gateway.Dockerfile` | `/gate/health` | não |
 
 Os nomes dos serviços precisam ser exatamente `superset`, `chatbot` e `gateway` (os endereços `*.railway.internal` dependem deles).
 As variáveis estão em [`.env.example`](.env.example).
@@ -20,7 +20,7 @@ As variáveis estão em [`.env.example`](.env.example).
 ## Passo a passo (primeira vez)
 
 1. **Projeto**: railway.com → New Project → **Deploy PostgreSQL**.
-2. **Serviços**: New → GitHub Repo → este repositório, três vezes. Renomeie cada um (`superset`, `chatbot`, `gateway`) e em *Settings → Config-as-code* aponte o arquivo da tabela acima. Branch: `main`.
+2. **Serviços**: New → GitHub Repo → este repositório, três vezes, nomes `superset`, `chatbot`, `gateway`, branch `main`. Em cada um defina a variável `RAILWAY_DOCKERFILE_PATH` (tabela acima) e o healthcheck (Settings → Deploy). O config-as-code `railway.json` está deprecado e o build padrão (Railpack) falha sem isso.
 3. **Variáveis**: cole as de cada serviço (`.env.example`). Gere `SUPERSET_SECRET_KEY` e escolha as senhas.
 4. **Volume do chatbot**: serviço `chatbot` → *Volumes* → mount path `/data`. Variável `RAILWAY_RUN_UID=0` (o volume nasce como root).
 5. **Domínio**: só no `gateway` → *Settings → Networking → Generate Domain*. Copie a URL `https://….up.railway.app` para `CHAT_PARENT_ORIGINS` do `chatbot`.
