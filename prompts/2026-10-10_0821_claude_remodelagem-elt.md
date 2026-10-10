@@ -4,41 +4,147 @@
 |---|---|
 | Ferramenta | Claude (claude.ai, modo agente com acesso ao repositório e ao terminal) |
 | Quem usou | Fellype Lima da Silva |
-| Fase | Fase 1 e Fase 2 (Entregas 1 e 2) |
-| Período | 2026-10-10 08:16 a 14:05 (America/Cuiaba) |
+| Fase | Fases 1 e 2 (Entregas 1 e 2) |
+| Período | 2026-10-10, 08:16 a 14:05 (America/Cuiaba) |
 | Objetivo | Enxugar a arquitetura para o desafio, adotar ELT com dbt e Airflow, validar os indicadores da Gold contra o INEP e incluir o fator social |
-| Registro | Prompts literais do autor (com a grafia original); respostas resumidas em linguagem técnica |
 
-## Consultas
+Cada consulta traz o pedido em linguagem técnica, o que a IA respondeu, como a equipe conferiu
+e onde a mudança ficou registrada. O texto original de cada pedido está no fim do arquivo.
 
-| Nº | Prompt do autor | Objetivo técnico | O que a IA fez | Validação humana e decisão | Evidência |
-|---|---|---|---|---|---|
-| 1 | "ok como clonar o repositorio to em outro pc" | Reproduzir o ambiente no PC do laboratório | Passo a passo de clone e `dh.ps1 doctor` | Executado no laboratório | — |
-| 2 | "precisamos remodelar o que não vamos usar nesta arquitetura configurarr o dbt e ultilizar o elt. mas primeiro deu vamos clonar o repositorio aqui" | Clonar e planejar a remodelagem | Diagnóstico da falha do clone por bundle; troca para clone pelo GitHub | Clone feito pelo GitHub | — |
-| 3 | "?" (com erro do `doctor` no PowerShell 5.1) | Corrigir o diagnóstico do ambiente | `doctor` sem abortar quando o Docker Engine está parado | Rodado de novo no laboratório | `6c1838f` |
-| 4 | "ta tire o que precisa aqui e vamos ultilizar o ELT e vamos usar dbt e airflow e qual base de dados esta faltando? e garanta e trate desses pontos aqui: ..." (com o parecer técnico de 8 pontos) | Atender o parecer: escopo, grão, portão de qualidade, publicação atômica, afirmações técnicas | Silver e Gold escritas à mão com grão declarado; portão de fontes e de dbt; troca atômica de schema com rollback; corrigidas três afirmações (capacidade medida, TRUNCATE e MVCC, `pg_restore --list` não prova restauração) | Revisado ponto a ponto contra o parecer | `b067fb4`, `f8998e6` |
-| 5 | "o que eu preciso fazer da minha parte e o que não recisar do projeto pasta ou arquivos que não vamos ultilizar pode tirar." | Remover o que o desafio não usa | Removidos inbox, modelos automáticos, exemplos de varejo, réplica, alertas, Metabase | Conferido que o CI segue verde | `033e661` |
-| 6 | "ok agora explique para mim o pq de elt e não etl e deixe claro nos resdme tambem e me explique cada pasta e arquivo. e a base de dados ta aqui" | Justificar ELT e documentar o repositório | Seção "Por que ELT e não ETL" e mapa de pastas no README; comando `import-downloads` | Lido e aprovado pelo autor | `8d5e35e` |
-| 7 | "base de dados aqui e como coloco os colaboradores?" | Carregar coorte 2015 e Enade; dar acesso à equipe | Caminhos de cada arquivo; convite de colaborador no GitHub | Bases copiadas para `data/landing/inep` | — |
-| 8 | "?" (lista de colunas do Enade) | Ler o layout real do Enade 2025 | P5 passou a usar o total de concluintes proficientes do arquivo; versão de publicação única por execução | Teste de P5 comparando com o arquivo | `96229ea` |
-| 9 | "isso aqui ja ta publicado? quero que me explique de uma forma coerente e resumida o pq de cada tecnologia entende? dbt airflow etc e como esta o DW? preciso ter tudo na ponta da lingua" | Defesa da arquitetura | Justificativa de PostgreSQL, dbt, Airflow, Docker e da publicação atômica | Usado no micro-pitch | — |
-| 10 | "Airflow me de mais motivos o pq o airflow é util e o pq de post gre preciso ter falas coerentes na hora dew falar o pq de cada coisa" | Argumentos para a banca | Falas curtas para Airflow (retry, agenda, uma tarefa por fonte) e PostgreSQL | Usado no micro-pitch | — |
-| 11 | "Se perguntarem: "Precisava de Airflow para isso?" ... resume pra eu falar mais facil a a parte do airflow" | Resposta curta para a banca | Versão em uma frase | Aceito | — |
-| 12 | "nao entendi ele nao vai organiza tarefa se entra aluno novo ou cursos novo?" | Entender a atualização anual | Explicação: novo arquivo do INEP entra na pasta e a DAG reprocessa só a partição nova | Aceito | — |
-| 13 | "pra extrair da pra ultilizar as api do ibge etc?" | Confirmar extração por API | Confirmado: IBGE SIDRA 9514 já entra por API com nova tentativa | Aceito | — |
-| 14 | "O dbt resume o pq ele é útil?" / "Resume" | Fala curta sobre dbt | Regras em SQL versionado e testado antes de publicar | Aceito | — |
-| 15 | "como o fator social pode integrar a pipeline? e os indicadores na camada gold valide se condiz com que pediu na apresentação." | Incluir fator social e validar a Gold contra o enunciado | Fator social a partir das colunas do próprio Censo (escola pública, cotas, apoio social, noturno, FIES/ProUni, PPI); denominador da Trajetória igual ao do INEP (ingressantes menos falecidos); teste que confere TDA, TCA e TAP | Teste passou com diferença máxima de 0,000000005 p.p. | `ee53383` |
-| 16 | "mas como entrou como entrou como base de dados se pgou da que a gente extraiu tem que ser veridica senioridade e confiabilidade" | Rastreabilidade do fator social | Linhagem documentada: coluna do Censo, staging, intermediária, Gold | Conferido no `_gold__models.yml` | `59cfc56` |
-| 17 | "ta mas essabse mostra tiipo o aluno desisitiu por conta de desistencia por conta do valo queroso saber se esses indicadores na gold faz isso e se faz quero saber ne nossa base faz isso" | Saber se há motivo da desistência | Resposta: o INEP não publica motivo nem dado por aluno; os indicadores mostram associação entre cursos, não causa | Linguagem de associação adotada no pitch | — |
-| 18 | "verifique esses pontos." (tabela de bases extras: ProUni, CadÚnico, RAIS/CAGED, Anatel, IPEA) | Avaliar bases adicionais | Avaliação de cada base: grão, chave de junção e risco; recomendação de não incluir no tempo do evento | Decisão do autor: não incluir | — |
-| 19 | "entendi e o que tenho que faze rna minha parte para testar a pipiline e entregar para analise para fazer os dashboard." | Roteiro de execução e entrega | Sequência `pipeline`, conferência em `ops`, `outputs/` e push | Executado no laboratório | — |
-| 20 | (erros de Git: HEAD.lock e 403 com outro usuário) | Destravar o push | Remoção do lock, troca de credencial do Windows, merge pendente | Push feito | `90c5baa` |
-| 21 | "como assim tem stremilit aqui e como vejo?" / "????????" | Abrir o dashboard | `dh.ps1 dashboard`; aviso de esperar a instalação sem Ctrl+C | Dashboard aberto em localhost:8501 | `dfe89d7` |
-| 22 | "ok entao esta pronto para analise a gold?" | Liberar a Gold para a análise | Confirmação com ressalvas: vaga ofertada não é aluno (B1), P5 final é estimativa, fator social é associação | Gold liberada para a equipe | `f6e3576` |
+## 1. Ambiente no laboratório
+
+**C1. Reproduzir o ambiente em outra máquina**
+- Pedido: clonar o repositório no PC do laboratório e verificar os pré-requisitos.
+- Resposta: o clone por bundle falhou por caminho inexistente; a IA trocou para clone pelo GitHub e rodou o diagnóstico `dh.ps1 doctor`.
+- Validação: clone concluído no laboratório.
+
+**C2. Corrigir o diagnóstico no Windows PowerShell 5.1**
+- Pedido: o `doctor` abortava com `NativeCommandError` quando o Docker Engine estava parado.
+- Resposta: verificação de comandos nativos isolada numa função que não interrompe o script.
+- Validação: `doctor` rodado de novo no laboratório. Commit `6c1838f`.
+
+## 2. Arquitetura
+
+**C3. Atender o parecer técnico (8 pontos) com ELT, dbt e Airflow**
+- Pedido: remodelar a plataforma conforme o parecer, manter dbt e Airflow, adotar ELT e listar as bases que faltavam.
+- Resposta:
+  - Silver e Gold escritas à mão, cada tabela com grão declarado e testado.
+  - Portão de qualidade em duas etapas: fontes obrigatórias completas, depois dbt sem erro.
+  - Publicação atômica por troca de schema (`gold_candidate` → `gold`, anterior em `gold_previous`), com rollback.
+  - Três afirmações técnicas corrigidas: capacidade passou a ser medida e não estimada; ressalva de TRUNCATE com MVCC; `pg_restore --list` não prova restauração, então foi criado o teste de restauração em banco vazio.
+  - Bases que faltavam: Trajetória 2015–2019 e Enade das licenciaturas.
+- Validação: revisado ponto a ponto contra o parecer; teste ponta a ponta cobrindo rejeição e rollback. Commits `b067fb4` e `f8998e6`.
+
+**C4. Remover o que o desafio não usa**
+- Pedido: tirar pastas e arquivos sem uso no desafio.
+- Resposta: removidos inbox, modelos gerados automaticamente, exemplos de varejo, réplica, alertas e Metabase.
+- Validação: CI verde depois da remoção. Commit `033e661`.
+
+**C5. Justificar ELT e documentar o repositório**
+- Pedido: explicar por que ELT e não ETL, registrar isso no README e descrever cada pasta e arquivo.
+- Resposta: comparação ELT × ETL no README, mapa de pastas e o comando `import-downloads` para copiar as bases do INEP.
+- Validação: lido e aprovado pelo autor. Commit `8d5e35e`.
+
+## 3. Bases e qualidade dos dados
+
+**C6. Carregar a coorte 2015 e o Enade; dar acesso à equipe**
+- Pedido: onde colocar os novos arquivos e como adicionar colaboradores no GitHub.
+- Resposta: caminho de cada arquivo em `data/landing/inep` e passo a passo do convite de colaborador.
+- Validação: bases carregadas; ingestão com status `success` em `ops.ingestion_runs`.
+
+**C7. Ler o layout real do Enade 2025**
+- Pedido: ajustar a leitura às colunas reais do arquivo do Enade.
+- Resposta: P5 passou a usar o total de concluintes proficientes do próprio arquivo; versão de publicação única por execução, com sufixo aleatório.
+- Validação: teste de P5 compara o resultado com o arquivo. Commit `96229ea`.
+
+**C8. Integrar o fator social e validar a Gold contra o enunciado**
+- Pedido: incluir o fator social no pipeline e conferir se os indicadores respondem às perguntas da apresentação.
+- Resposta:
+  - Fator social a partir de colunas do próprio Censo (escola pública, cotas, apoio social, noturno, FIES/ProUni, pretos/pardos/indígenas), sem base externa.
+  - Taxas da Trajetória no mesmo método do INEP (ingressantes menos falecidos no denominador).
+  - Teste `dh_matches_inep_rates`, que confere cada linha contra TDA, TCA e TAP do INEP.
+- Validação: o teste achou 29 linhas com até 3,9 p.p. de diferença no cálculo anterior; depois do ajuste, a diferença máxima caiu para 0,000000005 p.p. Commit `ee53383`.
+
+**C9. Garantir a rastreabilidade do fator social**
+- Pedido: mostrar que o fator social vem dos dados extraídos e é confiável.
+- Resposta: linhagem documentada (coluna do Censo → staging → intermediária → Gold); parcela de escola pública calculada só sobre quem informou a origem escolar.
+- Validação: metadados conferidos em `dbt/models/gold/_gold__models.yml`. Commit `59cfc56`.
+
+**C10. Saber se os dados mostram o motivo da desistência**
+- Pedido: verificar se a base indica, por exemplo, desistência por causa do valor da mensalidade.
+- Resposta: o INEP não publica motivo nem dado por aluno; os indicadores mostram associação entre características dos cursos e desistência, não causa.
+- Validação: linguagem de associação adotada no pitch e no dashboard.
+
+**C11. Avaliar bases extras (ProUni, CadÚnico, RAIS/CAGED, Anatel, IPEA)**
+- Pedido: verificar se essas bases deveriam entrar.
+- Resposta: avaliação de grão, chave de junção com o curso e risco de cada uma; recomendação de não incluir no tempo do evento.
+- Validação: decisão do autor de não incluir.
+
+## 4. Defesa da arquitetura
+
+**C12. Justificar cada tecnologia para a banca**
+- Pedido: falas curtas e coerentes sobre PostgreSQL, dbt, Airflow, Docker e o estado do DW, incluindo a resposta para "precisava de Airflow?".
+- Resposta:
+  - Airflow: novas tentativas, agenda e uma tarefa por fonte; a atualização anual do INEP roda sem intervenção.
+  - dbt: regras em SQL versionado e testado antes de publicar.
+  - PostgreSQL: padrão de mercado, gratuito, do tamanho do volume, com papéis de acesso por camada.
+  - API do IBGE: já integrada (SIDRA 9514), com nova tentativa em caso de erro.
+- Validação: usado no micro-pitch.
+
+## 5. Execução e entrega
+
+**C13. Roteiro para testar o pipeline e entregar para a análise**
+- Pedido: o que rodar para testar e liberar os dados para os dashboards.
+- Resposta: sequência `pipeline`, conferência em `ops`, exportação para `outputs/` e push.
+- Validação: executado no laboratório.
+
+**C14. Destravar o push**
+- Pedido: resolver `HEAD.lock` e erro 403 com credencial de outro usuário.
+- Resposta: remoção do lock, troca da credencial salva no Windows e conclusão do merge pendente.
+- Validação: push concluído. Commit `90c5baa`.
+
+**C15. Abrir o dashboard**
+- Pedido: entender e abrir o Streamlit.
+- Resposta: `dh.ps1 dashboard`, com aviso de esperar a instalação sem interromper com Ctrl+C.
+- Validação: dashboard aberto em localhost:8501. Commit `dfe89d7`.
+
+**C16. Liberar a Gold para a análise**
+- Pedido: confirmar se a Gold está pronta.
+- Resposta: liberada, com ressalvas: vaga ofertada não é aluno (B1); a última etapa do P5 é estimativa; fator social e P4 mostram associação; não somar de novo as colunas `qt_*` mascaradas.
+- Validação: Gold liberada para a equipe. Commit `f6e3576`.
 
 ## O que foi aproveitado ou corrigido
 
-- Corrigido pela própria validação: o teste contra o INEP mostrou 29 linhas com diferença de até 3,9 p.p.; a causa era o denominador (o INEP desconta falecidos). O cálculo foi ajustado e o teste ficou permanente.
-- Corrigido: a parcela de escola pública passou a usar só quem informou a origem escolar.
-- Descartado: bases extras sem chave confiável com o curso no tempo do evento.
-- Corrigidas três afirmações técnicas do texto anterior, apontadas no parecer.
+| Tipo | Item |
+|---|---|
+| Corrigido pela validação | Denominador da Trajetória: o teste contra o INEP achou a divergência e o cálculo foi ajustado |
+| Corrigido | Escola pública calculada sobre quem informou a origem escolar |
+| Corrigido | Três afirmações técnicas apontadas no parecer |
+| Removido | Componentes genéricos que não respondiam ao desafio |
+| Descartado | Bases extras sem chave confiável com o curso no tempo do evento |
+
+## Texto original dos pedidos
+
+<details>
+<summary>Prompts como foram digitados</summary>
+
+| Consulta | Texto original |
+|---|---|
+| C1 | "ok como clonar o repositorio to em outro pc" / "precisamos remodelar o que não vamos usar nesta arquitetura configurarr o dbt e ultilizar o elt. mas primeiro deu vamos clonar o repositorio aqui" |
+| C2 | "?" (com o erro do `doctor`) |
+| C3 | "ta tire o que precisa aqui e vamos ultilizar o ELT e vamos usar dbt e airflow e qual base de dados esta faltando? e garanta e trate desses pontos aqui: ..." |
+| C4 | "o que eu preciso fazer da minha parte e o que não recisar do projeto pasta ou arquivos que não vamos ultilizar pode tirar." |
+| C5 | "ok agora explique para mim o pq de elt e não etl e deixe claro nos resdme tambem e me explique cada pasta e arquivo. e a base de dados ta aqui" |
+| C6 | "base de dados aqui e como coloco os colaboradores?" |
+| C7 | "?" (com a lista de colunas do Enade) |
+| C8 | "como o fator social pode integrar a pipeline? e os indicadores na camada gold valide se condiz com que pediu na apresentação." |
+| C9 | "mas como entrou como entrou como base de dados se pgou da que a gente extraiu tem que ser veridica senioridade e confiabilidade" |
+| C10 | "ta mas essabse mostra tiipo o aluno desisitiu por conta de desistencia por conta do valo queroso saber se esses indicadores na gold faz isso e se faz quero saber ne nossa base faz isso" / "entendi e esses indicadores mostra isso?" |
+| C11 | "verifique esses pontos." / "nao entendi resume" |
+| C12 | "isso aqui ja ta publicado? quero que me explique de uma forma coerente e resumida o pq de cada tecnologia entende? dbt airflow etc e como esta o DW? preciso ter tudo na ponta da lingua" / "Airflow me de mais motivos o pq o airflow é util e o pq de post gre preciso ter falas coerentes na hora dew falar o pq de cada coisa" / "Se perguntarem: "Precisava de Airflow para isso?" ... resume pra eu falar mais facil a a parte do airflow" / "nao entendi ele nao vai organiza tarefa se entra aluno novo ou cursos novo?" / "quero falar o airflow vai servi pra isso e tal tal entende?" / "pra extrair da pra ultilizar as api do ibge etc?" / "O dbt resume o pq ele é útil?" / "Resume" |
+| C13 | "entendi e o que tenho que faze rna minha parte para testar a pipiline e entregar para analise para fazer os dashboard." |
+| C14 | (saídas de erro do Git: `HEAD.lock` e 403) |
+| C15 | "como assim tem stremilit aqui e como vejo?" / "????????" / "streamilit deu certo. ..." |
+| C16 | "ok entao esta pronto para analise a gold?" |
+
+</details>
