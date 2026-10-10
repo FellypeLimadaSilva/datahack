@@ -168,8 +168,15 @@ switch ($Command) {
     "pipeline"     { Invoke-Cli python -m datahack_ingest pipeline @Rest }
     "dashboard"    {
         $py = Get-Python
-        if (-not $py) { throw "Python nao encontrado: instale o Python 3.12 para abrir o dashboard." }
-        & $py.Source -m streamlit run dashboard/app.py
+        if ($py -and (Test-Native { & $py.Source -c "import streamlit" })) {
+            & $py.Source -m streamlit run dashboard/app.py
+        } elseif (Get-Command docker -ErrorAction SilentlyContinue) {
+            Write-Host "Dashboard em http://localhost:8501 (Ctrl+C para sair)"
+            docker run --rm -it -p 127.0.0.1:8501:8501 -v "${PWD}:/w" -w /w python:3.12-slim-bookworm `
+                bash -c "pip install -q -r dashboard/requirements.txt && streamlit run dashboard/app.py --server.address 0.0.0.0 --server.headless true"
+        } else {
+            throw "Instale o Python 3.12 e rode: pip install -r dashboard/requirements.txt"
+        }
     }
     "psql"         { docker compose exec warehouse bash -c 'psql -U $POSTGRES_USER -d $POSTGRES_DB' }
     "backup"       { docker compose run --rm -e BACKUP_ONCE=true warehouse-backup }
