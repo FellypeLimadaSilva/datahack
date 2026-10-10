@@ -12,6 +12,7 @@ select
     {{ dh_rate('d.qt_concluinte_final', 'd.qt_ingressante') }}::numeric as taxa_conclusao_final,
     e.area_avaliacao::text as area_enade,
     {{ dh_mask_count('e.qt_concluinte_participante') }}::bigint as qt_participante_enade,
+    {{ dh_mask_count('e.qt_concluinte_proficiente') }}::bigint as qt_proficiente_enade,
     case when e.qt_concluinte_participante >= {{ var('min_cell') }} then e.pct_proficiente end::numeric
         as pct_proficiente,
     e.conceito_faixa::text as conceito_enade_faixa,

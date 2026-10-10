@@ -5,6 +5,7 @@ with cursos as (
         d.qt_desistencia_final,
         d.qt_concluinte_final,
         e.qt_concluinte_participante,
+        e.qt_concluinte_proficiente,
         e.pct_proficiente
     from {{ ref('int_curso_desistencia') }} as d
     left join {{ ref('stg_enade_licenciaturas') }} as e on d.co_curso = e.co_curso
@@ -20,9 +21,12 @@ grupos as (
         sum(qt_concluinte_final) as qt_concluinte,
         count(pct_proficiente) as nu_cursos_enade,
         sum(qt_concluinte_participante) filter (where pct_proficiente is not null) as qt_participante_enade,
-        sum(pct_proficiente * qt_concluinte_participante) filter (where pct_proficiente is not null)
-        / nullif(sum(qt_concluinte_participante) filter (where pct_proficiente is not null), 0)
-            as pct_proficiente
+        coalesce(
+            100.0 * sum(qt_concluinte_proficiente) filter (where pct_proficiente is not null)
+            / nullif(sum(qt_concluinte_participante) filter (where pct_proficiente is not null), 0),
+            sum(pct_proficiente * qt_concluinte_participante) filter (where pct_proficiente is not null)
+            / nullif(sum(qt_concluinte_participante) filter (where pct_proficiente is not null), 0)
+        ) as pct_proficiente
     from cursos
     group by grouping sets ((rede), ())
 )

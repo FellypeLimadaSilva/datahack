@@ -117,6 +117,21 @@ CPC_COLS = [
     "CPC (Contínuo)",
     "CPC (Faixa)",
 ]
+ENADE_COLS = [
+    "Ano",
+    "Código da Área",
+    "Área de Avaliação",
+    "Grau Acadêmico",
+    "Código da IES",
+    "Código do Curso",
+    "Sigla da UF",
+    "Nº de Concluintes Inscritos",
+    "Nº de Concluintes Participantes",
+    "Total de Concluinte igual ou acima do Padrão 1 de Proficiência",
+    "Percentual de Concluintes igual ou acima do Padrão 1 de Proficiência",
+    "Conceito Enade (Faixa)",
+]
+ENADE_PROFICIENTES = {"1002": (30, 21), "1004": (25, 10), "1006": (12, 9)}
 IGC_COLS = ["Ano", "Código da IES", "Nome da IES", "Sigla da UF", "IGC (Contínuo)", "IGC (Faixa)"]
 
 
@@ -397,6 +412,33 @@ def write_cpc(landing: Path, ano: int, drop: str | None = None) -> Path:
     return target
 
 
+def write_enade(landing: Path) -> Path:
+    folder = landing / "inep" / "qualidade"
+    folder.mkdir(parents=True, exist_ok=True)
+    rows = [
+        [
+            2025,
+            "21",
+            "LICENCIATURA",
+            "Licenciatura",
+            co_ies,
+            co_curso,
+            "MT",
+            part + 2,
+            part,
+            prof,
+            round(100 * prof / part, 1),
+            "3",
+        ]
+        for co_curso, co_ies, *_ in CURSOS
+        if co_curso in ENADE_PROFICIENTES
+        for part, prof in [ENADE_PROFICIENTES[co_curso]]
+    ]
+    target = folder / "conceito_enade_licenciaturas.xlsx"
+    _inep_sheet(target, ENADE_COLS, rows)
+    return target
+
+
 def write_igc(landing: Path, ano: int) -> Path:
     folder = landing / "inep" / "qualidade"
     folder.mkdir(parents=True, exist_ok=True)
@@ -418,6 +460,7 @@ def main(argv: list[str] | None = None) -> int:
     write_cpc(landing, 2021)
     write_cpc(landing, 2022)
     write_igc(landing, 2023)
+    write_enade(landing)
     print(f"fixtures INEP em {landing}")
     return 0
 

@@ -6,6 +6,7 @@
 {%- set c_inscritos = dh_pick_column('bronze', 'enade_licenciaturas', ['concluintes_inscritos', 'inscritos']) -%}
 {%- set c_participantes = dh_pick_column('bronze', 'enade_licenciaturas', ['concluintes_participantes$', 'participantes$', 'participantes']) -%}
 {%- set c_proficiencia = dh_pick_column('bronze', 'enade_licenciaturas', ['(percentual|proporcao|perc|taxa).*profici', 'profici.*(percentual|proporcao|perc|taxa)', 'profici']) -%}
+{%- set c_total = dh_pick_column('bronze', 'enade_licenciaturas', ['^(total|quantidade|qt|numero|no)_.*profici']) -%}
 {%- set c_faixa = dh_pick_column('bronze', 'enade_licenciaturas', ['conceito.*faixa', 'faixa']) -%}
 {%- set c_continuo = dh_pick_column('bronze', 'enade_licenciaturas', ['conceito.*continuo', 'continuo']) -%}
 
@@ -33,6 +34,7 @@ tipado as (
         {{ dh_typed_column(c_inscritos, 'bigint') }} as qt_concluinte_inscrito,
         {{ dh_typed_column(c_participantes, 'bigint') }} as qt_concluinte_participante,
         {{ dh_typed_column(c_proficiencia, 'numeric') }} as proficiencia_bruta,
+        {{ dh_typed_column(c_total, 'bigint') }} as qt_concluinte_proficiente,
         {{ dh_typed_column(c_faixa) }} as conceito_faixa,
         {{ dh_typed_column(c_continuo, 'numeric') }} as conceito_continuo
     from versao
@@ -45,6 +47,7 @@ select
     area_avaliacao,
     qt_concluinte_inscrito,
     qt_concluinte_participante,
+    qt_concluinte_proficiente,
     case
         when max(proficiencia_bruta) over () <= 1 then proficiencia_bruta * 100
         else proficiencia_bruta
@@ -61,6 +64,7 @@ select
     null::text as area_avaliacao,
     null::bigint as qt_concluinte_inscrito,
     null::bigint as qt_concluinte_participante,
+    null::bigint as qt_concluinte_proficiente,
     null::numeric as pct_proficiente,
     null::text as conceito_faixa,
     null::numeric as conceito_continuo
