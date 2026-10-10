@@ -212,6 +212,12 @@ switch ($Command) {
             if ($LASTEXITCODE -ne 0) { Write-Host "Falhou em $step."; exit $LASTEXITCODE }
         }
     }
+    "carregar-gold" {
+        # maquina sem os arquivos do INEP: carrega no banco local a gold que outro dev publicou em outputs\ (apos git pull)
+        Import-DotEnv
+        docker compose run --rm -e WAREHOUSE_ADMIN_USER -e WAREHOUSE_ADMIN_PASSWORD -e WAREHOUSE_BI_USER cli python scripts/load_outputs_local.py | Out-Host
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    }
     "planilhas" {
         # PLANO B sem banco: dashboard (e chat, se ja existia) lendo planilhas de superset\planilhas (ou outputs\), em http://localhost:8088
         & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "..\superset\up.ps1") -Planilhas
@@ -243,6 +249,7 @@ Uso: .\scripts\dh.ps1 <comando> [args]      (sem Docker: `$env:DH_RUNNER = "nati
   db-bootstrap-native         prepara um PostgreSQL instalado sem Docker
   import-downloads [pasta]    copia os arquivos do INEP de Downloads para data\landing\inep
   pipeline                    ingestao + portao + dbt em gold_candidate + publicacao + outputs/
+  carregar-gold               sem os arquivos do INEP: carrega no banco local a gold de outputs\ (depois do git pull)
   ingest [fontes...]          so a ingestao na Bronze
   gate                        mostra se as fontes obrigatorias estao completas
   dbt-build [seletor]         dbt build no schema candidato (nao publica)
