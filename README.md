@@ -18,11 +18,11 @@ flowchart LR
 
 | Integrante | Função |
 |---|---|
-| Fellype Lima da Silva | Engenheiro de dados: arquitetura ELT, ingestão, dbt, Airflow, testes de qualidade e publicação da camada Gold |
+| Fellype Lima da Silva | Data Engineer: arquitetura ELT, ingestão, dbt, Airflow, testes de qualidade e publicação da camada Gold |
 | Mauricio Carneiro Santiago Balboa | Full-Stack Developer: dashboards no Superset e IA integrada ao Superset |
 | Pedro Henrique dos Santos Gomes | Full-Stack Developer: dashboards no Superset e IA integrada ao Superset |
-| Pedro Henrique Nascimento e Silva | Analista de dados: análise dos indicadores e respostas às perguntas do desafio |
-| Gabriel Pereira Soares | Analista de dados: análise dos indicadores e respostas às perguntas do desafio |
+| Pedro Henrique Nascimento e Silva | Data Analyst: análise dos indicadores e respostas às perguntas do desafio |
+| Gabriel Pereira Soares | Data Analyst: análise dos indicadores e respostas às perguntas do desafio |
 
 ## Como rodar do zero (Windows, PowerShell)
 
