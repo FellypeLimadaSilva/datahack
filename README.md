@@ -14,13 +14,13 @@ flowchart LR
     P -->|falha| K[versão anterior mantida]
 ```
 
-## Equipe 05 · 1º lugar no DataHack Univag 2026
+## Equipe Data Squad · 1º lugar no DataHack Univag 2026
 
 | Integrante | Função |
 |---|---|
 | Fellype Lima da Silva | Engenheiro de dados: arquitetura ELT, ingestão, dbt, Airflow, testes de qualidade e publicação da camada Gold |
-| Mauricio Carneiro Santiago Balboa | Desenvolvedor full stack: dashboards no Superset e IA integrada ao Superset |
-| Pedro Henrique dos Santos Gomes | Desenvolvedor full stack: dashboards no Superset e IA integrada ao Superset |
+| Mauricio Carneiro Santiago Balboa | Full-Stack Developer: dashboards no Superset e IA integrada ao Superset |
+| Pedro Henrique dos Santos Gomes | Full-Stack Developer: dashboards no Superset e IA integrada ao Superset |
 | Pedro Henrique Nascimento e Silva | Analista de dados: análise dos indicadores e respostas às perguntas do desafio |
 | Gabriel Pereira Soares | Analista de dados: análise dos indicadores e respostas às perguntas do desafio |
 
